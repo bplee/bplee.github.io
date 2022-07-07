@@ -12,7 +12,7 @@ redirect_from:
 Education
 ======
 * B.S. in Mathematics with Computer Science, MIT, 2019
-* M.S. in Computational Biology, Weill Cornell Medical College, 2021 (expected)
+* M.S. in Computational Biology, Weill Cornell Medical College, 2021
 
 Work experience
 ======
