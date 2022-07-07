@@ -16,10 +16,12 @@ Education
 
 Work experience
 ======
-* Summer 2015: Research Assistant
-  * Github University
-  * Duties included: Tagging issues
-  * Supervisor: Professor Git
+* Scientist, computational biology at Bristol Myers-Squibb
+  * Apart of the Integrated and Predicitive Sciences team embedded within MoCR in Kendall Square
+  * Duties included:
+    * Early target identification
+    * QC and analyses of novel NGS technologies to support new technology development
+  * 
 
 * Fall 2015: Research Assistant
   * Github University
