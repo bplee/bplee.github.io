@@ -82,9 +82,9 @@ analytics:
 author:
   name             : "Brennan"
   avatar           : "lab_photo.png"
-  bio              : "MS Student at Weill Cornell Medical College"
-  location         : "NYC/Boston"
-  employer         : "MSKCC"
+  bio              : "Scientist, Computational Biology"
+  location         : "Boston"
+  employer         : "BMS"
   pubmed           : #"https://www.ncbi.nlm.nih.gov/pubmed/?term=john+snow"
   googlescholar    : #"http://yourfullgooglescholarurl.com"
   email            :
