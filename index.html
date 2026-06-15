@@ -11,11 +11,20 @@
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ══════════════════════════════════════════
+   THEME VARIABLES
+   Four themes via data-theme on <body>:
+     dark-expressive  (default)
+     dark-minimal
+     light-expressive
+     light-minimal
+══════════════════════════════════════════ */
+
+/* DEFAULT: dark expressive */
 :root {
   --bg:      #0a0c0f;
   --bg2:     #0f1218;
   --bg3:     #161b24;
-  --surface: #1a2030;
   --border:  rgba(255,255,255,0.07);
   --border2: rgba(255,255,255,0.12);
   --text:    #e8edf5;
@@ -25,10 +34,90 @@
   --accent2: #a78bfa;
   --accent3: #f6ad55;
   --green:   #68d391;
+  --nav-bg:  rgba(10,12,15,0.85);
+  --heatmap-fade: rgba(10,12,15,1);
+  --grid-color: rgba(79,209,197,0.04);
+  --show-heatmap: block;
+  --show-grid: block;
+}
+
+/* DARK MINIMAL */
+[data-theme="dark-minimal"] {
+  --bg:      #0c0c0c;
+  --bg2:     #111111;
+  --bg3:     #181818;
+  --border:  rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.1);
+  --text:    #e0e0e0;
+  --muted:   #666666;
+  --dim:     #333333;
+  --accent:  #e0e0e0;
+  --accent2: #999999;
+  --accent3: #bbbbbb;
+  --green:   #aaaaaa;
+  --nav-bg:  rgba(12,12,12,0.9);
+  --heatmap-fade: rgba(12,12,12,1);
+  --grid-color: rgba(255,255,255,0.02);
+  --show-heatmap: none;
+  --show-grid: none;
+}
+
+/* LIGHT EXPRESSIVE */
+[data-theme="light-expressive"] {
+  --bg:      #fafaf8;
+  --bg2:     #f2f1ee;
+  --bg3:     #e8e7e3;
+  --border:  rgba(0,0,0,0.08);
+  --border2: rgba(0,0,0,0.14);
+  --text:    #1a1a1a;
+  --muted:   #666666;
+  --dim:     #999999;
+  --accent:  #0891b2;
+  --accent2: #7c3aed;
+  --accent3: #d97706;
+  --green:   #059669;
+  --nav-bg:  rgba(250,250,248,0.88);
+  --heatmap-fade: rgba(250,250,248,1);
+  --grid-color: rgba(8,145,178,0.05);
+  --show-heatmap: block;
+  --show-grid: block;
+}
+
+/* LIGHT MINIMAL */
+[data-theme="light-minimal"] {
+  --bg:      #ffffff;
+  --bg2:     #f9f9f9;
+  --bg3:     #f0f0f0;
+  --border:  rgba(0,0,0,0.07);
+  --border2: rgba(0,0,0,0.12);
+  --text:    #111111;
+  --muted:   #777777;
+  --dim:     #aaaaaa;
+  --accent:  #111111;
+  --accent2: #444444;
+  --accent3: #666666;
+  --green:   #333333;
+  --nav-bg:  rgba(255,255,255,0.92);
+  --heatmap-fade: rgba(255,255,255,1);
+  --grid-color: rgba(0,0,0,0.03);
+  --show-heatmap: none;
+  --show-grid: none;
+}
+
+/* ══════════════════════════════════════════
+   GLOBAL TRANSITIONS
+══════════════════════════════════════════ */
+body, nav, .project-card, .contact-link, .skills-bar, footer,
+.writing-item, .btn-primary, .btn-ghost, h1, h2, .hero-sub,
+.tag, .section-num, .heatmap-wrap, .hero-grid {
+  transition:
+    background 0.35s ease,
+    background-color 0.35s ease,
+    color 0.35s ease,
+    border-color 0.35s ease;
 }
 
 html { scroll-behavior: smooth; }
-
 body {
   font-family: 'Space Grotesk', sans-serif;
   background: var(--bg);
@@ -36,6 +125,129 @@ body {
   font-size: 15px;
   line-height: 1.6;
   overflow-x: hidden;
+}
+
+/* ══════════════════════════════════════════
+   THEME SWITCHER
+══════════════════════════════════════════ */
+.theme-switcher {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+.theme-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 0.5px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.theme-btn:hover { color: var(--text); border-color: var(--dim); }
+.theme-btn-dots {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  width: 14px;
+  height: 14px;
+}
+.theme-btn-dots span {
+  border-radius: 1px;
+  display: block;
+}
+
+.theme-panel {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 10px;
+  padding: 10px;
+  display: none;
+  z-index: 200;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  min-width: 200px;
+}
+.theme-panel.open { display: block; }
+
+.theme-panel-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 4px 8px;
+}
+
+.theme-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.theme-option {
+  border: 0.5px solid var(--border2);
+  border-radius: 7px;
+  padding: 10px;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: transparent;
+  text-align: left;
+}
+.theme-option:hover { border-color: var(--accent); }
+.theme-option.active { border-color: var(--accent); background: rgba(79,209,197,0.06); }
+[data-theme="light-expressive"] .theme-option.active,
+[data-theme="light-minimal"] .theme-option.active {
+  background: rgba(8,145,178,0.06);
+}
+[data-theme="dark-minimal"] .theme-option.active {
+  background: rgba(255,255,255,0.04);
+}
+
+.theme-swatch {
+  width: 100%;
+  height: 28px;
+  border-radius: 4px;
+  margin-bottom: 7px;
+  border: 0.5px solid rgba(0,0,0,0.1);
+}
+/* swatch previews are hardcoded colors so they always look right */
+.swatch-de { background: linear-gradient(135deg, #0a0c0f 50%, #4fd1c5 150%); }
+.swatch-dm { background: linear-gradient(135deg, #0c0c0c 50%, #333 150%); }
+.swatch-le { background: linear-gradient(135deg, #fafaf8 50%, #0891b2 150%); }
+.swatch-lm { background: linear-gradient(135deg, #ffffff 50%, #aaa 150%); }
+
+.theme-name {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  line-height: 1.4;
+}
+.theme-name strong {
+  display: block;
+  color: var(--text);
+  font-size: 10px;
+  margin-bottom: 1px;
+}
+
+/* axis labels */
+.theme-axis {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 2px 2px;
+  font-family: 'Space Mono', monospace;
+  font-size: 8px;
+  color: var(--dim);
+  letter-spacing: 0.06em;
 }
 
 /* ── NAV ── */
@@ -48,7 +260,7 @@ nav {
   align-items: center;
   padding: 1rem 3rem;
   border-bottom: 0.5px solid var(--border);
-  background: rgba(10,12,15,0.85);
+  background: var(--nav-bg);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
 }
@@ -62,7 +274,7 @@ nav {
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 2rem;
+  gap: 1.5rem;
   list-style: none;
 }
 .nav-links a {
@@ -78,7 +290,6 @@ nav {
   border-radius: 5px;
   border: 0.5px solid var(--border2);
   color: var(--muted) !important;
-  transition: all 0.2s !important;
 }
 .nav-resume:hover {
   color: var(--text) !important;
@@ -98,8 +309,8 @@ nav {
   position: absolute;
   inset: 0;
   background-image:
-    linear-gradient(rgba(79,209,197,0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(79,209,197,0.04) 1px, transparent 1px);
+    linear-gradient(var(--grid-color) 1px, transparent 1px),
+    linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
   background-size: 60px 60px;
   -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
   mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
@@ -113,6 +324,9 @@ nav {
   opacity: 0.55;
   pointer-events: none;
 }
+[data-theme="dark-minimal"] .heatmap-wrap,
+[data-theme="light-minimal"] .heatmap-wrap { display: none; }
+
 .hero-content {
   position: relative;
   z-index: 2;
@@ -137,6 +351,11 @@ nav {
   background: var(--accent);
   flex-shrink: 0;
 }
+[data-theme="dark-minimal"] .hero-eyebrow::before,
+[data-theme="light-minimal"] .hero-eyebrow::before { display: none; }
+[data-theme="dark-minimal"] .hero-eyebrow,
+[data-theme="light-minimal"] .hero-eyebrow { letter-spacing: 0.08em; }
+
 h1 {
   font-size: clamp(44px, 6vw, 72px);
   font-weight: 300;
@@ -145,10 +364,11 @@ h1 {
   color: var(--text);
   margin-bottom: 1.5rem;
 }
-h1 em {
-  font-style: normal;
-  color: var(--accent);
-}
+h1 em { font-style: normal; color: var(--accent); }
+
+[data-theme="dark-minimal"] h1,
+[data-theme="light-minimal"] h1 { font-weight: 200; letter-spacing: -0.03em; }
+
 .hero-sub {
   font-size: 16px;
   color: var(--muted);
@@ -156,11 +376,8 @@ h1 em {
   margin-bottom: 2.5rem;
   max-width: 440px;
 }
-.hero-actions {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
+.hero-actions { display: flex; gap: 1rem; flex-wrap: wrap; }
+
 .btn {
   display: inline-flex;
   align-items: center;
@@ -176,17 +393,21 @@ h1 em {
   transition: all 0.2s;
   border: none;
 }
-.btn-primary {
-  background: var(--accent);
-  color: #0a0c0f;
-}
-.btn-primary:hover { background: #38b2ac; }
+.btn-primary { background: var(--accent); color: var(--bg); }
+.btn-primary:hover { opacity: 0.85; }
 .btn-ghost {
   background: transparent;
   color: var(--muted);
   border: 0.5px solid var(--border2);
 }
 .btn-ghost:hover { color: var(--text); border-color: var(--dim); }
+
+[data-theme="dark-minimal"] .btn-primary,
+[data-theme="light-minimal"] .btn-primary {
+  background: var(--text);
+  color: var(--bg);
+  border-radius: 3px;
+}
 
 /* ── SKILLS BAR ── */
 .skills-bar {
@@ -201,6 +422,9 @@ h1 em {
   scrollbar-width: none;
 }
 .skills-bar::-webkit-scrollbar { display: none; }
+[data-theme="dark-minimal"] .skills-bar,
+[data-theme="light-minimal"] .skills-bar { display: none; }
+
 .skills-label {
   font-family: 'Space Mono', monospace;
   font-size: 10px;
@@ -210,11 +434,7 @@ h1 em {
   white-space: nowrap;
   flex-shrink: 0;
 }
-.skills-tags {
-  display: flex;
-  gap: 8px;
-  flex-wrap: nowrap;
-}
+.skills-tags { display: flex; gap: 8px; flex-wrap: nowrap; }
 .tag {
   font-size: 12px;
   padding: 3px 10px;
@@ -225,7 +445,11 @@ h1 em {
 .tag-teal   { background: rgba(79,209,197,0.1);  color: var(--accent);  border: 0.5px solid rgba(79,209,197,0.2); }
 .tag-purple { background: rgba(167,139,250,0.1); color: var(--accent2); border: 0.5px solid rgba(167,139,250,0.2); }
 .tag-amber  { background: rgba(246,173,85,0.1);  color: var(--accent3); border: 0.5px solid rgba(246,173,85,0.2); }
-.tag-gray   { background: rgba(255,255,255,0.04); color: var(--muted);  border: 0.5px solid var(--border); }
+.tag-gray   { background: rgba(128,128,128,0.08); color: var(--muted);  border: 0.5px solid var(--border); }
+
+[data-theme="light-expressive"] .tag-teal   { background: rgba(8,145,178,0.08);  border-color: rgba(8,145,178,0.2); }
+[data-theme="light-expressive"] .tag-purple { background: rgba(124,58,237,0.08); border-color: rgba(124,58,237,0.2); }
+[data-theme="light-expressive"] .tag-amber  { background: rgba(217,119,6,0.08);  border-color: rgba(217,119,6,0.2); }
 
 /* ── SECTIONS ── */
 section { padding: 6rem 3rem; }
@@ -242,18 +466,26 @@ section { padding: 6rem 3rem; }
   letter-spacing: 0.1em;
   flex-shrink: 0;
 }
+[data-theme="dark-minimal"] .section-num,
+[data-theme="light-minimal"] .section-num { display: none; }
+
 h2 {
   font-size: 28px;
   font-weight: 400;
   color: var(--text);
   letter-spacing: -0.01em;
 }
+[data-theme="dark-minimal"] h2,
+[data-theme="light-minimal"] h2 { font-weight: 300; font-size: 22px; letter-spacing: 0.02em; text-transform: uppercase; }
+
 .section-line {
   flex: 1;
   height: 0.5px;
   background: var(--border);
   margin-left: 1rem;
 }
+[data-theme="dark-minimal"] .section-line,
+[data-theme="light-minimal"] .section-line { display: none; }
 
 /* ── PROJECTS ── */
 .projects-grid {
@@ -265,12 +497,32 @@ h2 {
   border-radius: 12px;
   overflow: hidden;
 }
+[data-theme="dark-minimal"] .projects-grid,
+[data-theme="light-minimal"] .projects-grid {
+  gap: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-top: 0.5px solid var(--border);
+}
+
 .project-card {
   background: var(--bg2);
   padding: 2rem;
   transition: background 0.2s;
 }
 .project-card:hover { background: var(--bg3); }
+
+[data-theme="dark-minimal"] .project-card,
+[data-theme="light-minimal"] .project-card {
+  background: transparent;
+  border-bottom: 0.5px solid var(--border);
+  border-radius: 0;
+  padding: 1.75rem 0;
+}
+[data-theme="dark-minimal"] .project-card:hover,
+[data-theme="light-minimal"] .project-card:hover { background: transparent; }
+
 .project-type {
   font-family: 'Space Mono', monospace;
   font-size: 10px;
@@ -278,6 +530,9 @@ h2 {
   text-transform: uppercase;
   margin-bottom: 1rem;
 }
+[data-theme="dark-minimal"] .project-type,
+[data-theme="light-minimal"] .project-type { color: var(--dim) !important; }
+
 .project-title {
   font-size: 17px;
   font-weight: 500;
@@ -291,21 +546,19 @@ h2 {
   line-height: 1.65;
   margin-bottom: 1.5rem;
 }
-.project-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-bottom: 1.25rem;
-}
+.project-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.25rem; }
 .project-tag {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 3px;
   font-family: 'Space Mono', monospace;
-  background: rgba(255,255,255,0.04);
+  background: rgba(128,128,128,0.06);
   color: var(--dim);
   border: 0.5px solid var(--border);
 }
+[data-theme="dark-minimal"] .project-tags,
+[data-theme="light-minimal"] .project-tags { display: none; }
+
 .project-link {
   font-size: 12px;
   color: var(--accent);
@@ -317,7 +570,7 @@ h2 {
   transition: color 0.15s;
 }
 .project-link::after { content: '→'; }
-.project-link:hover { color: #38b2ac; }
+.project-link:hover { opacity: 0.7; }
 
 /* ── WRITING ── */
 .writing-list { display: flex; flex-direction: column; }
@@ -334,6 +587,9 @@ h2 {
 }
 .writing-item:first-child { border-top: 0.5px solid var(--border); }
 .writing-item:hover { padding-left: 0.5rem; }
+[data-theme="dark-minimal"] .writing-item:hover,
+[data-theme="light-minimal"] .writing-item:hover { padding-left: 0; opacity: 0.6; }
+
 .writing-date {
   font-family: 'Space Mono', monospace;
   font-size: 11px;
@@ -352,6 +608,8 @@ h2 {
   font-family: 'Space Mono', monospace;
   white-space: nowrap;
 }
+[data-theme="dark-minimal"] .writing-label,
+[data-theme="light-minimal"] .writing-label { display: none; }
 
 /* ── CONTACT ── */
 .contact-grid {
@@ -369,6 +627,9 @@ h2 {
   margin-bottom: 1rem;
 }
 .contact-tagline span { color: var(--accent); }
+[data-theme="dark-minimal"] .contact-tagline span,
+[data-theme="light-minimal"] .contact-tagline span { color: var(--text); }
+
 .contact-sub {
   font-size: 14px;
   color: var(--muted);
@@ -383,6 +644,14 @@ h2 {
   border-radius: 10px;
   overflow: hidden;
 }
+[data-theme="dark-minimal"] .contact-links,
+[data-theme="light-minimal"] .contact-links {
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  border-top: 0.5px solid var(--border);
+  gap: 0;
+}
 .contact-link {
   display: flex;
   align-items: center;
@@ -395,15 +664,19 @@ h2 {
   transition: all 0.15s;
 }
 .contact-link:hover { background: var(--bg3); color: var(--text); }
-.contact-link-label {
-  display: flex;
-  align-items: center;
-  gap: 10px;
+[data-theme="dark-minimal"] .contact-link,
+[data-theme="light-minimal"] .contact-link {
+  background: transparent;
+  padding: 1rem 0;
+  border-bottom: 0.5px solid var(--border);
 }
-.contact-link-label svg {
-  flex-shrink: 0;
-  color: var(--dim);
+[data-theme="dark-minimal"] .contact-link:hover,
+[data-theme="light-minimal"] .contact-link:hover {
+  background: transparent;
+  opacity: 0.6;
 }
+.contact-link-label { display: flex; align-items: center; gap: 10px; }
+.contact-link-label svg { flex-shrink: 0; color: var(--dim); }
 .contact-link-handle {
   font-family: 'Space Mono', monospace;
   font-size: 11px;
@@ -423,66 +696,89 @@ footer {
   font-size: 11px;
   color: var(--dim);
 }
-.footer-built {
-  font-size: 12px;
-  color: var(--dim);
-}
+.footer-built { font-size: 12px; color: var(--dim); }
 
 /* ── RESPONSIVE ── */
 @media (max-width: 768px) {
   nav { padding: 1rem 1.5rem; }
-  .nav-links { gap: 1.25rem; }
-  .nav-links li:not(:last-child) { display: none; }
-
-  .hero { padding: 6rem 1.5rem 3rem; min-height: auto; padding-top: 8rem; }
-  .heatmap-wrap { display: none; }
-
+  .nav-links { gap: 1rem; }
+  .nav-links li:nth-child(-n+3) { display: none; }
+  .hero { padding: 8rem 1.5rem 3rem; min-height: auto; }
+  .heatmap-wrap { display: none !important; }
   .skills-bar { padding: 1rem 1.5rem; }
-
   section { padding: 4rem 1.5rem; }
-
   .writing-item { grid-template-columns: 56px 1fr; }
   .writing-label { display: none; }
-
   .contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
-
   footer { flex-direction: column; gap: 0.5rem; text-align: center; padding: 1.5rem; }
+  .theme-panel { right: -1rem; }
 }
-
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition-duration: 0.01ms !important; }
 }
 </style>
-<!-- Google tag (gtag.js) -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1GZP6P1RD"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-J1GZP6P1RD');
-</script>
 </head>
-<body>
+<body data-theme="dark-expressive">
 
 <!-- NAV -->
 <nav>
-  <a href="#" class="nav-logo">BPLee_</a>
+  <a href="#" class="nav-logo">李毘安</a>
   <ul class="nav-links">
     <li><a href="#projects">projects</a></li>
     <li><a href="#writing">writing</a></li>
     <li><a href="#contact">contact</a></li>
     <li><a href="https://github.com/bplee/bplee.github.io/raw/master/files/cv.pdf" target="_blank" rel="noopener" class="nav-resume">resume ↗</a></li>
+    <li>
+      <div class="theme-switcher">
+        <button class="theme-btn" id="themeBtn" aria-label="Change theme">
+          <div class="theme-btn-dots" id="themeBtnDots">
+            <span style="background:#0a0c0f;border:0.5px solid #333;"></span>
+            <span style="background:#fafaf8;border:0.5px solid #ccc;"></span>
+            <span style="background:#0c0c0c;border:0.5px solid #222;"></span>
+            <span style="background:#ffffff;border:0.5px solid #ddd;"></span>
+          </div>
+          theme
+        </button>
+        <div class="theme-panel" id="themePanel">
+          <div class="theme-panel-label">Choose a theme</div>
+          <div class="theme-axis">
+            <span>← dark</span>
+            <span>light →</span>
+          </div>
+          <div class="theme-grid">
+            <button class="theme-option active" data-theme="dark-expressive" onclick="setTheme('dark-expressive', this)">
+              <div class="theme-swatch swatch-de"></div>
+              <div class="theme-name"><strong>Expressive</strong>dark</div>
+            </button>
+            <button class="theme-option" data-theme="light-expressive" onclick="setTheme('light-expressive', this)">
+              <div class="theme-swatch swatch-le"></div>
+              <div class="theme-name"><strong>Expressive</strong>light</div>
+            </button>
+            <button class="theme-option" data-theme="dark-minimal" onclick="setTheme('dark-minimal', this)">
+              <div class="theme-swatch swatch-dm"></div>
+              <div class="theme-name"><strong>Minimal</strong>dark</div>
+            </button>
+            <button class="theme-option" data-theme="light-minimal" onclick="setTheme('light-minimal', this)">
+              <div class="theme-swatch swatch-lm"></div>
+              <div class="theme-name"><strong>Minimal</strong>light</div>
+            </button>
+          </div>
+          <div class="theme-axis" style="justify-content:space-between; padding: 6px 2px 0;">
+            <span>expressive ↑</span>
+            <span>↓ minimal</span>
+          </div>
+        </div>
+      </div>
+    </li>
   </ul>
 </nav>
 
 <!-- HERO -->
 <section class="hero">
   <div class="hero-grid" aria-hidden="true"></div>
-
   <div class="heatmap-wrap" aria-hidden="true">
     <canvas id="heatmap" width="340" height="500"></canvas>
   </div>
-
   <div class="hero-content">
     <div class="hero-eyebrow">Computational Biology · Machine Learning</div>
     <h1>Brennan<br><em>Lee</em></h1>
@@ -523,18 +819,11 @@ footer {
     <h2>Projects</h2>
     <div class="section-line" aria-hidden="true"></div>
   </div>
-
   <div class="projects-grid">
-
     <div class="project-card">
       <div class="project-type" style="color: var(--accent);">ML · Biology</div>
       <div class="project-title">DepMap Dependency Predictor</div>
-      <p class="project-desc">
-        Three-stage attention model predicting Chronos gene dependency scores from CCLE
-        omics data. Pathway embeddings → pathway self-attention → gene-specific
-        cross-attention, with a ~150-feature SHAP-ready interpretable set built from
-        ssGSEA, PROGENy, and DoRothEA programs.
-      </p>
+      <p class="project-desc">Three-stage attention model predicting Chronos gene dependency scores from CCLE omics data. Pathway embeddings → pathway self-attention → gene-specific cross-attention, with a ~150-feature SHAP-ready interpretable set built from ssGSEA, PROGENy, and DoRothEA programs.</p>
       <div class="project-tags">
         <span class="project-tag">PyTorch</span>
         <span class="project-tag">ssGSEA</span>
@@ -544,15 +833,10 @@ footer {
       </div>
       <a href="https://github.com/bplee" target="_blank" rel="noopener" class="project-link">View on GitHub</a>
     </div>
-
     <div class="project-card">
       <div class="project-type" style="color: var(--accent2);">ML · Gaming</div>
       <div class="project-title">MTG Draft AI</div>
-      <p class="project-desc">
-        Transformer-based drafting system trained on 17lands data. DraftTransformer
-        architecture with pool self-attention and pack-to-pool cross-attention to model
-        pick synergies across the full 45-pick draft arc.
-      </p>
+      <p class="project-desc">Transformer-based drafting system trained on 17lands data. DraftTransformer architecture with pool self-attention and pack-to-pool cross-attention to model pick synergies across the full 45-pick draft arc.</p>
       <div class="project-tags">
         <span class="project-tag">Transformers</span>
         <span class="project-tag">17lands</span>
@@ -560,15 +844,10 @@ footer {
       </div>
       <a href="https://github.com/bplee" target="_blank" rel="noopener" class="project-link">View on GitHub</a>
     </div>
-
     <div class="project-card">
       <div class="project-type" style="color: var(--accent3);">iOS · NLP</div>
       <div class="project-title">FlashLang</div>
-      <p class="project-desc">
-        iOS lock screen widget for passive vocabulary acquisition. WidgetKit-powered
-        spaced repetition that surfaces new words in ambient moments — no app open
-        required. Built with Swift and native iOS extension APIs.
-      </p>
+      <p class="project-desc">iOS lock screen widget for passive vocabulary acquisition. WidgetKit-powered spaced repetition that surfaces new words in ambient moments — no app open required. Built with Swift and native iOS extension APIs.</p>
       <div class="project-tags">
         <span class="project-tag">Swift</span>
         <span class="project-tag">WidgetKit</span>
@@ -576,15 +855,10 @@ footer {
       </div>
       <a href="https://github.com/bplee" target="_blank" rel="noopener" class="project-link">View on GitHub</a>
     </div>
-
     <div class="project-card">
       <div class="project-type" style="color: var(--green);">Genomics · Pipeline</div>
       <div class="project-title">CRISPR Screen ML Pipeline</div>
-      <p class="project-desc">
-        End-to-end MAGeCK pipeline with CNV correction for single-replicate screens,
-        including downstream ML integration for hit prioritization and pathway-level
-        interpretation of essential gene sets.
-      </p>
+      <p class="project-desc">End-to-end MAGeCK pipeline with CNV correction for single-replicate screens, including downstream ML integration for hit prioritization and pathway-level interpretation of essential gene sets.</p>
       <div class="project-tags">
         <span class="project-tag">MAGeCK</span>
         <span class="project-tag">R</span>
@@ -593,7 +867,6 @@ footer {
       </div>
       <a href="https://github.com/bplee" target="_blank" rel="noopener" class="project-link">View on GitHub</a>
     </div>
-
   </div>
 </section>
 
@@ -604,7 +877,6 @@ footer {
     <h2>Writing</h2>
     <div class="section-line" aria-hidden="true"></div>
   </div>
-
   <div class="writing-list">
     <a href="https://bplee.github.io" target="_blank" rel="noopener" class="writing-item">
       <span class="writing-date">2024</span>
@@ -636,59 +908,36 @@ footer {
     <h2>Contact</h2>
     <div class="section-line" aria-hidden="true"></div>
   </div>
-
   <div class="contact-grid">
     <div>
-      <div class="contact-tagline">
-        Let's build something<br><span>at the frontier.</span>
-      </div>
-      <p class="contact-sub">
-        Open to ML research and data science roles at companies working at the
-        intersection of biology and AI — Isomorphic Labs, Insitro, Verily,
-        Genentech, and similar. Based in San Francisco.
-      </p>
+      <div class="contact-tagline">Let's build something<br><span>at the frontier.</span></div>
+      <p class="contact-sub">Open to ML research and data science roles at companies working at the intersection of biology and AI — Isomorphic Labs, Insitro, Verily, Genentech, and similar. Based in San Francisco.</p>
     </div>
-
     <div class="contact-links">
       <a href="https://github.com/bplee" target="_blank" rel="noopener" class="contact-link">
         <span class="contact-link-label">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
           GitHub
         </span>
         <span class="contact-link-handle">github.com/bplee</span>
       </a>
-
       <a href="https://www.linkedin.com/in/brennan-lee-4a81b9168" target="_blank" rel="noopener" class="contact-link">
         <span class="contact-link-label">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
-            <rect x="2" y="9" width="4" height="12"/>
-            <circle cx="4" cy="4" r="2"/>
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>
           LinkedIn
         </span>
         <span class="contact-link-handle">brennan-lee-4a81b9168</span>
       </a>
-
       <a href="https://bplee.github.io" target="_blank" rel="noopener" class="contact-link">
         <span class="contact-link-label">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
           Math Blog
         </span>
         <span class="contact-link-handle">A Pure Math Basis for Matrix Analysis</span>
       </a>
-
       <a href="mailto:hello@bplee.github.io" class="contact-link">
         <span class="contact-link-label">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
-            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-            <polyline points="22,6 12,13 2,6"/>
-          </svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
           Email
         </span>
         <span class="contact-link-handle">reach out directly</span>
@@ -702,8 +951,47 @@ footer {
   <span class="footer-built">Built with HTML · Hosted on GitHub Pages</span>
 </footer>
 
-<!-- Animated gene expression heatmap (hero signature element) -->
 <script>
+/* ══════════════════════════════════════════
+   THEME SWITCHER
+══════════════════════════════════════════ */
+var currentTheme = localStorage.getItem('bl-theme') || 'dark-expressive';
+
+function setTheme(theme, optionEl) {
+  currentTheme = theme;
+  document.body.setAttribute('data-theme', theme);
+  localStorage.setItem('bl-theme', theme);
+  // update active state
+  document.querySelectorAll('.theme-option').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-theme') === theme);
+  });
+  closePanel();
+  updateHeatmapFade();
+}
+
+function togglePanel() {
+  document.getElementById('themePanel').classList.toggle('open');
+}
+function closePanel() {
+  document.getElementById('themePanel').classList.remove('open');
+}
+
+document.getElementById('themeBtn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  togglePanel();
+});
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.theme-switcher')) closePanel();
+});
+
+// restore saved theme
+if (currentTheme !== 'dark-expressive') {
+  setTheme(currentTheme, null);
+}
+
+/* ══════════════════════════════════════════
+   HEATMAP
+══════════════════════════════════════════ */
 (function () {
   var canvas = document.getElementById('heatmap');
   if (!canvas) return;
@@ -725,74 +1013,51 @@ footer {
   var phase = Array.from({length: ROWS}, function() {
     return Array.from({length: COLS}, function() { return Math.random() * Math.PI * 2; });
   });
-
   var speed = Array.from({length: ROWS}, function() {
     return Array.from({length: COLS}, function() { return 0.004 + Math.random() * 0.006; });
   });
 
   function lerp(a, b, t) { return a + (b - a) * t; }
-
   function toRGB(v) {
-    var r, g, b;
-    if (v < 0.25) {
-      var t = v / 0.25;
-      r = lerp(8, 6, t); g = lerp(30, 85, t); b = lerp(80, 160, t);
-    } else if (v < 0.5) {
-      var t = (v - 0.25) / 0.25;
-      r = lerp(6, 18, t); g = lerp(85, 165, t); b = lerp(160, 205, t);
-    } else if (v < 0.75) {
-      var t = (v - 0.5) / 0.25;
-      r = lerp(18, 230, t); g = lerp(165, 220, t); b = lerp(205, 90, t);
-    } else {
-      var t = (v - 0.75) / 0.25;
-      r = lerp(230, 255, t); g = lerp(220, 70, t); b = lerp(90, 35, t);
-    }
+    var r, g, b, t;
+    if (v < 0.25)      { t = v/0.25;       r=lerp(8,6,t);   g=lerp(30,85,t);  b=lerp(80,160,t); }
+    else if (v < 0.5)  { t=(v-0.25)/0.25;  r=lerp(6,18,t);  g=lerp(85,165,t); b=lerp(160,205,t); }
+    else if (v < 0.75) { t=(v-0.5)/0.25;   r=lerp(18,230,t);g=lerp(165,220,t);b=lerp(205,90,t); }
+    else               { t=(v-0.75)/0.25;  r=lerp(230,255,t);g=lerp(220,70,t);b=lerp(90,35,t); }
     return [Math.round(r), Math.round(g), Math.round(b)];
   }
 
-  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function getFadeColor() {
+    var t = document.body.getAttribute('data-theme') || 'dark-expressive';
+    if (t === 'light-expressive') return 'rgba(250,250,248,';
+    return 'rgba(10,12,15,';
+  }
 
   function draw() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-
     for (var r = 0; r < ROWS; r++) {
       for (var c = 0; c < COLS; c++) {
-        if (!prefersReducedMotion) phase[r][c] += speed[r][c];
+        if (!reduced) phase[r][c] += speed[r][c];
         var v = Math.max(0, Math.min(1, base[r][c] + Math.sin(phase[r][c]) * 0.14));
         var rgb = toRGB(v);
-        ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.82)';
-        ctx.fillRect(
-          Math.round(c * CW) + 1,
-          Math.round(r * CH) + 1,
-          Math.ceil(CW) - 2,
-          Math.ceil(CH) - 2
-        );
+        ctx.fillStyle = 'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+',0.82)';
+        ctx.fillRect(Math.round(c*CW)+1, Math.round(r*CH)+1, Math.ceil(CW)-2, Math.ceil(CH)-2);
       }
     }
-
-    // Left fade so heatmap bleeds into background
-    var grad = ctx.createLinearGradient(0, 0, canvas.width * 0.45, 0);
-    grad.addColorStop(0, 'rgba(10,12,15,1)');
-    grad.addColorStop(1, 'rgba(10,12,15,0)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    // Top + bottom fades
-    var gradT = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.25);
-    gradT.addColorStop(0, 'rgba(10,12,15,1)');
-    gradT.addColorStop(1, 'rgba(10,12,15,0)');
-    ctx.fillStyle = gradT;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-    var gradB = ctx.createLinearGradient(0, canvas.height * 0.75, 0, canvas.height);
-    gradB.addColorStop(0, 'rgba(10,12,15,0)');
-    gradB.addColorStop(1, 'rgba(10,12,15,1)');
-    ctx.fillStyle = gradB;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-
+    var fc = getFadeColor();
+    var g1 = ctx.createLinearGradient(0, 0, canvas.width*0.45, 0);
+    g1.addColorStop(0, fc+'1)'); g1.addColorStop(1, fc+'0)');
+    ctx.fillStyle = g1; ctx.fillRect(0,0,canvas.width,canvas.height);
+    var g2 = ctx.createLinearGradient(0, 0, 0, canvas.height*0.25);
+    g2.addColorStop(0, fc+'1)'); g2.addColorStop(1, fc+'0)');
+    ctx.fillStyle = g2; ctx.fillRect(0,0,canvas.width,canvas.height);
+    var g3 = ctx.createLinearGradient(0, canvas.height*0.75, 0, canvas.height);
+    g3.addColorStop(0, fc+'0)'); g3.addColorStop(1, fc+'1)');
+    ctx.fillStyle = g3; ctx.fillRect(0,0,canvas.width,canvas.height);
     requestAnimationFrame(draw);
   }
-
   draw();
 })();
 </script>
