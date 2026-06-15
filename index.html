@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Brennan Lee — Computational Biology & Machine Learning researcher based in San Francisco.">
+<title>Brennan Lee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:      #0a0c0f;
+  --bg2:     #0f1218;
+  --bg3:     #161b24;
+  --surface: #1a2030;
+  --border:  rgba(255,255,255,0.07);
+  --border2: rgba(255,255,255,0.12);
+  --text:    #e8edf5;
+  --muted:   #6b7890;
+  --dim:     #3d4a60;
+  --accent:  #4fd1c5;
+  --accent2: #a78bfa;
+  --accent3: #f6ad55;
+  --green:   #68d391;
+}
+
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Space Grotesk', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
+  overflow-x: hidden;
+}
+
+/* ── NAV ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 3rem;
+  border-bottom: 0.5px solid var(--border);
+  background: rgba(10,12,15,0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.nav-logo {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--accent);
+  letter-spacing: 0.08em;
+  text-decoration: none;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  list-style: none;
+}
+.nav-links a {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  transition: color 0.2s;
+}
+.nav-links a:hover { color: var(--text); }
+.nav-resume {
+  padding: 6px 14px;
+  border-radius: 5px;
+  border: 0.5px solid var(--border2);
+  color: var(--muted) !important;
+  transition: all 0.2s !important;
+}
+.nav-resume:hover {
+  color: var(--text) !important;
+  border-color: var(--dim) !important;
+}
+
+/* ── HERO ── */
+.hero {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding: 0 3rem;
+  position: relative;
+  overflow: hidden;
+}
+.hero-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(79,209,197,0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(79,209,197,0.04) 1px, transparent 1px);
+  background-size: 60px 60px;
+  -webkit-mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
+  mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 20%, transparent 100%);
+  pointer-events: none;
+}
+.heatmap-wrap {
+  position: absolute;
+  right: 3rem;
+  top: 50%;
+  transform: translateY(-50%);
+  opacity: 0.55;
+  pointer-events: none;
+}
+.hero-content {
+  position: relative;
+  z-index: 2;
+  max-width: 560px;
+}
+.hero-eyebrow {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hero-eyebrow::before {
+  content: '';
+  display: block;
+  width: 28px;
+  height: 1px;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+h1 {
+  font-size: clamp(44px, 6vw, 72px);
+  font-weight: 300;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--text);
+  margin-bottom: 1.5rem;
+}
+h1 em {
+  font-style: normal;
+  color: var(--accent);
+}
+.hero-sub {
+  font-size: 16px;
+  color: var(--muted);
+  line-height: 1.75;
+  margin-bottom: 2.5rem;
+  max-width: 440px;
+}
+.hero-actions {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 22px;
+  border-radius: 6px;
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.03em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: none;
+}
+.btn-primary {
+  background: var(--accent);
+  color: #0a0c0f;
+}
+.btn-primary:hover { background: #38b2ac; }
+.btn-ghost {
+  background: transparent;
+  color: var(--muted);
+  border: 0.5px solid var(--border2);
+}
+.btn-ghost:hover { color: var(--text); border-color: var(--dim); }
+
+/* ── SKILLS BAR ── */
+.skills-bar {
+  border-top: 0.5px solid var(--border);
+  border-bottom: 0.5px solid var(--border);
+  padding: 1.25rem 3rem;
+  display: flex;
+  align-items: center;
+  gap: 2rem;
+  overflow-x: auto;
+  background: var(--bg2);
+  scrollbar-width: none;
+}
+.skills-bar::-webkit-scrollbar { display: none; }
+.skills-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.skills-tags {
+  display: flex;
+  gap: 8px;
+  flex-wrap: nowrap;
+}
+.tag {
+  font-size: 12px;
+  padding: 3px 10px;
+  border-radius: 4px;
+  white-space: nowrap;
+  font-family: 'Space Mono', monospace;
+}
+.tag-teal   { background: rgba(79,209,197,0.1);  color: var(--accent);  border: 0.5px solid rgba(79,209,197,0.2); }
+.tag-purple { background: rgba(167,139,250,0.1); color: var(--accent2); border: 0.5px solid rgba(167,139,250,0.2); }
+.tag-amber  { background: rgba(246,173,85,0.1);  color: var(--accent3); border: 0.5px solid rgba(246,173,85,0.2); }
+.tag-gray   { background: rgba(255,255,255,0.04); color: var(--muted);  border: 0.5px solid var(--border); }
+
+/* ── SECTIONS ── */
+section { padding: 6rem 3rem; }
+.section-header {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  margin-bottom: 3rem;
+}
+.section-num {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  flex-shrink: 0;
+}
+h2 {
+  font-size: 28px;
+  font-weight: 400;
+  color: var(--text);
+  letter-spacing: -0.01em;
+}
+.section-line {
+  flex: 1;
+  height: 0.5px;
+  background: var(--border);
+  margin-left: 1rem;
+}
+
+/* ── PROJECTS ── */
+.projects-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1px;
+  background: var(--border);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+.project-card {
+  background: var(--bg2);
+  padding: 2rem;
+  transition: background 0.2s;
+}
+.project-card:hover { background: var(--bg3); }
+.project-type {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 1rem;
+}
+.project-title {
+  font-size: 17px;
+  font-weight: 500;
+  margin-bottom: 0.75rem;
+  color: var(--text);
+  line-height: 1.3;
+}
+.project-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.65;
+  margin-bottom: 1.5rem;
+}
+.project-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 1.25rem;
+}
+.project-tag {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-family: 'Space Mono', monospace;
+  background: rgba(255,255,255,0.04);
+  color: var(--dim);
+  border: 0.5px solid var(--border);
+}
+.project-link {
+  font-size: 12px;
+  color: var(--accent);
+  text-decoration: none;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  transition: color 0.15s;
+}
+.project-link::after { content: '→'; }
+.project-link:hover { color: #38b2ac; }
+
+/* ── WRITING ── */
+.writing-list { display: flex; flex-direction: column; }
+.writing-item {
+  display: grid;
+  grid-template-columns: 72px 1fr auto;
+  align-items: center;
+  gap: 2rem;
+  padding: 1.4rem 0;
+  border-bottom: 0.5px solid var(--border);
+  text-decoration: none;
+  color: inherit;
+  transition: padding-left 0.2s;
+}
+.writing-item:first-child { border-top: 0.5px solid var(--border); }
+.writing-item:hover { padding-left: 0.5rem; }
+.writing-date {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+}
+.writing-title {
+  font-size: 14px;
+  color: var(--text);
+  font-weight: 400;
+  line-height: 1.4;
+}
+.writing-label {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-family: 'Space Mono', monospace;
+  white-space: nowrap;
+}
+
+/* ── CONTACT ── */
+.contact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  align-items: start;
+}
+.contact-tagline {
+  font-size: 30px;
+  font-weight: 300;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  margin-bottom: 1rem;
+}
+.contact-tagline span { color: var(--accent); }
+.contact-sub {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.75;
+}
+.contact-links {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  background: var(--border);
+  border: 0.5px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.contact-link {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.5rem;
+  background: var(--bg2);
+  text-decoration: none;
+  color: var(--muted);
+  font-size: 13px;
+  transition: all 0.15s;
+}
+.contact-link:hover { background: var(--bg3); color: var(--text); }
+.contact-link-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.contact-link-label svg {
+  flex-shrink: 0;
+  color: var(--dim);
+}
+.contact-link-handle {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+}
+
+/* ── FOOTER ── */
+footer {
+  padding: 2rem 3rem;
+  border-top: 0.5px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.footer-copy {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--dim);
+}
+.footer-built {
+  font-size: 12px;
+  color: var(--dim);
+}
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  nav { padding: 1rem 1.5rem; }
+  .nav-links { gap: 1.25rem; }
+  .nav-links li:not(:last-child) { display: none; }
+
+  .hero { padding: 6rem 1.5rem 3rem; min-height: auto; padding-top: 8rem; }
+  .heatmap-wrap { display: none; }
+
+  .skills-bar { padding: 1rem 1.5rem; }
+
+  section { padding: 4rem 1.5rem; }
+
+  .writing-item { grid-template-columns: 56px 1fr; }
+  .writing-label { display: none; }
+
+  .contact-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+
+  footer { flex-direction: column; gap: 0.5rem; text-align: center; padding: 1.5rem; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation: none !important; transition-duration: 0.01ms !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a href="#" class="nav-logo">BL_</a>
+  <ul class="nav-links">
+    <li><a href="#projects">projects</a></li>
+    <li><a href="#writing">writing</a></li>
+    <li><a href="#contact">contact</a></li>
+    <li><a href="https://github.com/bplee/bplee.github.io/raw/master/files/cv.pdf" target="_blank" rel="noopener" class="nav-resume">resume ↗</a></li>
+  </ul>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-grid" aria-hidden="true"></div>
+
+  <div class="heatmap-wrap" aria-hidden="true">
+    <canvas id="heatmap" width="340" height="500"></canvas>
+  </div>
+
+  <div class="hero-content">
+    <div class="hero-eyebrow">Computational Biology · Machine Learning</div>
+    <h1>Brennan<br><em>Lee</em></h1>
+    <p class="hero-sub">
+      I build machine learning systems that make sense of biological data —
+      from attention models over cancer dependency screens to CRISPR pipeline
+      automation. Seeking ML research roles at the intersection of biology and AI.
+    </p>
+    <div class="hero-actions">
+      <a href="#projects" class="btn btn-primary">View work</a>
+      <a href="#contact" class="btn btn-ghost">Get in touch</a>
+    </div>
+  </div>
+</section>
+
+<!-- SKILLS BAR -->
+<div class="skills-bar" role="list" aria-label="Technical skills">
+  <span class="skills-label">stack</span>
+  <div class="skills-tags">
+    <span class="tag tag-teal" role="listitem">PyTorch</span>
+    <span class="tag tag-teal" role="listitem">Transformers</span>
+    <span class="tag tag-teal" role="listitem">scRNA-seq</span>
+    <span class="tag tag-purple" role="listitem">Python</span>
+    <span class="tag tag-purple" role="listitem">R</span>
+    <span class="tag tag-purple" role="listitem">Swift</span>
+    <span class="tag tag-amber" role="listitem">DepMap / CCLE</span>
+    <span class="tag tag-amber" role="listitem">MAGeCK</span>
+    <span class="tag tag-amber" role="listitem">ssGSEA</span>
+    <span class="tag tag-gray" role="listitem">Linear Algebra</span>
+    <span class="tag tag-gray" role="listitem">Bayesian Stats</span>
+  </div>
+</div>
+
+<!-- PROJECTS -->
+<section id="projects">
+  <div class="section-header">
+    <span class="section-num">01</span>
+    <h2>Projects</h2>
+    <div class="section-line" aria-hidden="true"></div>
+  </div>
+
+  <div class="projects-grid">
+
+    <div class="project-card">
+      <div class="project-type" style="color: var(--accent);">ML · Biology</div>
+      <div class="project-title">DepMap Dependency Predictor</div>
+      <p class="project-desc">
+        Three-stage attention model predicting Chronos gene dependency scores from CCLE
+        omics data. Pathway embeddings → pathway self-attention → gene-specific
+        cross-attention, with a ~150-feature SHAP-ready interpretable set built from
+        ssGSEA, PROGENy, and DoRothEA programs.
+      </p>
+      <div class="project-tags">
+        <span class="project-tag">PyTorch</span>
+        <span class="project-tag">ssGSEA</span>
+        <span class="project-tag">PROGENy</span>
+        <span class="project-tag">DoRothEA</span>
+        <span class="project-tag">SHAP</span>
+      </div>
+      <a href="https://github.com/bplee" target="_blank" rel="noopener" class="project-link">View on GitHub</a>
+    </div>
+
+    <div class="project-card">
+      <div class="project-type" style="color: var(--accent2);">ML · Gaming</div>
+      <div class="project-title">MTG Draft AI</div>
+      <p class="project-desc">
+        Transformer-based drafting system trained on 17lands data. DraftTransformer
+        architecture with pool self-attention and pack-to-pool cross-attention to model
+        pick synergies across the full 45-pick draft arc.
+      </p>
+      <div class="project-tags">
+        <span class="project-tag">Transformers</span>
+        <span class="project-tag">17lands</span>
+        <span class="project-tag">PyTorch</span>
+      </div>
+      <a href="https://github.com/bplee" target="_blank" rel="noopener" class="project-link">View on GitHub</a>
+    </div>
+
+    <div class="project-card">
+      <div class="project-type" style="color: var(--accent3);">iOS · NLP</div>
+      <div class="project-title">FlashLang</div>
+      <p class="project-desc">
+        iOS lock screen widget for passive vocabulary acquisition. WidgetKit-powered
+        spaced repetition that surfaces new words in ambient moments — no app open
+        required. Built with Swift and native iOS extension APIs.
+      </p>
+      <div class="project-tags">
+        <span class="project-tag">Swift</span>
+        <span class="project-tag">WidgetKit</span>
+        <span class="project-tag">iOS</span>
+      </div>
+      <a href="https://github.com/bplee" target="_blank" rel="noopener" class="project-link">View on GitHub</a>
+    </div>
+
+    <div class="project-card">
+      <div class="project-type" style="color: var(--green);">Genomics · Pipeline</div>
+      <div class="project-title">CRISPR Screen ML Pipeline</div>
+      <p class="project-desc">
+        End-to-end MAGeCK pipeline with CNV correction for single-replicate screens,
+        including downstream ML integration for hit prioritization and pathway-level
+        interpretation of essential gene sets.
+      </p>
+      <div class="project-tags">
+        <span class="project-tag">MAGeCK</span>
+        <span class="project-tag">R</span>
+        <span class="project-tag">Python</span>
+        <span class="project-tag">CNV correction</span>
+      </div>
+      <a href="https://github.com/bplee" target="_blank" rel="noopener" class="project-link">View on GitHub</a>
+    </div>
+
+  </div>
+</section>
+
+<!-- WRITING -->
+<section id="writing" style="padding-top: 0;">
+  <div class="section-header">
+    <span class="section-num">02</span>
+    <h2>Writing</h2>
+    <div class="section-line" aria-hidden="true"></div>
+  </div>
+
+  <div class="writing-list">
+    <a href="https://bplee.github.io" target="_blank" rel="noopener" class="writing-item">
+      <span class="writing-date">2024</span>
+      <span class="writing-title">Convolution, Toeplitz Structures, and the Fourier Eigenbasis — building toward L² inner products</span>
+      <span class="writing-label tag-teal tag">math blog</span>
+    </a>
+    <a href="https://bplee.github.io" target="_blank" rel="noopener" class="writing-item">
+      <span class="writing-date">2024</span>
+      <span class="writing-title">Predicting Cancer Gene Dependencies from Omics: Architecture Choices and the Mean-Collapse Problem</span>
+      <span class="writing-label tag-amber tag">preprint</span>
+    </a>
+    <a href="https://bplee.github.io" target="_blank" rel="noopener" class="writing-item">
+      <span class="writing-date">2024</span>
+      <span class="writing-title">Why Pathway Embeddings Outperform Raw Omics Features for Interpretable ML in Cancer</span>
+      <span class="writing-label tag-teal tag">math blog</span>
+    </a>
+    <a href="https://bplee.github.io" target="_blank" rel="noopener" class="writing-item">
+      <span class="writing-date">2023</span>
+      <span class="writing-title">The Linear Algebra of Attention: A Graduate-Level Derivation</span>
+      <span class="writing-label tag-teal tag">math blog</span>
+    </a>
+  </div>
+</section>
+
+<!-- CONTACT -->
+<section id="contact" style="padding-top: 0;">
+  <div class="section-header">
+    <span class="section-num">03</span>
+    <h2>Contact</h2>
+    <div class="section-line" aria-hidden="true"></div>
+  </div>
+
+  <div class="contact-grid">
+    <div>
+      <div class="contact-tagline">
+        Let's build something<br><span>at the frontier.</span>
+      </div>
+      <p class="contact-sub">
+        Open to ML research and data science roles at companies working at the
+        intersection of biology and AI — Isomorphic Labs, Insitro, Verily,
+        Genentech, and similar. Based in San Francisco.
+      </p>
+    </div>
+
+    <div class="contact-links">
+      <a href="https://github.com/bplee" target="_blank" rel="noopener" class="contact-link">
+        <span class="contact-link-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/>
+          </svg>
+          GitHub
+        </span>
+        <span class="contact-link-handle">github.com/bplee</span>
+      </a>
+
+      <a href="https://www.linkedin.com/in/brennan-lee-4a81b9168" target="_blank" rel="noopener" class="contact-link">
+        <span class="contact-link-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/>
+            <rect x="2" y="9" width="4" height="12"/>
+            <circle cx="4" cy="4" r="2"/>
+          </svg>
+          LinkedIn
+        </span>
+        <span class="contact-link-handle">brennan-lee-4a81b9168</span>
+      </a>
+
+      <a href="https://bplee.github.io" target="_blank" rel="noopener" class="contact-link">
+        <span class="contact-link-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+          Math Blog
+        </span>
+        <span class="contact-link-handle">A Pure Math Basis for Matrix Analysis</span>
+      </a>
+
+      <a href="mailto:hello@bplee.github.io" class="contact-link">
+        <span class="contact-link-label">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          Email
+        </span>
+        <span class="contact-link-handle">reach out directly</span>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span class="footer-copy">© 2025 Brennan Lee</span>
+  <span class="footer-built">Built with HTML · Hosted on GitHub Pages</span>
+</footer>
+
+<!-- Animated gene expression heatmap (hero signature element) -->
+<script>
+(function () {
+  var canvas = document.getElementById('heatmap');
+  if (!canvas) return;
+  var ctx = canvas.getContext('2d');
+  var ROWS = 24, COLS = 18;
+  var CW = canvas.width / COLS;
+  var CH = canvas.height / ROWS;
+
+  var base = Array.from({length: ROWS}, function(_, r) {
+    return Array.from({length: COLS}, function(_, c) {
+      return Math.min(1, Math.max(0,
+        Math.sin(r * 0.42 + c * 0.31) * 0.45 +
+        Math.cos(r * 0.18 - c * 0.55) * 0.25 +
+        0.5 + (Math.random() - 0.5) * 0.2
+      ));
+    });
+  });
+
+  var phase = Array.from({length: ROWS}, function() {
+    return Array.from({length: COLS}, function() { return Math.random() * Math.PI * 2; });
+  });
+
+  var speed = Array.from({length: ROWS}, function() {
+    return Array.from({length: COLS}, function() { return 0.004 + Math.random() * 0.006; });
+  });
+
+  function lerp(a, b, t) { return a + (b - a) * t; }
+
+  function toRGB(v) {
+    var r, g, b;
+    if (v < 0.25) {
+      var t = v / 0.25;
+      r = lerp(8, 6, t); g = lerp(30, 85, t); b = lerp(80, 160, t);
+    } else if (v < 0.5) {
+      var t = (v - 0.25) / 0.25;
+      r = lerp(6, 18, t); g = lerp(85, 165, t); b = lerp(160, 205, t);
+    } else if (v < 0.75) {
+      var t = (v - 0.5) / 0.25;
+      r = lerp(18, 230, t); g = lerp(165, 220, t); b = lerp(205, 90, t);
+    } else {
+      var t = (v - 0.75) / 0.25;
+      r = lerp(230, 255, t); g = lerp(220, 70, t); b = lerp(90, 35, t);
+    }
+    return [Math.round(r), Math.round(g), Math.round(b)];
+  }
+
+  var prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    for (var r = 0; r < ROWS; r++) {
+      for (var c = 0; c < COLS; c++) {
+        if (!prefersReducedMotion) phase[r][c] += speed[r][c];
+        var v = Math.max(0, Math.min(1, base[r][c] + Math.sin(phase[r][c]) * 0.14));
+        var rgb = toRGB(v);
+        ctx.fillStyle = 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',0.82)';
+        ctx.fillRect(
+          Math.round(c * CW) + 1,
+          Math.round(r * CH) + 1,
+          Math.ceil(CW) - 2,
+          Math.ceil(CH) - 2
+        );
+      }
+    }
+
+    // Left fade so heatmap bleeds into background
+    var grad = ctx.createLinearGradient(0, 0, canvas.width * 0.45, 0);
+    grad.addColorStop(0, 'rgba(10,12,15,1)');
+    grad.addColorStop(1, 'rgba(10,12,15,0)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Top + bottom fades
+    var gradT = ctx.createLinearGradient(0, 0, 0, canvas.height * 0.25);
+    gradT.addColorStop(0, 'rgba(10,12,15,1)');
+    gradT.addColorStop(1, 'rgba(10,12,15,0)');
+    ctx.fillStyle = gradT;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    var gradB = ctx.createLinearGradient(0, canvas.height * 0.75, 0, canvas.height);
+    gradB.addColorStop(0, 'rgba(10,12,15,0)');
+    gradB.addColorStop(1, 'rgba(10,12,15,1)');
+    ctx.fillStyle = gradB;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    requestAnimationFrame(draw);
+  }
+
+  draw();
+})();
+</script>
+
+</body>
+</html>
