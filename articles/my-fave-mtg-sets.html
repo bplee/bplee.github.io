@@ -12,103 +12,328 @@
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1GZP6P1RD"></script>
 <script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-  gtag('config', 'G-J1GZP6P1RD');
+window.dataLayer = window.dataLayer || [];
+function gtag(){dataLayer.push(arguments);}
+gtag('js', new Date());
+gtag('config', 'G-J1GZP6P1RD');
 </script>
+<style>
+
+.timeline-section { margin: 2.5rem 0 3rem; }
+.timeline-card {
+  background: var(--bg2);
+  border: 0.5px solid var(--border);
+  border-radius: 12px;
+  padding: 1.75rem 2rem 1.5rem;
+}
+.timeline-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.timeline-label {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.timeline-current {
+  font-family: 'Space Mono', monospace;
+  font-size: 13px;
+  color: var(--accent);
+  letter-spacing: 0.02em;
+}
+.timeline-track-outer {
+  position: relative;
+  height: 64px;
+  margin: 0 6px 0.5rem;
+}
+.timeline-baseline {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--border2);
+  border-radius: 2px;
+}
+.timeline-fill {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  height: 2px;
+  width: 0%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.25s ease;
+  z-index: 1;
+}
+.timeline-node {
+  position: absolute;
+  top: 22px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--bg2);
+  border: 2px solid var(--border2);
+  transform: translateX(-50%);
+  cursor: pointer;
+  z-index: 2;
+  transition: background 0.3s ease, border-color 0.3s ease, transform 0.15s ease;
+}
+.timeline-node:hover { transform: translateX(-50%) scale(1.2); }
+.timeline-node.filled { background: var(--accent); border-color: var(--accent); }
+.timeline-node.current {
+  border-color: var(--text);
+  box-shadow: 0 0 0 3px var(--bg2), 0 0 0 4px var(--accent);
+}
+.timeline-node-label {
+  position: absolute;
+  top: 40px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  color: var(--dim);
+  white-space: nowrap;
+  pointer-events: none;
+}
+.timeline-actions { display: flex; gap: 8px; align-items: center; }
+.timeline-btn {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 5px 12px;
+  border-radius: 5px;
+  border: 0.5px solid var(--border2);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.timeline-btn:hover { color: var(--text); border-color: var(--dim); }
+.timeline-btn.playing { color: var(--accent); border-color: var(--accent); }
+.timeline-speed { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--dim); margin-left: auto; }
+
+.tierlist-section { margin-bottom: 1rem; }
+.tier-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  border: 0.5px solid var(--border);
+  border-bottom: none;
+}
+.tier-row:last-child { border-bottom: 0.5px solid var(--border); }
+.tier-row:first-child .tier-badge,
+.tier-row:first-child .tier-slots { border-radius: 10px 10px 0 0; }
+.tier-row:last-child .tier-badge,
+.tier-row:last-child .tier-slots { border-radius: 0 0 10px 10px; }
+.tier-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Space Mono', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  border-right: 0.5px solid var(--border);
+}
+.tier-badge-S { background: rgba(246,173,85,0.12); color: var(--accent3); }
+.tier-badge-A { background: rgba(126,190,154,0.15); color: var(--accent); }
+.tier-badge-B { background: rgba(167,139,250,0.12); color: var(--accent2); }
+.tier-badge-C { background: rgba(104,211,145,0.1); color: var(--green); }
+.tier-badge-D { background: rgba(128,128,128,0.1); color: var(--muted); }
+.tier-badge-F { background: rgba(220,90,90,0.1); color: #e08585; }
+.tier-slots {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  min-height: 56px;
+  background: var(--bg2);
+}
+.set-chip {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 11px;
+  border-radius: 7px;
+  background: var(--bg3);
+  border: 0.5px solid var(--border2);
+  cursor: pointer;
+  font-size: 12.5px;
+  color: var(--text);
+  white-space: nowrap;
+  transition: transform 0.15s, border-color 0.15s, box-shadow 0.15s;
+  opacity: 0;
+  transform: translateY(10px) scale(0.94);
+  animation: chipDrop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+.set-chip:hover { border-color: var(--accent); transform: translateY(-1px); }
+.set-chip.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.set-chip-code { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--dim); }
+@keyframes chipDrop {
+  0%   { opacity: 0; transform: translateY(-14px) scale(0.9); }
+  60%  { opacity: 1; transform: translateY(3px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+.tier-empty-hint { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--dim); }
+
+@media (prefers-reduced-motion: reduce) {
+  .set-chip { animation: none !important; opacity: 1 !important; transform: none !important; }
+  .timeline-fill { transition: none !important; }
+}
+
+.detail-card {
+  background: var(--bg2);
+  border: 0.5px solid var(--border2);
+  border-radius: 12px;
+  padding: 1.5rem 1.75rem;
+  margin-bottom: 2.5rem;
+  display: none;
+}
+.detail-card.visible { display: block; animation: detailIn 0.3s ease; }
+@keyframes detailIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+.detail-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.85rem; gap: 1rem; }
+.detail-name { font-size: 19px; font-weight: 500; color: var(--text); line-height: 1.25; }
+.detail-date { font-family: 'Space Mono', monospace; font-size: 11px; color: var(--dim); margin-top: 3px; }
+.detail-tier-pill { font-family: 'Space Mono', monospace; font-size: 11px; font-weight: 700; padding: 3px 11px; border-radius: 20px; flex-shrink: 0; }
+.detail-blurb { font-size: 14px; color: var(--muted); line-height: 1.7; margin-bottom: 1.1rem; }
+.detail-features-label { font-family: 'Space Mono', monospace; font-size: 10px; color: var(--dim); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 0.55rem; }
+.detail-features { display: flex; flex-wrap: wrap; gap: 6px; }
+.feature-tag { font-size: 11px; padding: 3px 10px; border-radius: 4px; font-family: 'Space Mono', monospace; background: rgba(255,255,255,0.04); color: var(--accent); border: 0.5px solid var(--border); }
+.detail-placeholder { font-size: 13px; color: var(--dim); font-style: italic; text-align: center; padding: 1.25rem 0 2.5rem; }
+
+@media (max-width: 600px) {
+  .timeline-card { padding: 1.25rem 1rem 1rem; }
+  .tier-row { grid-template-columns: 40px 1fr; }
+  .tier-badge { font-size: 14px; }
+  .timeline-node-label { display: none; }
+}
+</style>
 </head>
 <body data-theme="dark-expressive">
+
 <nav>
-  <a href="../" class="nav-logo">李毘安</a>
-  <ul class="nav-links">
-    <li><a href="../#projects">projects</a></li>
-    <li><a href="../#writing">writing</a></li>
-    <li><a href="../#contact">contact</a></li>
-    <li><a href="../files/cv.pdf" target="_blank" rel="noopener" class="nav-resume">resume ↗</a></li>
-    <li>
-      <div class="theme-switcher">
-        <button class="theme-btn" id="themeBtn" aria-label="Change theme">
-          <div class="theme-btn-dots" id="themeBtnDots">
-            <span style="background:#0a0c0f;border:0.5px solid #333;"></span>
-            <span style="background:#fafaf8;border:0.5px solid #ccc;"></span>
-            <span style="background:#0c0c0c;border:0.5px solid #222;"></span>
-            <span style="background:#ffffff;border:0.5px solid #ddd;"></span>
-          </div>
-          theme
-        </button>
-        <div class="theme-panel" id="themePanel">
-          <div class="theme-panel-label">Choose a theme</div>
-          <div class="theme-axis">
-            <span>← dark</span>
-            <span>light →</span>
-          </div>
-          <div class="theme-grid">
-            <button class="theme-option active" data-theme="dark-expressive" onclick="setTheme('dark-expressive', this)">
-              <div class="theme-swatch swatch-de"></div>
-              <div class="theme-name"><strong>Expressive</strong>dark</div>
-            </button>
-            <button class="theme-option" data-theme="light-expressive" onclick="setTheme('light-expressive', this)">
-              <div class="theme-swatch swatch-le"></div>
-              <div class="theme-name"><strong>Expressive</strong>light</div>
-            </button>
-            <button class="theme-option" data-theme="dark-minimal" onclick="setTheme('dark-minimal', this)">
-              <div class="theme-swatch swatch-dm"></div>
-              <div class="theme-name"><strong>Minimal</strong>dark</div>
-            </button>
-            <button class="theme-option" data-theme="light-minimal" onclick="setTheme('light-minimal', this)">
-              <div class="theme-swatch swatch-lm"></div>
-              <div class="theme-name"><strong>Minimal</strong>light</div>
-            </button>
-          </div>
-          <div class="theme-axis" style="justify-content:space-between; padding: 6px 2px 0;">
-            <span>expressive ↑</span>
-            <span>↓ minimal</span>
-          </div>
-        </div>
-      </div>
-    </li>
-  </ul>
+<a href="../" class="nav-logo">李毘安</a>
+<ul class="nav-links">
+<li><a href="../#projects">projects</a></li>
+<li><a href="../#writing">writing</a></li>
+<li><a href="../#contact">contact</a></li>
+<li><a href="../files/cv.pdf" target="_blank" rel="noopener" class="nav-resume">resume ↗</a></li>
+<li>
+<div class="theme-switcher">
+<button class="theme-btn" id="themeBtn" aria-label="Change theme">
+<div class="theme-btn-dots" id="themeBtnDots">
+<span style="background:#0a0c0f;border:0.5px solid #333;"></span>
+<span style="background:#fafaf8;border:0.5px solid #ccc;"></span>
+<span style="background:#0c0c0c;border:0.5px solid #222;"></span>
+<span style="background:#ffffff;border:0.5px solid #ddd;"></span>
+</div>
+theme
+</button>
+<div class="theme-panel" id="themePanel">
+<div class="theme-panel-label">Choose a theme</div>
+<div class="theme-axis">
+<span>← dark</span>
+<span>light →</span>
+</div>
+<div class="theme-grid">
+<button class="theme-option active" data-theme="dark-expressive" onclick="setTheme('dark-expressive', this)">
+<div class="theme-swatch swatch-de"></div>
+<div class="theme-name"><strong>Expressive</strong>dark</div>
+</button>
+<button class="theme-option" data-theme="light-expressive" onclick="setTheme('light-expressive', this)">
+<div class="theme-swatch swatch-le"></div>
+<div class="theme-name"><strong>Expressive</strong>light</div>
+</button>
+<button class="theme-option" data-theme="dark-minimal" onclick="setTheme('dark-minimal', this)">
+<div class="theme-swatch swatch-dm"></div>
+<div class="theme-name"><strong>Minimal</strong>dark</div>
+</button>
+<button class="theme-option" data-theme="light-minimal" onclick="setTheme('light-minimal', this)">
+<div class="theme-swatch swatch-lm"></div>
+<div class="theme-name"><strong>Minimal</strong>light</div>
+</button>
+</div>
+<div class="theme-axis" style="justify-content:space-between; padding: 6px 2px 0;">
+<span>expressive ↑</span>
+<span>↓ minimal</span>
+</div>
+</div>
+</div>
+</li>
+</ul>
 </nav>
 
 <section class="hero">
-  <div class="hero-content">
-    <div class="hero-eyebrow">Writing</div>
-    <h1>My Favorite MTG Sets for Limited</h1>
-    <p class="hero-sub">Subjective best sets for limited Magic: The Gathering</p>
-  </div>
+<div class="hero-content">
+<div class="hero-eyebrow">Writing</div>
+<h1>My Favorite MTG Sets for Limited</h1>
+<p class="hero-sub">Subjective best sets for limited Magic: The Gathering</p>
+</div>
 </section>
 
 <section style="padding-top: 0;">
-  <div class="section-header">
-    <span class="section-num">Article</span>
-    <h2>[SUBTITLE]</h2>
-    <div class="section-line" aria-hidden="true"></div>
+<div class="section-header">
+<span class="section-num">Article</span>
+<h2>A tier list, drawn out across the sets' actual release dates</h2>
+<div class="section-line" aria-hidden="true"></div>
+</div>
+
+<article class="article-content">
+
+<p>June 15th, 2026 • MTG</p>
+
+<div class="timeline-section">
+  <div class="timeline-card">
+    <div class="timeline-header">
+      <span class="timeline-label">Release timeline</span>
+      <span class="timeline-current" id="timelineCurrentLabel">—</span>
+    </div>
+    <div class="timeline-track-outer" id="timelineTrack">
+      <div class="timeline-baseline"></div>
+      <div class="timeline-fill" id="timelineFill"></div>
+    </div>
+    <div class="timeline-actions">
+      <button class="timeline-btn" id="playBtn">▶ play</button>
+      <button class="timeline-btn" id="resetBtn">↺ reset</button>
+      <span class="timeline-speed" id="speedLabel">click a node or press play</span>
+    </div>
   </div>
+</div>
 
-  <article class="article-content">
-    <!-- Replace the content below with your article markdown/html -->
-    <p>June 15th, 2026 • MTG</p>
+<div class="tierlist-section" id="tierlistWrap"></div>
 
-    <h3>Introduction</h3>
-    <p>[Write your introduction here]</p>
+<div class="detail-card" id="detailCard">
+  <div class="detail-top">
+    <div>
+      <div class="detail-name" id="detailName">—</div>
+      <div class="detail-date" id="detailDate">—</div>
+    </div>
+    <div class="detail-tier-pill" id="detailTierPill">—</div>
+  </div>
+  <p class="detail-blurb" id="detailBlurb">—</p>
+  <div class="detail-features-label">Set-defining features</div>
+  <div class="detail-features" id="detailFeatures"></div>
+</div>
+<div class="detail-placeholder" id="detailPlaceholder">Click any set chip in the tier list to read more about it.</div>
 
-    <h3>Section heading</h3>
-    <p>[Write a section]</p>
+<p><a href="../" class="btn btn-ghost">Back to homepage</a></p>
 
-    <p><a href="../" class="btn btn-ghost">Back to homepage</a></p>
-  </article>
+</article>
 </section>
 
 <footer>
-  <span class="footer-copy">© 2025 Brennan Lee</span>
-  <span class="footer-built">Built with HTML · Hosted on GitHub Pages</span>
+<span class="footer-copy">© 2025 Brennan Lee</span>
+<span class="footer-built">Built with HTML · Hosted on GitHub Pages</span>
 </footer>
 
 <script>
-/* Theme switcher: copied from homepage for full panel parity */
 var currentTheme = localStorage.getItem('bl-theme') || 'dark-expressive';
-
 function setTheme(theme, optionEl) {
   currentTheme = theme;
   document.body.setAttribute('data-theme', theme);
@@ -118,7 +343,6 @@ function setTheme(theme, optionEl) {
   });
   closePanel();
 }
-
 function togglePanel() {
   var el = document.getElementById('themePanel');
   if (el) el.classList.toggle('open');
@@ -127,7 +351,6 @@ function closePanel() {
   var el = document.getElementById('themePanel');
   if (el) el.classList.remove('open');
 }
-
 var themeBtnEl = document.getElementById('themeBtn');
 if (themeBtnEl) {
   themeBtnEl.addEventListener('click', function(e) {
@@ -138,11 +361,303 @@ if (themeBtnEl) {
 document.addEventListener('click', function(e) {
   if (!e.target.closest('.theme-switcher')) closePanel();
 });
-
-// restore saved theme and mark active option
 if (currentTheme !== 'dark-expressive') {
   setTheme(currentTheme, null);
 }
+
+const SETS = [
+  { code: "IKO", name: "Ikoria: Lair of Behemoths", date: "2020-04-24", tier: "B",
+    blurb: "Replace this with your real take — what the format felt like to draft, your record, the archetypes you gravitated toward, and why it earned this tier.",
+    features: ["Set mechanic", "Archetype", "Notable card"] },
+
+  { code: "M21", name: "Core Set 2021", date: "2020-07-03", tier: "C",
+    blurb: "Replace this with your real take — what made it stand out, any format-defining synergies, and what kept you coming back to draft it.",
+    features: ["Set mechanic", "Bomb rare", "Removal density"] },
+
+  { code: "ZNR", name: "Zendikar Rising", date: "2020-09-25", tier: "C",
+    blurb: "Replace this with your real take — this is an S-tier slot, so make the case for why it's one of the best limited formats you've drafted.",
+    features: ["Signature mechanic", "Balanced archetypes", "High skill ceiling"] },
+
+  { code: "KHM", name: "Kaldheim", date: "2021-02-05", tier: "A",
+    blurb: "Replace this with your real take — what made the draft decisions interesting and which archetype was your favorite to pilot.",
+    features: ["Set mechanic", "Favorite archetype", "Build-around"] },
+
+  { code: "STX", name: "Strixhaven: School of Mages", date: "2021-04-23", tier: "C",
+    blurb: "Replace this with your real take — what held it back from a higher tier, whether it was pace, color balance, or bomb density.",
+    features: ["Set mechanic", "Pace"] },
+
+  { code: "AFR", name: "Adventures in the Forgotten Realms", date: "2021-07-23", tier: "B",
+    blurb: "Replace this with your real take — be honest about what didn't click, whether it was too snowbally, too slow, or too narrow.",
+    features: ["Set mechanic", "Weakness"] },
+
+  { code: "MID", name: "Innistrad: Midnight Hunt", date: "2021-09-24", tier: "D",
+    blurb: "Replace this with your real take — describe what made the draft decisions interesting and which archetype was your favorite to pilot.",
+    features: ["Set mechanic", "Favorite archetype", "Build-around"] },
+
+  { code: "VOW", name: "Innistrad: Crimson Vow", date: "2021-11-19", tier: "C",
+    blurb: "Replace this with your real take — what made the format feel different from MID and how it affected drafting priorities.",
+    features: ["Set mechanic", "Bomb rares", "Synergy density"] },
+
+  { code: "NEO", name: "Kamigawa: Neon Dynasty", date: "2022-02-18", tier: "S",
+    blurb: "Replace this with your real take — why this is an S-tier format, what archetypes were best, and how often you wanted to re-draft it.",
+    features: ["Signature mechanic", "Balanced archetypes", "High synergy"] },
+
+  { code: "SNC", name: "Streets of New Capenna", date: "2022-04-29", tier: "F",
+    blurb: "Replace this with your real take — what made the shard structure interesting but potentially restrictive or repetitive.",
+    features: ["Set mechanic", "Fixing reliance"] },
+
+  { code: "DMU", name: "Dominaria United", date: "2022-09-09", tier: "C",
+    blurb: "Replace this with your real take — how domain or multicolor incentives shaped your draft decisions.",
+    features: ["Set mechanic", "Domain", "Removal quality"] },
+
+  { code: "BRO", name: "The Brothers' War", date: "2022-11-18", tier: "B",
+    blurb: "Replace this with your real take — artifact density, synergy lines, and how aggressive or slow the format felt.",
+    features: ["Artifact synergy", "Ramp", "Powerstones"] },
+
+  { code: "ONE", name: "Phyrexia: All Will Be One", date: "2023-02-10", tier: "C",
+    blurb: "Replace this with your real take — how poison/proliferate shaped gameplay and decision-making pressure.",
+    features: ["Poison counters", "Proliferate", "Aggro pressure"] },
+
+  { code: "MOM", name: "March of the Machine", date: "2023-04-21", tier: "C",
+    blurb: "Replace this with your real take — why the multiverse format worked (or didn't), and how battles affected drafting.",
+    features: ["Battles", "Multicolor", "High complexity"] },
+
+  { code: "WOE", name: "Wilds of Eldraine", date: "2023-09-08", tier: "A",
+    blurb: "Replace this with your real take — synergy decks, enchantments, and fairy tale mechanics.",
+    features: ["Enchantments", "Roles", "Synergy decks"] },
+
+  { code: "LCI", name: "The Lost Caverns of Ixalan", date: "2023-11-17", tier: "F",
+    blurb: "Replace this with your real take — explore synergy between artifacts, caves, and tribal themes.",
+    features: ["Caves", "Tribal", "Artifacts"] },
+
+  { code: "MKM", name: "Murders at Karlov Manor", date: "2024-02-09", tier: "B",
+    blurb: "Replace this with your real take — disguise mechanics and clue-based gameplay pacing.",
+    features: ["Disguise", "Clues", "Mystery theme"] },
+
+  { code: "OTJ", name: "Outlaws of Thunder Junction", date: "2024-04-19", tier: "C",
+    blurb: "Replace this with your real take — crime payoff mechanics and how “outlaw” synergies played out.",
+    features: ["Crime mechanic", "Outlaw synergy", "Tempo"] },
+
+  { code: "MH3", name: "Modern Horizons 3", date: "2024-06-14", tier: "S",
+    blurb: "Replace this with your real take — high power level, complex draft decisions, and replayability.",
+    features: ["High power level", "Complex synergy", "Bomb density"] },
+
+  { code: "BLB", name: "Bloomburrow", date: "2024-08-02", tier: "D",
+    blurb: "Replace this with your real take — animal tribal archetypes and tight synergy gameplay.",
+    features: ["Tribal synergy", "Aggro-midrange balance"] },
+
+  { code: "DSK", name: "Duskmourn: House of Horror", date: "2024-09-27", tier: "S",
+    blurb: "Replace this with your real take — horror mechanics, rooms, and tension-based gameplay loops.",
+    features: ["Rooms", "Horror theme", "Synergy pressure"] },
+
+  { code: "FDN", name: "Foundations", date: "2024-11-15", tier: "D",
+    blurb: "Replace this with your real take — core-set style simplicity vs depth tradeoffs.",
+    features: ["Core set structure", "Stability", "Reprints"] },
+
+  { code: "DFT", name: "Aetherdrift", date: "2025-02-14", tier: "A",
+    blurb: "Replace this with your real take — vehicle/velocity gameplay and drafting speed considerations.",
+    features: ["Vehicles", "Aggro tempo", "Synergy density"] },
+
+  { code: "TDM", name: "Tarkir: Dragonstorm", date: "2025-04-11", tier: "D",
+    blurb: "Replace this with your real take — clan identity return and morph-style gameplay elements.",
+    features: ["Clans", "Dragons", "Morph-like mechanics"] },
+
+  { code: "FIN", name: "Final Fantasy", date: "2025-06-13", tier: "S",
+    blurb: "Replace this with your real take — crossover flavor, synergy density, and how iconic cards shaped drafts.",
+    features: ["Universes Beyond", "Character synergies", "High bomb impact"] },
+
+  { code: "EOE", name: "Edge of Eternities", date: "2025-07-29", tier: "B",
+    blurb: "Replace this with your real take — space/future themed mechanics and drafting constraints.",
+    features: ["Space mechanics", "Color identity shifts", "Tempo"] },
+
+  { code: "TLA", name: "Avatar: The Last Airbender", date: "2025-11-21", tier: "S",
+    blurb: "Replace this with your real take — bending-based archetypes and elemental synergy structure.",
+    features: ["Bending mechanics", "Elemental synergy", "Tribal themes"] },
+
+  { code: "ECL", name: "Lorwyn Eclipsed", date: "2026-01-23", tier: "B",
+    blurb: "Replace this with your real take — tribal revival and synergy-heavy archetypes.",
+    features: ["Tribal mechanics", "Synergy drafting", "Color commitment"] },
+
+  { code: "SOS", name: "Secrets of Strixhaven", date: "2026-04-24", tier: "B",
+    blurb: "Replace this with your real take — return to spell-school mechanics and lesson-like structures.",
+    features: ["Mage schools", "Spell synergy", "Lessons-style play"] },
+];
+
+const TIER_ORDER = ["S", "A", "B", "C", "D", "F"];
+
+SETS.forEach(s => s._t = new Date(s.date + "T00:00:00").getTime());
+SETS.sort((a, b) => a._t - b._t);
+
+const tierlistWrap = document.getElementById('tierlistWrap');
+TIER_ORDER.forEach(tier => {
+  const row = document.createElement('div');
+  row.className = 'tier-row';
+  row.innerHTML =
+    '<div class="tier-badge tier-badge-' + tier + '">' + tier + '</div>' +
+    '<div class="tier-slots" id="tier-slots-' + tier + '">' +
+      '<span class="tier-empty-hint" id="tier-empty-' + tier + '">nothing here yet</span>' +
+    '</div>';
+  tierlistWrap.appendChild(row);
+});
+
+const track = document.getElementById('timelineTrack');
+const fill = document.getElementById('timelineFill');
+const currentLabel = document.getElementById('timelineCurrentLabel');
+const speedLabel = document.getElementById('speedLabel');
+const playBtn = document.getElementById('playBtn');
+const resetBtn = document.getElementById('resetBtn');
+
+const minTime = SETS[0]._t;
+const maxTime = SETS[SETS.length - 1]._t;
+const timeSpan = Math.max(maxTime - minTime, 1);
+const PAD_PCT = 4;
+
+function timeToPct(t) {
+  return ((t - minTime) / timeSpan) * (100 - PAD_PCT * 2) + PAD_PCT;
+}
+
+const monthYear = (ms) => new Date(ms).toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+
+const nodeEls = [];
+SETS.forEach((s, i) => {
+  const pct = timeToPct(s._t);
+
+  const node = document.createElement('div');
+  node.className = 'timeline-node';
+  node.style.left = pct + '%';
+  node.dataset.index = i;
+  node.title = s.name + ' — ' + monthYear(s._t);
+  node.addEventListener('click', () => jumpTo(i));
+
+  const label = document.createElement('div');
+  label.className = 'timeline-node-label';
+  label.style.left = pct + '%';
+  label.textContent = s.code;
+
+  track.appendChild(node);
+  track.appendChild(label);
+  nodeEls.push(node);
+});
+
+let currentIndex = -1;
+let playing = false;
+let playTimer = null;
+
+function renderUpTo(index) {
+  if (index === currentIndex) return;
+  currentIndex = index;
+
+  const activeSet = SETS[index];
+  currentLabel.textContent = activeSet
+    ? activeSet.name + ' · ' + monthYear(activeSet._t) + '  (' + (index + 1) + ' / ' + SETS.length + ')'
+    : 'nothing selected';
+
+  const fillPct = index >= 0 ? timeToPct(activeSet._t) : 0;
+  fill.style.width = fillPct + '%';
+
+  nodeEls.forEach((node, i) => {
+    node.classList.toggle('filled', i <= index);
+    node.classList.toggle('current', i === index);
+  });
+
+  TIER_ORDER.forEach(tier => {
+    const container = document.getElementById('tier-slots-' + tier);
+    const emptyHint = document.getElementById('tier-empty-' + tier);
+    container.querySelectorAll('.set-chip').forEach(c => c.remove());
+
+    const setsInTier = SETS.slice(0, index + 1).filter(s => s.tier === tier);
+    if (setsInTier.length > 0) {
+      emptyHint.style.display = 'none';
+      setsInTier.forEach((s, i) => {
+        const chip = document.createElement('div');
+        chip.className = 'set-chip';
+        chip.style.animationDelay = (i * 0.04) + 's';
+        chip.dataset.code = s.code;
+        chip.innerHTML = s.name + ' <span class="set-chip-code">' + monthYear(s._t) + '</span>';
+        chip.addEventListener('click', () => showDetail(s, chip));
+        container.appendChild(chip);
+      });
+    } else {
+      emptyHint.style.display = 'inline';
+    }
+  });
+}
+
+function jumpTo(index) {
+  stopPlaying();
+  renderUpTo(index);
+  if (SETS[index]) {
+    const chipEl = document.querySelector('.set-chip[data-code="' + SETS[index].code + '"]');
+    showDetail(SETS[index], chipEl);
+  }
+}
+
+function showDetail(set, chipEl) {
+  document.querySelectorAll('.set-chip').forEach(c => c.classList.remove('active'));
+  if (chipEl) chipEl.classList.add('active');
+
+  document.getElementById('detailPlaceholder').style.display = 'none';
+  const card = document.getElementById('detailCard');
+  card.classList.add('visible');
+
+  document.getElementById('detailName').textContent = set.name;
+  document.getElementById('detailDate').textContent = monthYear(set._t) + ' · ' + set.code;
+
+  const pill = document.getElementById('detailTierPill');
+  pill.textContent = set.tier + '-tier';
+  const tierColors = {
+    S: ['rgba(246,173,85,0.15)', 'var(--accent3)'],
+    A: ['rgba(126,190,154,0.18)', 'var(--accent)'],
+    B: ['rgba(167,139,250,0.15)', 'var(--accent2)'],
+    C: ['rgba(104,211,145,0.15)', 'var(--green)'],
+    D: ['rgba(128,128,128,0.15)', 'var(--muted)'],
+    F: ['rgba(220,90,90,0.15)', '#e08585'],
+  };
+  pill.style.background = tierColors[set.tier][0];
+  pill.style.color = tierColors[set.tier][1];
+
+  document.getElementById('detailBlurb').textContent = set.blurb;
+  document.getElementById('detailFeatures').innerHTML = set.features
+    .map(f => '<span class="feature-tag">' + f + '</span>').join('');
+
+  card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function stopPlaying() {
+  playing = false;
+  playBtn.textContent = '▶ play';
+  playBtn.classList.remove('playing');
+  speedLabel.textContent = 'click a node or press play';
+  if (playTimer) { clearInterval(playTimer); playTimer = null; }
+}
+
+playBtn.addEventListener('click', () => {
+  if (playing) { stopPlaying(); return; }
+  playing = true;
+  playBtn.textContent = '⏸ pause';
+  playBtn.classList.add('playing');
+  speedLabel.textContent = 'playing…';
+
+  if (currentIndex >= SETS.length - 1) {
+    renderUpTo(0);
+  }
+
+  playTimer = setInterval(() => {
+    if (currentIndex >= SETS.length - 1) { stopPlaying(); return; }
+    renderUpTo(currentIndex + 1);
+  }, 700);
+});
+
+resetBtn.addEventListener('click', () => {
+  stopPlaying();
+  currentIndex = -1;
+  renderUpTo(-1);
+  document.getElementById('detailCard').classList.remove('visible');
+  document.getElementById('detailPlaceholder').style.display = 'block';
+});
+
+renderUpTo(SETS.length - 1);
 </script>
+
 </body>
 </html>
