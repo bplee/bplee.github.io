@@ -140,12 +140,12 @@ gtag('config', 'G-J1GZP6P1RD');
   font-weight: 700;
   border-right: 0.5px solid var(--border);
 }
-.tier-badge-S { background: rgba(246,173,85,0.12); color: var(--accent3); }
-.tier-badge-A { background: rgba(126,190,154,0.15); color: var(--accent); }
-.tier-badge-B { background: rgba(167,139,250,0.12); color: var(--accent2); }
-.tier-badge-C { background: rgba(104,211,145,0.1); color: var(--green); }
-.tier-badge-D { background: rgba(128,128,128,0.1); color: var(--muted); }
-.tier-badge-F { background: rgba(220,90,90,0.1); color: #e08585; }
+  .tier-badge-S { background: rgba(var(--accent3-rgb),0.12); color: var(--accent3); }
+  .tier-badge-A { background: rgba(var(--accent-rgb),0.15); color: var(--accent); }
+  .tier-badge-B { background: rgba(var(--accent2-rgb),0.12); color: var(--accent2); }
+  .tier-badge-C { background: rgba(var(--green-rgb),0.1); color: var(--green); }
+  .tier-badge-D { background: rgba(var(--muted-rgb),0.1); color: var(--muted); }
+  .tier-badge-F { background: rgba(220,90,90,0.1); color: #e08585; }
 .tier-slots {
   display: flex;
   flex-wrap: wrap;
@@ -367,8 +367,8 @@ if (currentTheme !== 'dark-expressive') {
 
 const SETS = [
   { code: "IKO", name: "Ikoria: Lair of Behemoths", date: "2020-04-24", tier: "B",
-    blurb: "Replace this with your real take — what the format felt like to draft, your record, the archetypes you gravitated toward, and why it earned this tier.",
-    features: ["Set mechanic", "Archetype", "Notable card"] },
+    blurb: "Ikoria was fantastic. With strong payoffs in the Ultimatums, the",
+    features: ["Mutate", "Cycling", "Zenith Flare"] },
 
   { code: "M21", name: "Core Set 2021", date: "2020-07-03", tier: "C",
     blurb: "Replace this with your real take — what made it stand out, any format-defining synergies, and what kept you coming back to draft it.",
@@ -650,7 +650,6 @@ playBtn.addEventListener('click', () => {
 
 resetBtn.addEventListener('click', () => {
   stopPlaying();
-  currentIndex = -1;
   renderUpTo(-1);
   document.getElementById('detailCard').classList.remove('visible');
   document.getElementById('detailPlaceholder').style.display = 'block';
