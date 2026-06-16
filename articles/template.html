@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="[SHORT DESCRIPTION]">
+<title>[DATE] — [TITLE] | BPLee</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../styles.css">
+</head>
+<body data-theme="dark-expressive">
+<nav>
+  <a href="../" class="nav-logo">李毘安</a>
+  <ul class="nav-links">
+    <li><a href="../#projects">projects</a></li>
+    <li><a href="../#writing">writing</a></li>
+    <li><a href="../#contact">contact</a></li>
+    <li><a href="../files/cv.pdf" target="_blank" rel="noopener" class="nav-resume">resume ↗</a></li>
+    <li>
+      <div class="theme-switcher">
+        <button class="theme-btn" id="themeBtn" aria-label="Change theme">
+          <div class="theme-btn-dots" id="themeBtnDots">
+            <span style="background:#0a0c0f;border:0.5px solid #333;"></span>
+            <span style="background:#fafaf8;border:0.5px solid #ccc;"></span>
+            <span style="background:#0c0c0c;border:0.5px solid #222;"></span>
+            <span style="background:#ffffff;border:0.5px solid #ddd;"></span>
+          </div>
+          theme
+        </button>
+        <div class="theme-panel" id="themePanel">
+          <div class="theme-panel-label">Choose a theme</div>
+          <div class="theme-axis">
+            <span>← dark</span>
+            <span>light →</span>
+          </div>
+          <div class="theme-grid">
+            <button class="theme-option active" data-theme="dark-expressive" onclick="setTheme('dark-expressive', this)">
+              <div class="theme-swatch swatch-de"></div>
+              <div class="theme-name"><strong>Expressive</strong>dark</div>
+            </button>
+            <button class="theme-option" data-theme="light-expressive" onclick="setTheme('light-expressive', this)">
+              <div class="theme-swatch swatch-le"></div>
+              <div class="theme-name"><strong>Expressive</strong>light</div>
+            </button>
+            <button class="theme-option" data-theme="dark-minimal" onclick="setTheme('dark-minimal', this)">
+              <div class="theme-swatch swatch-dm"></div>
+              <div class="theme-name"><strong>Minimal</strong>dark</div>
+            </button>
+            <button class="theme-option" data-theme="light-minimal" onclick="setTheme('light-minimal', this)">
+              <div class="theme-swatch swatch-lm"></div>
+              <div class="theme-name"><strong>Minimal</strong>light</div>
+            </button>
+          </div>
+          <div class="theme-axis" style="justify-content:space-between; padding: 6px 2px 0;">
+            <span>expressive ↑</span>
+            <span>↓ minimal</span>
+          </div>
+        </div>
+      </div>
+    </li>
+  </ul>
+</nav>
+
+<section class="hero">
+  <div class="hero-content">
+    <div class="hero-eyebrow">Writing</div>
+    <h1>[TITLE]</h1>
+    <p class="hero-sub">[SHORT INTRO]</p>
+  </div>
+</section>
+
+<section style="padding-top: 0;">
+  <div class="section-header">
+    <span class="section-num">Article</span>
+    <h2>[SUBTITLE]</h2>
+    <div class="section-line" aria-hidden="true"></div>
+  </div>
+
+  <article class="article-content">
+    <!-- Replace the content below with your article markdown/html -->
+    <p>[DATE] • [TAGS]</p>
+
+    <h3>Introduction</h3>
+    <p>[Write your introduction here]</p>
+
+    <h3>Section heading</h3>
+    <p>[Write a section]</p>
+
+    <p><a href="../" class="btn btn-ghost">Back to homepage</a></p>
+  </article>
+</section>
+
+<footer>
+  <span class="footer-copy">© 2025 Brennan Lee</span>
+  <span class="footer-built">Built with HTML · Hosted on GitHub Pages</span>
+</footer>
+
+<script>
+/* Theme switcher: copied from homepage for full panel parity */
+var currentTheme = localStorage.getItem('bl-theme') || 'dark-expressive';
+
+function setTheme(theme, optionEl) {
+  currentTheme = theme;
+  document.body.setAttribute('data-theme', theme);
+  localStorage.setItem('bl-theme', theme);
+  document.querySelectorAll('.theme-option').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-theme') === theme);
+  });
+  closePanel();
+}
+
+function togglePanel() {
+  var el = document.getElementById('themePanel');
+  if (el) el.classList.toggle('open');
+}
+function closePanel() {
+  var el = document.getElementById('themePanel');
+  if (el) el.classList.remove('open');
+}
+
+var themeBtnEl = document.getElementById('themeBtn');
+if (themeBtnEl) {
+  themeBtnEl.addEventListener('click', function(e) {
+    e.stopPropagation();
+    togglePanel();
+  });
+}
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.theme-switcher')) closePanel();
+});
+
+// restore saved theme and mark active option
+if (currentTheme !== 'dark-expressive') {
+  setTheme(currentTheme, null);
+}
+</script>
+</body>
+</html>
