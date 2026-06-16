@@ -365,120 +365,122 @@ if (currentTheme !== 'dark-expressive') {
   setTheme(currentTheme, null);
 }
 
+// S:95-100, A:85-95, B:70-85, C:50-70, D:30-50, F:0-30
+
 const SETS = [
-  { code: "IKO", name: "Ikoria: Lair of Behemoths", date: "2020-04-24", tier: "B",
-    blurb: "Ikoria was fantastic. With strong payoffs in the Ultimatums and Companions (pre-nerf). The 1-cost cycling decks topped with Zenith Flare were absolutely broken unfortunately.",
+  { code: "IKO", name: "Ikoria: Lair of Behemoths", date: "2020-04-24", tier: "B", score: 72,
+    blurb: "Ikoria was fantastic-- with strong payoffs in the Ultimatums and Companions (pre-nerf). The 1-cost cycling decks topped with [Zenith Flare] were absolutely broken unfortunately. I love it for the build arounds and the mutate mechanics but this is bottom of B tier due to the strength of the cycling deck.",
     features: ["Mutate", "Companions", "Zenith Flare"] },
 
-  { code: "M21", name: "Core Set 2021", date: "2020-07-03", tier: "C",
+  { code: "M21", name: "Core Set 2021", date: "2020-07-03", tier: "C", score: 40,
     blurb: "My only forray into drafting official Core Sets. The shrines were a fun deck to draft.",
     features: ["Shrines", "Bomb rare", "Removal density"] },
 
-  { code: "ZNR", name: "Zendikar Rising", date: "2020-09-25", tier: "C",
-    blurb: "Replace this with your real take — this is an S-tier slot, so make the case for why it's one of the best limited formats you've drafted.",
-    features: ["Signature mechanic", "Balanced archetypes", "High skill ceiling"] },
+  { code: "ZNR", name: "Zendikar Rising", date: "2020-09-25", tier: "C", score: 60,
+    blurb: "The best part of the set was absolutely party. Party was a nice payoff you could find incidentally, but it deeply rewarded the disciplined drafter. Kicker deck payoffs were unfortunately boring, and the games were grindy, long, and unpleasant. I also have to shoutout the tribal wizards and clerics decks, as both were real, and the decks came together at expected cadence",
+    features: ["Party", "Kicker", "[Stonework Packbeast]"] },
 
-  { code: "KHM", name: "Kaldheim", date: "2021-02-05", tier: "A",
-    blurb: "Replace this with your real take — what made the draft decisions interesting and which archetype was your favorite to pilot.",
-    features: ["Set mechanic", "Favorite archetype", "Build-around"] },
+  { code: "KHM", name: "Kaldheim", date: "2021-02-05", tier: "A", score: 86,
+    blurb: "I loved Kaldheim-- it wasn't the most balanced (green was quite strong at common), but the lanes for snow decks made draft incredibly interesting. While not every archetype was tribal, the prevalence of changelings types in the set helped keep many decks viable. Interesting to note, I thought the pace of games in this format was spot on.",
+    features: ["Snow", "[Sarulf's Packmate]", "Foretold"] },
 
-  { code: "STX", name: "Strixhaven: School of Mages", date: "2021-04-23", tier: "C",
-    blurb: "Replace this with your real take — what held it back from a higher tier, whether it was pace, color balance, or bomb density.",
-    features: ["Set mechanic", "Pace"] },
+  { code: "STX", name: "Strixhaven: School of Mages", date: "2021-04-23", tier: "C", score: 69,
+    blurb: "Honestly a bit sad I am keeping this in C, but lorehold struggling to work outside of [Velomachus Lorehold] and [Lorehold Command]. Learn/Lesson was a fantastic mechanic and really helped open up the draft",
+    features: ["Learn/Lesson"] },
 
-  { code: "AFR", name: "Adventures in the Forgotten Realms", date: "2021-07-23", tier: "B",
-    blurb: "Replace this with your real take — be honest about what didn't click, whether it was too snowbally, too slow, or too narrow.",
-    features: ["Set mechanic", "Weakness"] },
+  { code: "AFR", name: "Adventures in the Forgotten Realms", date: "2021-07-23", tier: "B", score: 80,
+    blurb: "Might be a hot take, but I enjoyed AFR. Yes RB was dominant with its treasure strategy lending itself to be the splashing deck of the format. Additionally, blue left quite a bit to be desired. Venture was just a super fun mechanic. Additionally, the classes were great fun and powerful. Lastly, I am a sucker for powerful creature lands that warp draft decisions.",
+    features: ["Venture", "Classes", "D20"] },
 
-  { code: "MID", name: "Innistrad: Midnight Hunt", date: "2021-09-24", tier: "D",
+  { code: "MID", name: "Innistrad: Midnight Hunt", date: "2021-09-24", tier: "D", score: 20,
     blurb: "Replace this with your real take — describe what made the draft decisions interesting and which archetype was your favorite to pilot.",
     features: ["Set mechanic", "Favorite archetype", "Build-around"] },
 
-  { code: "VOW", name: "Innistrad: Crimson Vow", date: "2021-11-19", tier: "C",
+  { code: "VOW", name: "Innistrad: Crimson Vow", date: "2021-11-19", tier: "C", score: 35,
     blurb: "Replace this with your real take — what made the format feel different from MID and how it affected drafting priorities.",
     features: ["Set mechanic", "Bomb rares", "Synergy density"] },
 
-  { code: "NEO", name: "Kamigawa: Neon Dynasty", date: "2022-02-18", tier: "S",
-    blurb: "Replace this with your real take — why this is an S-tier format, what archetypes were best, and how often you wanted to re-draft it.",
-    features: ["Signature mechanic", "Balanced archetypes", "High synergy"] },
+  { code: "NEO", name: "Kamigawa: Neon Dynasty", date: "2022-02-18", tier: "A", score: 90,
+    blurb: "Man, what a fantastic set. Ninjutsu and enchantments tribal were powerful and fun. The less powerful archetypes (BG and RB) definitely became quite viable as the set progressed. Maybe samurai were the only lackluster archetype.",
+    features: ["Ninjutsu", "Creature Sagas", "[Imperial Oath]"] },
 
-  { code: "SNC", name: "Streets of New Capenna", date: "2022-04-29", tier: "F",
-    blurb: "Replace this with your real take — what made the shard structure interesting but potentially restrictive or repetitive.",
-    features: ["Set mechanic", "Fixing reliance"] },
+  { code: "SNC", name: "Streets of New Capenna", date: "2022-04-29", tier: "F", score: 8,
+    blurb: "This was not a fun set. It was a brokers (bant) or bust set. Additionally, I'm usually not a fan of sets with only 5 decks. Wouldn't play this again if given the opportunity.",
+    features: ["Brokers"] },
 
-  { code: "DMU", name: "Dominaria United", date: "2022-09-09", tier: "C",
-    blurb: "Replace this with your real take — how domain or multicolor incentives shaped your draft decisions.",
-    features: ["Set mechanic", "Domain", "Removal quality"] },
+  { code: "DMU", name: "Dominaria United", date: "2022-09-09", tier: "C", score: 42,
+    blurb: "Honestly, just a little boring for me. It was a bit slower, the deck meta reached a minimum where it was built around big creatures and removal spells that could deal with them.",
+    features: ["Tolarian", "Domain", "Removal quality"] },
 
-  { code: "BRO", name: "The Brothers' War", date: "2022-11-18", tier: "B",
+  { code: "BRO", name: "The Brothers' War", date: "2022-11-18", tier: "B", score: 75,
     blurb: "Replace this with your real take — artifact density, synergy lines, and how aggressive or slow the format felt.",
     features: ["Artifact synergy", "Ramp", "Powerstones"] },
 
-  { code: "ONE", name: "Phyrexia: All Will Be One", date: "2023-02-10", tier: "C",
+  { code: "ONE", name: "Phyrexia: All Will Be One", date: "2023-02-10", tier: "C", score: 39,
     blurb: "Replace this with your real take — how poison/proliferate shaped gameplay and decision-making pressure.",
     features: ["Poison counters", "Proliferate", "Aggro pressure"] },
 
-  { code: "MOM", name: "March of the Machine", date: "2023-04-21", tier: "C",
+  { code: "MOM", name: "March of the Machine", date: "2023-04-21", tier: "C", score: 41,
     blurb: "Replace this with your real take — why the multiverse format worked (or didn't), and how battles affected drafting.",
     features: ["Battles", "Multicolor", "High complexity"] },
 
-  { code: "WOE", name: "Wilds of Eldraine", date: "2023-09-08", tier: "A",
-    blurb: "Replace this with your real take — synergy decks, enchantments, and fairy tale mechanics.",
-    features: ["Enchantments", "Roles", "Synergy decks"] },
+  { code: "WOE", name: "Wilds of Eldraine", date: "2023-09-08", tier: "A", score: 90,
+    blurb: "I deeply enjoyed the set mechanics and game play in this set.",
+    features: ["Roles", "Bargain", "Adventure"] },
 
-  { code: "LCI", name: "The Lost Caverns of Ixalan", date: "2023-11-17", tier: "F",
+  { code: "LCI", name: "The Lost Caverns of Ixalan", date: "2023-11-17", tier: "F", score: 10,
     blurb: "Replace this with your real take — explore synergy between artifacts, caves, and tribal themes.",
     features: ["Caves", "Tribal", "Artifacts"] },
 
-  { code: "MKM", name: "Murders at Karlov Manor", date: "2024-02-09", tier: "B",
+  { code: "MKM", name: "Murders at Karlov Manor", date: "2024-02-09", tier: "B", score: 60,
     blurb: "Replace this with your real take — disguise mechanics and clue-based gameplay pacing.",
     features: ["Disguise", "Clues", "Mystery theme"] },
 
-  { code: "OTJ", name: "Outlaws of Thunder Junction", date: "2024-04-19", tier: "C",
+  { code: "OTJ", name: "Outlaws of Thunder Junction", date: "2024-04-19", tier: "C", score: 44,
     blurb: "Replace this with your real take — crime payoff mechanics and how “outlaw” synergies played out.",
     features: ["Crime mechanic", "Outlaw synergy", "Tempo"] },
 
-  { code: "MH3", name: "Modern Horizons 3", date: "2024-06-14", tier: "S",
+  { code: "MH3", name: "Modern Horizons 3", date: "2024-06-14", tier: "S", score: 92,
     blurb: "Replace this with your real take — high power level, complex draft decisions, and replayability.",
-    features: ["High power level", "Complex synergy", "Bomb density"] },
+    features: ["Pushed Cards", "Eldrazi", "Energy"] },
 
-  { code: "BLB", name: "Bloomburrow", date: "2024-08-02", tier: "D",
+  { code: "BLB", name: "Bloomburrow", date: "2024-08-02", tier: "D", score: 18,
     blurb: "Replace this with your real take — animal tribal archetypes and tight synergy gameplay.",
     features: ["Tribal synergy", "Aggro-midrange balance"] },
 
-  { code: "DSK", name: "Duskmourn: House of Horror", date: "2024-09-27", tier: "S",
+  { code: "DSK", name: "Duskmourn: House of Horror", date: "2024-09-27", tier: "S", score: 95,
     blurb: "Replace this with your real take — horror mechanics, rooms, and tension-based gameplay loops.",
     features: ["Rooms", "Horror theme", "Synergy pressure"] },
 
-  { code: "FDN", name: "Foundations", date: "2024-11-15", tier: "D",
+  { code: "FDN", name: "Foundations", date: "2024-11-15", tier: "D", score: 22,
     blurb: "Replace this with your real take — core-set style simplicity vs depth tradeoffs.",
     features: ["Core set structure", "Stability", "Reprints"] },
 
-  { code: "DFT", name: "Aetherdrift", date: "2025-02-14", tier: "A",
+  { code: "DFT", name: "Aetherdrift", date: "2025-02-14", tier: "A", score: 72,
     blurb: "Replace this with your real take — vehicle/velocity gameplay and drafting speed considerations.",
     features: ["Vehicles", "Aggro tempo", "Synergy density"] },
 
-  { code: "TDM", name: "Tarkir: Dragonstorm", date: "2025-04-11", tier: "D",
+  { code: "TDM", name: "Tarkir: Dragonstorm", date: "2025-04-11", tier: "D", score: 15,
     blurb: "Replace this with your real take — clan identity return and morph-style gameplay elements.",
     features: ["Clans", "Dragons", "Morph-like mechanics"] },
 
-  { code: "FIN", name: "Final Fantasy", date: "2025-06-13", tier: "S",
+  { code: "FIN", name: "Final Fantasy", date: "2025-06-13", tier: "S", score: 88,
     blurb: "Replace this with your real take — crossover flavor, synergy density, and how iconic cards shaped drafts.",
     features: ["Universes Beyond", "Character synergies", "High bomb impact"] },
 
-  { code: "EOE", name: "Edge of Eternities", date: "2025-07-29", tier: "B",
+  { code: "EOE", name: "Edge of Eternities", date: "2025-07-29", tier: "B", score: 65,
     blurb: "Replace this with your real take — space/future themed mechanics and drafting constraints.",
     features: ["Space mechanics", "Color identity shifts", "Tempo"] },
 
-  { code: "TLA", name: "Avatar: The Last Airbender", date: "2025-11-21", tier: "S",
-    blurb: "Replace this with your real take — bending-based archetypes and elemental synergy structure.",
-    features: ["Bending mechanics", "Elemental synergy", "Tribal themes"] },
+  { code: "TLA", name: "Avatar: The Last Airbender", date: "2025-11-21", tier: "S", score: 93,
+    blurb: "This is by far my most drafted set. Air>Water>Earth>Fire in terms of strength of bendging mechanics. The game pace was fantasitc. The drafts were flexible and enabled a lot without being broken. Obviously the flavor was top notch.",
+    features: ["Bending", "Lessons", "Flavor"] },
 
-  { code: "ECL", name: "Lorwyn Eclipsed", date: "2026-01-23", tier: "B",
+  { code: "ECL", name: "Lorwyn Eclipsed", date: "2026-01-23", tier: "B", score: 64,
     blurb: "Replace this with your real take — tribal revival and synergy-heavy archetypes.",
     features: ["Tribal mechanics", "Synergy drafting", "Color commitment"] },
 
-  { code: "SOS", name: "Secrets of Strixhaven", date: "2026-04-24", tier: "B",
+  { code: "SOS", name: "Secrets of Strixhaven", date: "2026-04-24", tier: "B", score: 61,
     blurb: "Replace this with your real take — return to spell-school mechanics and lesson-like structures.",
     features: ["Mage schools", "Spell synergy", "Lessons-style play"] },
 ];
@@ -487,6 +489,11 @@ const TIER_ORDER = ["S", "A", "B", "C", "D", "F"];
 
 SETS.forEach(s => s._t = new Date(s.date + "T00:00:00").getTime());
 SETS.sort((a, b) => a._t - b._t);
+
+/* Helper: sort sets by score descending within their tier (higher score first) */
+function sortByTierAndScore(sets, tier) {
+  return sets.filter(s => s.tier === tier).sort((a, b) => b.score - a.score);
+}
 
 const tierlistWrap = document.getElementById('tierlistWrap');
 TIER_ORDER.forEach(tier => {
@@ -566,7 +573,7 @@ function renderUpTo(index) {
     const emptyHint = document.getElementById('tier-empty-' + tier);
     container.querySelectorAll('.set-chip').forEach(c => c.remove());
 
-    const setsInTier = SETS.slice(0, index + 1).filter(s => s.tier === tier);
+    const setsInTier = sortByTierAndScore(SETS.slice(0, index + 1), tier);
     if (setsInTier.length > 0) {
       emptyHint.style.display = 'none';
       let newCount = 0;
