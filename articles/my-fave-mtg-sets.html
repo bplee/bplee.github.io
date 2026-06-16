@@ -367,12 +367,12 @@ if (currentTheme !== 'dark-expressive') {
 
 const SETS = [
   { code: "IKO", name: "Ikoria: Lair of Behemoths", date: "2020-04-24", tier: "B",
-    blurb: "Ikoria was fantastic. With strong payoffs in the Ultimatums, the",
-    features: ["Mutate", "Cycling", "Zenith Flare"] },
+    blurb: "Ikoria was fantastic. With strong payoffs in the Ultimatums and Companions (pre-nerf). The 1-cost cycling decks topped with Zenith Flare were absolutely broken unfortunately.",
+    features: ["Mutate", "Companions", "Zenith Flare"] },
 
   { code: "M21", name: "Core Set 2021", date: "2020-07-03", tier: "C",
-    blurb: "Replace this with your real take — what made it stand out, any format-defining synergies, and what kept you coming back to draft it.",
-    features: ["Set mechanic", "Bomb rare", "Removal density"] },
+    blurb: "My only forray into drafting official Core Sets. The shrines were a fun deck to draft.",
+    features: ["Shrines", "Bomb rare", "Removal density"] },
 
   { code: "ZNR", name: "Zendikar Rising", date: "2020-09-25", tier: "C",
     blurb: "Replace this with your real take — this is an S-tier slot, so make the case for why it's one of the best limited formats you've drafted.",
@@ -545,6 +545,7 @@ let playTimer = null;
 
 function renderUpTo(index) {
   if (index === currentIndex) return;
+  const prevIndex = currentIndex;
   currentIndex = index;
 
   const activeSet = SETS[index];
@@ -568,10 +569,20 @@ function renderUpTo(index) {
     const setsInTier = SETS.slice(0, index + 1).filter(s => s.tier === tier);
     if (setsInTier.length > 0) {
       emptyHint.style.display = 'none';
-      setsInTier.forEach((s, i) => {
+      let newCount = 0;
+      setsInTier.forEach((s) => {
         const chip = document.createElement('div');
         chip.className = 'set-chip';
-        chip.style.animationDelay = (i * 0.04) + 's';
+        const globalIdx = SETS.indexOf(s);
+        const isNew = globalIdx > prevIndex;
+        if (isNew) {
+          chip.style.animationDelay = (newCount * 0.04) + 's';
+          newCount++;
+        } else {
+          chip.style.animation = 'none';
+          chip.style.opacity = '1';
+          chip.style.transform = 'none';
+        }
         chip.dataset.code = s.code;
         chip.innerHTML = s.name + ' <span class="set-chip-code">' + monthYear(s._t) + '</span>';
         chip.addEventListener('click', () => showDetail(s, chip));
