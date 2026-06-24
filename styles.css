@@ -166,7 +166,7 @@ nav { position: fixed; top: 0; left: 0; right: 0; z-index: 100; display: flex; j
 .nav-brand { display: flex; align-items: center; gap: 0.4rem; }
 .nav-logo { font-family: 'Space Mono', monospace; font-size: 13px; color: var(--accent); letter-spacing: 0.08em; text-decoration: none; }
 .nav-divider { color: var(--dim); font-size: 20px; margin: 0; }
-.nav-wander { font-family: inherit; font-size: 13px; color: var(--muted); text-decoration: none; letter-spacing: 0.04em; transition: color 0.2s; }
+.nav-wander { font-size: 13px; color: var(--muted); text-decoration: none !important; letter-spacing: 0.04em; transition: color 0.2s; }
 .nav-wander:hover { color: var(--text); }
 .nav-links { display: flex; align-items: center; gap: 1.5rem; list-style: none; }
 .nav-links a { color: var(--muted); text-decoration: none; font-size: 13px; letter-spacing: 0.04em; transition: color 0.2s; }
