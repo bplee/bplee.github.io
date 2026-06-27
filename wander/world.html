@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>wander</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital@0;1&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:#0a0c0f; }
+canvas { display:block; }
+#fade {
+  position:fixed; inset:0;
+  background:#0a0c0f;
+  pointer-events:none;
+  z-index:100;
+  opacity:1;
+  transition: opacity 1.2s ease;
+}
+#hint-box {
+  position:fixed;
+  bottom:28px; left:50%;
+  transform:translateX(-50%);
+  font-family:'Space Mono',monospace;
+  font-size:10px;
+  letter-spacing:0.1em;
+  color:rgba(255,255,255,0.22);
+  background:rgba(20,24,32,0.55);
+  border:0.5px solid rgba(255,255,255,0.08);
+  padding:6px 16px;
+  border-radius:20px;
+  backdrop-filter:blur(4px);
+  pointer-events:none;
+  z-index:50;
+  opacity:0;
+  transition:opacity 0.6s ease;
+}
+#hint-box.visible { opacity:1; }
+</style>
+</head>
+<body>
+<div id="fade"></div>
+<canvas id="c"></canvas>
+<div id="hint-box" id="hintBox">arrow keys or wasd to move · space to jump</div>
+
+<script>
+/* ══════════════════════════════════════════
+   CANVAS + RESIZE
+══════════════════════════════════════════ */
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+let W, H;
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+}
+resize();
+window.addEventListener('resize', resize);
+
+/* ══════════════════════════════════════════
+   WORLD CONSTANTS
+   World coords: x runs left→right, y is pixels from top.
+   Ground Y is computed per-x from terrain segments.
+══════════════════════════════════════════ */
+const WORLD_W = 6000;   // total world width in px
+
+/* ── TERRAIN ──
+   Array of segments: { x1, y1, x2, y2 }
+   Each segment defines a ground line from (x1,groundY+y1) to (x2,groundY+y2)
+   y offset is relative to the base ground level (positive = lower, negative = higher)
+*/
+const BASE_GND = 0.78; // fraction of H for baseline ground
+function groundY(worldX) {
+  // Find which segment worldX falls in and interpolate
+  for (const seg of TERRAIN) {
+    if (worldX >= seg.x1 && worldX <= seg.x2) {
+      const t = (worldX - seg.x1) / (seg.x2 - seg.x1);
+      return H * BASE_GND + seg.y1 + (seg.y2 - seg.y1) * t;
+    }
+  }
+  return H * BASE_GND;
+}
+
+// y values are pixel offsets from base ground (negative = uphill)
+const TERRAIN = [
+  { x1:    0, y1:  0, x2:  600, y2:  0  }, // flat start
+  { x1:  600, y1:  0, x2:  900, y2: -40 }, // gentle rise
+  { x1:  900, y1:-40, x2: 1100, y2: -40 }, // flat plateau (obstacle here)
+  { x1: 1100, y1:-40, x2: 1300, y2:  0  }, // back down
+  { x1: 1300, y1:  0, x2: 2000, y2:  0  }, // long flat (rollerblades here)
+  { x1: 2000, y1:  0, x2: 2300, y2: -60 }, // ramp up
+  { x1: 2300, y1:-60, x2: 2500, y2: -60 }, // flat top
+  { x1: 2500, y1:-60, x2: 2800, y2:  20 }, // fun downhill
+  { x1: 2800, y1: 20, x2: 3200, y2:  20 }, // lower flat (volleyball court)
+  { x1: 3200, y1: 20, x2: 3500, y2:  0  }, // back to base
+  { x1: 3500, y1:  0, x2: WORLD_W, y2: 0 }, // remainder
+];
+
+/* ── WORLD OBJECTS ── */
+const OBJECTS = [
+  // obstacle (log)
+  { type:'log',   wx:980,  wy:0, w:40, h:28 },
+  // rollerblades
+  { type:'blades', wx:1600, wy:0, w:36, h:18, collected:false },
+  // volleyball net
+  { type:'net',   wx:2900, wy:0, w:8,  h:90 },
+  // npc animals
+  { type:'npc', wx:2820, wy:0, label:'🐰', color:'#e8d5c0' },
+  { type:'npc', wx:2860, wy:0, label:'🦔', color:'#c8b89a' },
+  { type:'npc', wx:3000, wy:0, label:'🦊', color:'#d4905a' },
+  // letter pinned to tree
+  { type:'letter', wx:3600, wy:0 },
+];
+
+/* ══════════════════════════════════════════
+   PLAYER
+══════════════════════════════════════════ */
+const player = {
+  wx: 80,           // world x
+  vy: 0,            // vertical velocity
+  onGround: false,
+  hasBlades: false,
+  walkFrame: 0,
+  walkTimer: 0,
+  facingRight: true,
+  jumping: false,
+  // derived
+  get wy() { return groundY(this.wx); }, // ground y at current x
+  get py() { return this._py !== undefined ? this._py : this.wy; }, // actual y (may be airborne)
+};
+player._py = groundY(player.wx);
+
+const WALK_SPEED   = 3;
+const BLADE_SPEED  = 6;
+const BLADE_FRICTION = 0.88; // momentum when blades on
+const JUMP_FORCE   = -13;
+const GRAVITY      = 0.55;
+const CHAR_H       = 48;     // character hitbox height (px)
+
+/* ══════════════════════════════════════════
+   INPUT
+══════════════════════════════════════════ */
+const keys = {};
+window.addEventListener('keydown', e => {
+  keys[e.code] = true;
+  if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && player.onGround) {
+    player.vy = JUMP_FORCE;
+    player.onGround = false;
+    player.jumping = true;
+  }
+});
+window.addEventListener('keyup', e => { keys[e.code] = false; });
+
+/* ══════════════════════════════════════════
+   CAMERA
+══════════════════════════════════════════ */
+let camX = 0;
+function updateCamera() {
+  const target = player.wx - W * 0.3;
+  camX += (target - camX) * 0.08;
+  camX = Math.max(0, Math.min(WORLD_W - W, camX));
+}
+
+/* ══════════════════════════════════════════
+   PARALLAX LAYERS
+══════════════════════════════════════════ */
+function drawSky() {
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0, '#060810');
+  grad.addColorStop(0.55, '#0d1220');
+  grad.addColorStop(1, '#151a28');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+}
+
+// Stars are fixed in screen space (fastest parallax = none)
+const STARS = Array.from({length:60}, () => ({
+  x: Math.random(), y: Math.random()*0.65,
+  r: 0.5 + Math.random()*1.2,
+  a: 0.2 + Math.random()*0.6,
+  phase: Math.random()*Math.PI*2,
+}));
+let starT = 0;
+function drawStars() {
+  starT += 0.008;
+  STARS.forEach(s => {
+    const blink = s.a + 0.2*Math.sin(starT + s.phase);
+    ctx.beginPath();
+    ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(255,255,255,${blink})`;
+    ctx.fill();
+  });
+}
+
+function drawMoon() {
+  const mx = W*0.82, my = H*0.12, mr = H*0.048;
+  ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI*2);
+  ctx.fillStyle = '#d8dfc8'; ctx.fill();
+  ctx.beginPath(); ctx.arc(mx+mr*0.28, my-mr*0.1, mr*0.86, 0, Math.PI*2);
+  ctx.fillStyle = '#0a0c0f'; ctx.fill();
+}
+
+// Distant tree silhouettes (parallax 0.15)
+const BG_TREES = Array.from({length:28}, (_, i) => ({
+  wx: 80 + i * 220 + Math.random()*80,
+  h: 60 + Math.random()*80,
+  w: 18 + Math.random()*22,
+}));
+function drawBgTrees() {
+  BG_TREES.forEach(t => {
+    const sx = t.wx - camX * 0.15;
+    if (sx < -60 || sx > W+60) return;
+    const gY = H * BASE_GND - 2;
+    ctx.strokeStyle = 'rgba(30,45,25,0.7)';
+    ctx.lineWidth = t.w * 0.15;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(sx, gY);
+    ctx.lineTo(sx, gY - t.h*0.4);
+    ctx.stroke();
+    // canopy
+    ctx.fillStyle = 'rgba(22,38,18,0.65)';
+    ctx.beginPath();
+    ctx.ellipse(sx, gY - t.h*0.55, t.w*0.5, t.h*0.55, 0, 0, Math.PI*2);
+    ctx.fill();
+  });
+}
+
+/* ══════════════════════════════════════════
+   TERRAIN DRAWING
+══════════════════════════════════════════ */
+function drawTerrain() {
+  ctx.save();
+  // Ground fill
+  ctx.beginPath();
+  ctx.moveTo(-camX, H);
+  // walk the terrain segments
+  for (const seg of TERRAIN) {
+    const sx1 = seg.x1 - camX, sx2 = seg.x2 - camX;
+    const sy1 = H*BASE_GND + seg.y1, sy2 = H*BASE_GND + seg.y2;
+    ctx.lineTo(sx1, sy1);
+    ctx.lineTo(sx2, sy2);
+  }
+  ctx.lineTo(WORLD_W - camX, H);
+  ctx.closePath();
+  const gfill = ctx.createLinearGradient(0, H*BASE_GND-80, 0, H);
+  gfill.addColorStop(0, '#1e2a14');
+  gfill.addColorStop(0.3, '#151e0e');
+  gfill.addColorStop(1, '#0c1208');
+  ctx.fillStyle = gfill;
+  ctx.fill();
+
+  // Grass surface line
+  ctx.beginPath();
+  let first = true;
+  for (const seg of TERRAIN) {
+    const sx1 = seg.x1 - camX, sx2 = seg.x2 - camX;
+    const sy1 = H*BASE_GND + seg.y1, sy2 = H*BASE_GND + seg.y2;
+    if (first) { ctx.moveTo(sx1, sy1); first=false; }
+    ctx.lineTo(sx2, sy2);
+  }
+  ctx.strokeStyle = 'rgba(80,120,50,0.6)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════
+   WORLD OBJECTS DRAWING
+══════════════════════════════════════════ */
+function worldToScreen(wx, wy_offset) {
+  return { x: wx - camX, y: groundY(wx) + (wy_offset||0) };
+}
+
+function drawObjects() {
+  OBJECTS.forEach(obj => {
+    const sx = obj.wx - camX;
+    const sy = groundY(obj.wx);
+    if (sx < -200 || sx > W+200) return;
+
+    if (obj.type === 'log') {
+      // rounded log on ground
+      ctx.save();
+      ctx.strokeStyle = 'rgba(160,130,90,0.85)';
+      ctx.fillStyle = 'rgba(100,75,45,0.7)';
+      ctx.lineWidth = 1.5;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy - obj.h*0.5, obj.w*0.5, obj.h*0.5, 0, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+      // wood grain lines
+      ctx.strokeStyle = 'rgba(80,55,30,0.4)';
+      ctx.lineWidth = 0.8;
+      for (let i=-1;i<=1;i++) {
+        ctx.beginPath();
+        ctx.moveTo(sx+i*10, sy-obj.h*0.15);
+        ctx.bezierCurveTo(sx+i*10-4, sy-obj.h*0.5, sx+i*10+4, sy-obj.h*0.85, sx+i*10, sy-obj.h);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    else if (obj.type === 'blades' && !obj.collected) {
+      // rollerblades — glowing pair on ground
+      ctx.save();
+      ctx.shadowColor = '#7ebe9a';
+      ctx.shadowBlur = 10;
+      ctx.strokeStyle = 'rgba(126,190,154,0.9)';
+      ctx.fillStyle = 'rgba(126,190,154,0.15)';
+      ctx.lineWidth = 1.5;
+      // left blade
+      ctx.beginPath();
+      ctx.roundRect(sx - 20, sy - 14, 16, 10, 3);
+      ctx.fill(); ctx.stroke();
+      // right blade
+      ctx.beginPath();
+      ctx.roundRect(sx + 4, sy - 14, 16, 10, 3);
+      ctx.fill(); ctx.stroke();
+      // wheels
+      ctx.fillStyle = 'rgba(126,190,154,0.6)';
+      [-18,-10,6,14].forEach(ox => {
+        ctx.beginPath(); ctx.arc(sx+ox, sy-4, 3, 0, Math.PI*2); ctx.fill();
+      });
+      // floating label
+      ctx.shadowBlur = 0;
+      ctx.font = '10px Space Mono, monospace';
+      ctx.fillStyle = 'rgba(126,190,154,0.7)';
+      ctx.textAlign = 'center';
+      ctx.fillText('rollerblades', sx, sy - 22);
+      ctx.restore();
+    }
+
+    else if (obj.type === 'net') {
+      // volleyball net
+      ctx.save();
+      ctx.strokeStyle = 'rgba(200,190,160,0.7)';
+      ctx.lineWidth = 1.5;
+      // posts
+      ctx.beginPath();
+      ctx.moveTo(sx - 60, sy);
+      ctx.lineTo(sx - 60, sy - obj.h);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(sx + 60, sy);
+      ctx.lineTo(sx + 60, sy - obj.h);
+      ctx.stroke();
+      // top rope
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(220,210,170,0.85)';
+      ctx.beginPath();
+      ctx.moveTo(sx-60, sy-obj.h);
+      ctx.lineTo(sx+60, sy-obj.h);
+      ctx.stroke();
+      // net mesh
+      ctx.strokeStyle = 'rgba(200,190,160,0.35)';
+      ctx.lineWidth = 0.7;
+      for (let nx=-50; nx<=50; nx+=12) {
+        ctx.beginPath();
+        ctx.moveTo(sx+nx, sy-obj.h);
+        ctx.lineTo(sx+nx, sy);
+        ctx.stroke();
+      }
+      for (let ny=0; ny<=obj.h; ny+=15) {
+        ctx.beginPath();
+        ctx.moveTo(sx-60, sy-ny);
+        ctx.lineTo(sx+60, sy-ny);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    else if (obj.type === 'npc') {
+      // small woodland animal (circle body + label)
+      ctx.save();
+      ctx.strokeStyle = `rgba(${hexToRgb(obj.color)},0.8)`;
+      ctx.fillStyle = `rgba(${hexToRgb(obj.color)},0.15)`;
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.ellipse(sx, sy-12, 10, 12, 0, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(sx, sy-26, 8, 8, 0, 0, Math.PI*2);
+      ctx.fill(); ctx.stroke();
+      ctx.font = '16px serif';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(255,255,255,0.9)';
+      ctx.fillText(obj.label, sx, sy-38);
+      ctx.restore();
+    }
+
+    else if (obj.type === 'letter') {
+      // letter pinned to a tree
+      ctx.save();
+      // tree trunk
+      ctx.strokeStyle = 'rgba(150,125,90,0.7)';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(sx, sy-120);
+      ctx.stroke();
+      // canopy
+      ctx.fillStyle = 'rgba(20,38,16,0.6)';
+      ctx.beginPath();
+      ctx.ellipse(sx, sy-150, 45, 60, 0, 0, Math.PI*2);
+      ctx.fill();
+      // letter envelope
+      ctx.fillStyle = 'rgba(230,220,195,0.9)';
+      ctx.strokeStyle = 'rgba(160,140,100,0.8)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(sx-14, sy-105, 28, 20, 2);
+      ctx.fill(); ctx.stroke();
+      // envelope flap line
+      ctx.beginPath();
+      ctx.moveTo(sx-14, sy-105);
+      ctx.lineTo(sx, sy-95);
+      ctx.lineTo(sx+14, sy-105);
+      ctx.stroke();
+      // pin
+      ctx.fillStyle = 'rgba(200,80,80,0.8)';
+      ctx.beginPath();
+      ctx.arc(sx, sy-107, 3, 0, Math.PI*2);
+      ctx.fill();
+      ctx.restore();
+    }
+  });
+}
+
+function hexToRgb(hex) {
+  const r = parseInt(hex.slice(1,3),16);
+  const g = parseInt(hex.slice(3,5),16);
+  const b = parseInt(hex.slice(5,7),16);
+  return `${r},${g},${b}`;
+}
+
+/* ══════════════════════════════════════════
+   MOUSE CHARACTER DRAWING
+   Refactored to be position-aware and animated
+══════════════════════════════════════════ */
+function drawPlayer() {
+  const sx = player.wx - camX;
+  const sy = player._py;
+  const s = Math.min(W,H) * 0.001 * 1.4; // scale relative to viewport
+
+  // walk cycle
+  const walk = player.onGround && (keys['ArrowLeft']||keys['KeyA']||keys['ArrowRight']||keys['KeyD']);
+  if (walk) {
+    player.walkTimer++;
+    if (player.walkTimer > (player.hasBlades ? 4 : 8)) {
+      player.walkFrame = (player.walkFrame + 1) % 4;
+      player.walkTimer = 0;
+    }
+  } else if (player.onGround) {
+    player.walkFrame = 0;
+  }
+
+  const frame = player.onGround ? player.walkFrame : 2; // frame 2 = legs together for jump
+  const legSwing = [0, 18, 0, -18][frame] * (Math.PI/180);
+  const armSwing = [0, -15, 0, 15][frame] * (Math.PI/180);
+  const bodyBob  = player.onGround ? [0,-1,0,1][frame] : 0;
+
+  ctx.save();
+  ctx.translate(sx, sy + bodyBob);
+  if (!player.facingRight) ctx.scale(-1, 1);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const ss = (a, w) => {
+    ctx.strokeStyle = `rgba(200,185,170,${a})`;
+    ctx.lineWidth = w || 1.2;
+  };
+
+  // speed lines when blading
+  if (player.hasBlades && Math.abs(player._vx||0) > 3) {
+    ctx.save();
+    if (!player.facingRight) ctx.scale(-1,1);
+    ctx.strokeStyle = 'rgba(126,190,154,0.25)';
+    ctx.lineWidth = 1;
+    [[-28,-20,-50,-18],[-28,-30,-46,-30],[-28,-40,-44,-42]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath();
+      ctx.moveTo(x1*s, y1*s);
+      ctx.lineTo(x2*s, y2*s);
+      ctx.stroke();
+    });
+    ctx.restore();
+  }
+
+  // legs
+  ss(0.75, 1.1);
+  const lx1 = Math.sin(legSwing)*12*s, ly1 = Math.cos(legSwing)*18*s;
+  const lx2 = Math.sin(-legSwing)*12*s, ly2 = Math.cos(-legSwing)*18*s;
+  ctx.beginPath(); ctx.moveTo(-4*s,-4*s); ctx.lineTo(-4*s+lx1, -4*s+ly1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(4*s,-4*s);  ctx.lineTo(4*s+lx2, -4*s+ly2);  ctx.stroke();
+
+  // rollerblades on feet
+  if (player.hasBlades) {
+    ctx.strokeStyle = 'rgba(126,190,154,0.9)';
+    ctx.fillStyle = 'rgba(126,190,154,0.2)';
+    ctx.lineWidth = 0.9;
+    [[(-4*s+lx1-5*s), (-4*s+ly1)],[4*s+lx2-5*s, -4*s+ly2]].forEach(([bx,by])=>{
+      ctx.beginPath(); ctx.roundRect(bx, by, 10*s, 5*s, 1); ctx.fill(); ctx.stroke();
+    });
+  }
+
+  // body
+  ss(0.82);
+  ctx.beginPath();
+  ctx.ellipse(0, -18*s, 13*s, 17*s, 0.12, 0, Math.PI*2);
+  ctx.stroke();
+
+  // arms
+  ss(0.7, 1.0);
+  const ax1 = Math.sin(armSwing)*14*s, ay1 = -Math.cos(armSwing)*8*s+2*s;
+  const ax2 = Math.sin(-armSwing)*14*s, ay2 = -Math.cos(-armSwing)*8*s+2*s;
+  ctx.beginPath(); ctx.moveTo(-12*s,-28*s); ctx.lineTo(-12*s+ax1,-28*s+ay1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(12*s,-28*s);  ctx.lineTo(12*s+ax2,-28*s+ay2);  ctx.stroke();
+
+  // head
+  ss(0.88);
+  ctx.beginPath();
+  ctx.ellipse(2*s, -40*s, 12*s, 11*s, 0, 0, Math.PI*2);
+  ctx.stroke();
+
+  // ears
+  ctx.beginPath(); ctx.arc(-6*s,-50*s,6*s,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(8*s,-52*s,6*s,0,Math.PI*2);  ctx.stroke();
+  ctx.strokeStyle='rgba(200,135,140,0.35)'; ctx.lineWidth=0.7;
+  ctx.beginPath(); ctx.arc(-6*s,-50*s,3.5*s,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(8*s,-52*s,3.5*s,0,Math.PI*2);  ctx.stroke();
+
+  // eye
+  ss(0.85,1.0);
+  ctx.beginPath(); ctx.arc(7*s,-42*s,3*s,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle='rgba(15,12,12,0.92)'; ctx.beginPath(); ctx.arc(7*s,-42*s,1.8*s,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,240,0.82)'; ctx.beginPath(); ctx.arc(8*s,-43*s,0.8*s,0,Math.PI*2); ctx.fill();
+
+  // nose
+  ctx.fillStyle='rgba(200,135,140,0.55)'; ctx.beginPath(); ctx.arc(13*s,-39*s,1.5*s,0,Math.PI*2); ctx.fill();
+
+  // whiskers
+  ctx.strokeStyle='rgba(220,210,200,0.4)'; ctx.lineWidth=0.6;
+  [[13,-38,26,-36],[13,-40,26,-40],[13,-42,26,-45]].forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath(); ctx.moveTo(x1*s,y1*s); ctx.lineTo(x2*s,y2*s); ctx.stroke();
+  });
+
+  // tail
+  ctx.strokeStyle='rgba(185,165,150,0.5)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(-12*s,-10*s); ctx.bezierCurveTo(-28*s,-4*s,-34*s,6*s,-24*s,12*s); ctx.stroke();
+
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════
+   POPUP TEXT SYSTEM
+══════════════════════════════════════════ */
+let activePopup = null;
+const POPUP_TRIGGERS = {
+  log:    { dist:80,  text:'a fallen log. might have to jump over this.' },
+  blades: { dist:50,  text:'rollerblades! walk over them to pick up.' },
+  net:    { dist:120, text:'a volleyball net. three animals waiting for a fourth…' },
+  npc:    { dist:80,  text:'they look hopeful.' },
+  letter: { dist:70,  text:'a letter, pinned to a tree. it smells like old wood and something familiar.' },
+};
+
+function checkProximity() {
+  let nearest = null, nearDist = Infinity;
+  OBJECTS.forEach(obj => {
+    if (obj.type === 'blades' && obj.collected) return;
+    const dist = Math.abs(player.wx - obj.wx);
+    const trigger = POPUP_TRIGGERS[obj.type];
+    if (!trigger) return;
+    if (dist < trigger.dist && dist < nearDist) {
+      nearDist = dist;
+      nearest = { obj, trigger };
+    }
+  });
+  if (nearest) {
+    activePopup = nearest.trigger.text;
+  } else {
+    activePopup = null;
+  }
+}
+
+function drawPopup() {
+  if (!activePopup) return;
+  const sx = player.wx - camX;
+  const sy = player._py - CHAR_H * 1.5;
+  const PAD = 10, FONT = 11;
+  ctx.font = `${FONT}px Space Mono, monospace`;
+  const tw = ctx.measureText(activePopup).width;
+  const bw = tw + PAD*2, bh = FONT + PAD*2;
+  let bx = sx - bw/2;
+  bx = Math.max(10, Math.min(W-bw-10, bx));
+  const by = sy - bh - 8;
+
+  ctx.save();
+  ctx.fillStyle = 'rgba(20,24,32,0.75)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
+  ctx.lineWidth = 0.5;
+  ctx.beginPath();
+  ctx.roundRect(bx, by, bw, bh, 6);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(200,195,185,0.9)';
+  ctx.textAlign = 'left';
+  ctx.fillText(activePopup, bx+PAD, by+PAD+FONT*0.85);
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════
+   PHYSICS + MOVEMENT UPDATE
+══════════════════════════════════════════ */
+let _vx = 0;
+function update() {
+  const spd = player.hasBlades ? BLADE_SPEED : WALK_SPEED;
+
+  // horizontal input
+  const goRight = keys['ArrowRight'] || keys['KeyD'];
+  const goLeft  = keys['ArrowLeft']  || keys['KeyA'];
+
+  if (player.hasBlades) {
+    if (goRight) { _vx = Math.min(_vx + 0.7, spd); player.facingRight = true; }
+    if (goLeft)  { _vx = Math.max(_vx - 0.7, -spd); player.facingRight = false; }
+    if (!goRight && !goLeft) _vx *= BLADE_FRICTION;
+  } else {
+    if (goRight) { _vx = spd; player.facingRight = true; }
+    else if (goLeft) { _vx = -spd; player.facingRight = false; }
+    else _vx = 0;
+  }
+  player._vx = _vx;
+
+  // horizontal movement
+  player.wx = Math.max(20, Math.min(WORLD_W - 20, player.wx + _vx));
+
+  // vertical physics
+  player._py += player.vy;
+  player.vy  += GRAVITY;
+
+  // ground collision
+  const gY = groundY(player.wx);
+  if (player._py >= gY) {
+    player._py = gY;
+    player.vy = 0;
+    player.onGround = true;
+    player.jumping = false;
+  } else {
+    player.onGround = false;
+  }
+
+  // log collision (simple AABB on top)
+  OBJECTS.filter(o=>o.type==='log').forEach(log => {
+    const logTop = groundY(log.wx) - log.h;
+    const logLeft = log.wx - log.w/2, logRight = log.wx + log.w/2;
+    if (player.wx > logLeft && player.wx < logRight) {
+      if (player._py >= logTop && player._py <= logTop + 10 && player.vy >= 0) {
+        player._py = logTop;
+        player.vy = 0;
+        player.onGround = true;
+      }
+    }
+  });
+
+  // rollerblades pickup
+  OBJECTS.filter(o=>o.type==='blades'&&!o.collected).forEach(b => {
+    if (Math.abs(player.wx - b.wx) < 30 && player.onGround) {
+      b.collected = true;
+      player.hasBlades = true;
+      showHint('rollerblades equipped! feel the speed.', 2500);
+    }
+  });
+
+  checkProximity();
+  updateCamera();
+}
+
+/* ══════════════════════════════════════════
+   HINT DISPLAY
+══════════════════════════════════════════ */
+const hintBox = document.getElementById('hint-box');
+let hintTimer = null;
+function showHint(text, duration) {
+  hintBox.textContent = text;
+  hintBox.classList.add('visible');
+  if (hintTimer) clearTimeout(hintTimer);
+  hintTimer = setTimeout(() => hintBox.classList.remove('visible'), duration||3000);
+}
+
+/* ══════════════════════════════════════════
+   MAIN LOOP
+══════════════════════════════════════════ */
+function render() {
+  ctx.clearRect(0,0,W,H);
+  drawSky();
+  drawStars();
+  drawMoon();
+  drawBgTrees();
+  drawTerrain();
+  drawObjects();
+  drawPlayer();
+  drawPopup();
+}
+
+let started = false;
+function loop() {
+  if (started) update();
+  render();
+  requestAnimationFrame(loop);
+}
+loop();
+
+/* ══════════════════════════════════════════
+   FADE IN + START
+══════════════════════════════════════════ */
+const fadeEl = document.getElementById('fade');
+window.addEventListener('load', () => {
+  // init player y
+  player._py = groundY(player.wx);
+  setTimeout(() => {
+    fadeEl.style.opacity = '0';
+    setTimeout(() => {
+      fadeEl.style.display = 'none';
+      started = true;
+      showHint('arrow keys or wasd to move · space to jump', 4000);
+    }, 1300);
+  }, 200);
+});
+</script>
+</body>
+</html>
