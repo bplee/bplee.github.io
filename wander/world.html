@@ -84,9 +84,9 @@ function groundY(worldX) {
 // y values are pixel offsets from base ground (negative = uphill)
 const TERRAIN = [
   { x1:    0, y1:  0, x2:  600, y2:  0  }, // flat start
-  { x1:  600, y1:  0, x2:  900, y2: -40 }, // gentle rise
-  { x1:  900, y1:-40, x2: 1100, y2: -40 }, // flat plateau (obstacle here)
-  { x1: 1100, y1:-40, x2: 1300, y2:  0  }, // back down
+  { x1:  600, y1:  0, x2:  900, y2: -100 }, // gentle rise
+  { x1:  900, y1:-100, x2: 1100, y2: -100 }, // flat plateau (obstacle here)
+  { x1: 1100, y1:-100, x2: 1300, y2:  0  }, // back down
   { x1: 1300, y1:  0, x2: 2000, y2:  0  }, // long flat (rollerblades here)
   { x1: 2000, y1:  0, x2: 2300, y2: -60 }, // ramp up
   { x1: 2300, y1:-60, x2: 2500, y2: -60 }, // flat top
@@ -124,6 +124,7 @@ const player = {
   walkTimer: 0,
   facingRight: true,
   jumping: false,
+  isDucking: false,
   // derived
   get wy() { return groundY(this.wx); }, // ground y at current x
   get py() { return this._py !== undefined ? this._py : this.wy; }, // actual y (may be airborne)
@@ -132,7 +133,7 @@ player._py = groundY(player.wx);
 
 const WALK_SPEED   = 3;
 const BLADE_SPEED  = 6;
-const BLADE_FRICTION = 0.88; // momentum when blades on
+const BLADE_FRICTION = 0.98; // momentum when blades on
 const JUMP_FORCE   = -10;
 const GRAVITY      = 0.55;
 const CHAR_H       = 48;     // character hitbox height (px)
@@ -143,13 +144,17 @@ const CHAR_H       = 48;     // character hitbox height (px)
 const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.code] = true;
+  if (e.code === 'ArrowDown' || e.code === 'KeyS') player.isDucking = true;
   if ((e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') && player.onGround) {
     player.vy = JUMP_FORCE;
     player.onGround = false;
     player.jumping = true;
   }
 });
-window.addEventListener('keyup', e => { keys[e.code] = false; });
+window.addEventListener('keyup', e => { 
+  keys[e.code] = false; 
+  if (e.code === 'ArrowDown' || e.code === 'KeyS') player.isDucking = false;
+});
 
 /* ══════════════════════════════════════════
    CAMERA
@@ -483,13 +488,18 @@ function drawPlayer() {
   // speed lines when blading
   if (player.hasBlades && Math.abs(player._vx||0) > 3) {
     ctx.save();
-    if (!player.facingRight) ctx.scale(-1,1);
     ctx.strokeStyle = 'rgba(126,190,154,0.25)';
     ctx.lineWidth = 1;
+    
+    // If facing left, the speed lines need to be on the "front" 
+    // (which is now the right side relative to the flipped character)
+    const multiplier = player.facingRight ? 1 : -1;
+
     [[-28,-20,-50,-18],[-28,-30,-46,-30],[-28,-40,-44,-42]].forEach(([x1,y1,x2,y2])=>{
       ctx.beginPath();
-      ctx.moveTo(x1*s, y1*s);
-      ctx.lineTo(x2*s, y2*s);
+      // Multiply the X coordinates by the multiplier
+      ctx.moveTo(x1 * s * multiplier, y1 * s);
+      ctx.lineTo(x2 * s * multiplier, y2 * s);
       ctx.stroke();
     });
     ctx.restore();
@@ -573,58 +583,6 @@ function drawPlayer() {
   ctx.restore();
 }
 
-// function drawRollerblade(x, y, scale = 1) {
-//     ctx.save();
-//     ctx.translate(x, y);
-
-//     // Boot
-//     ctx.fillStyle = 'rgba(126,190,154,0.22)';
-//     ctx.strokeStyle = 'rgba(126,190,154,0.95)';
-//     ctx.lineWidth = 1;
-
-//     ctx.beginPath();
-//     ctx.roundRect(-6*scale, -8*scale, 12*scale, 8*scale, 2*scale);
-//     ctx.fill();
-//     ctx.stroke();
-
-//     // Ankle cuff
-//     ctx.beginPath();
-//     ctx.roundRect(-4*scale, -13*scale, 6*scale, 6*scale, 1.5*scale);
-//     ctx.fill();
-//     ctx.stroke();
-
-//     // Toe curve
-//     ctx.beginPath();
-//     ctx.arc(
-//         6*scale,
-//         -4*scale,
-//         2.2*scale,
-//         -Math.PI/2,
-//         Math.PI/2
-//     );
-//     ctx.stroke();
-
-//     // Frame
-//     ctx.beginPath();
-//     ctx.moveTo(-5*scale, 1*scale);
-//     ctx.lineTo(5*scale, 1*scale);
-//     ctx.stroke();
-
-//     // Wheels
-//     for (let i = 0; i < 4; i++) {
-//         ctx.beginPath();
-//         ctx.arc(
-//             (-4.5 + i*3)*scale,
-//             3*scale,
-//             1.2*scale,
-//             0,
-//             Math.PI*2
-//         );
-//         ctx.fill();
-//     }
-
-//     ctx.restore();
-// }
 function drawRollerblade(x, y, s = 1, color = '#7ebe9a') {
     ctx.save();
     ctx.translate(x, y);
@@ -642,10 +600,10 @@ function drawRollerblade(x, y, s = 1, color = '#7ebe9a') {
     ctx.beginPath();
 
     // Back of cuff
-    ctx.moveTo(-7*s, -14*s);
+    ctx.moveTo(-7*s, -11*s);
 
     // Top of cuff
-    ctx.lineTo(2*s, -14*s);
+    ctx.lineTo(2*s, -11*s);
 
     // Front of cuff
     ctx.lineTo(2*s, -6*s);
@@ -708,7 +666,7 @@ function drawRollerblade(x, y, s = 1, color = '#7ebe9a') {
     ctx.stroke();
 
     // ---------- Wheel Supports ----------
-    [-5,-1,3,7].forEach(px=>{
+    [-6,0,6,12].forEach(px=>{
         ctx.beginPath();
         ctx.moveTo(px*s,11*s);
         ctx.lineTo(px*s,13*s);
@@ -716,7 +674,7 @@ function drawRollerblade(x, y, s = 1, color = '#7ebe9a') {
     });
 
     // ---------- Wheels ----------
-    [-5,-1,3,7].forEach(px=>{
+    [-6,0,6,12].forEach(px=>{
         ctx.beginPath();
         ctx.arc(px*s,15*s,2.6*s,0,Math.PI*2);
         ctx.stroke();
@@ -790,24 +748,60 @@ function drawPopup() {
 ══════════════════════════════════════════ */
 let _vx = 0;
 function update() {
-  const spd = player.hasBlades ? BLADE_SPEED : WALK_SPEED;
-
-  // horizontal input
   const goRight = keys['ArrowRight'] || keys['KeyD'];
   const goLeft  = keys['ArrowLeft']  || keys['KeyA'];
 
-  if (player.hasBlades) {
-    if (goRight) { _vx = Math.min(_vx + 0.7, spd); player.facingRight = true; }
-    if (goLeft)  { _vx = Math.max(_vx - 0.7, -spd); player.facingRight = false; }
-    if (!goRight && !goLeft) _vx *= BLADE_FRICTION;
+  // 1. Determine Speed & Friction
+  const spd = player.hasBlades ? BLADE_SPEED : WALK_SPEED;
+  const accel = player.hasBlades ? 0.7 : 0.5;
+  
+  // Apply friction (closer to 1 = more conserved speed)
+  const friction = player.isDucking ? 0.98 : (player.hasBlades ? BLADE_FRICTION : 0.9);
+
+  // 2. Horizontal Input
+  if (goRight) {
+    _vx = Math.min(_vx + accel, spd);
+    player.facingRight = true;
+  } else if (goLeft) {
+    _vx = Math.max(_vx - accel, -spd);
+    player.facingRight = false;
   } else {
-    if (goRight) { _vx = spd; player.facingRight = true; }
-    else if (goLeft) { _vx = -spd; player.facingRight = false; }
-    else _vx = 0;
+    // Only apply friction when NO keys are pressed
+    _vx *= friction;
+    if (Math.abs(_vx) < 0.05) _vx = 0;
   }
+
+  // 2. Hill Acceleration (NEW)
+  if (friction > .97 && player.onGround) {
+    for (const seg of TERRAIN) {
+      if (player.wx >= seg.x1 && player.wx <= seg.x2) {
+        // Calculate the rise/run of the current segment
+        const slope = (seg.y2 - seg.y1) / (seg.x2 - seg.x1);
+        
+        // Positive slope = downhill (since y is pixels from top)
+        // Adjust the 0.5 multiplier to make the slide faster or slower
+        if (slope > 0) {
+            _vx += slope * 0.5; 
+        }
+        break;
+      }
+    }
+  }
+  
   player._vx = _vx;
 
-  // horizontal movement
+  // 3. Trunk Collision (Handles horizontal bounce)
+  OBJECTS.filter(o => o.type === 'log').forEach(log => {
+    const margin = 10;
+    if (player.wx > log.wx - log.w/2 - margin && player.wx < log.wx + log.w/2 + margin) {
+       if (player._py > groundY(log.wx) - log.h && player.vy >= 0) {
+           player.wx = (player.wx > log.wx) ? log.wx + log.w/2 + margin : log.wx - log.w/2 - margin;
+           _vx = 0; // Stop horizontal movement on impact
+       }
+    }
+  });
+
+  // 4. Single Apply Movement
   player.wx = Math.max(20, Math.min(WORLD_W - 20, player.wx + _vx));
 
   // vertical physics
