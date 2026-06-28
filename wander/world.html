@@ -62,7 +62,7 @@ window.addEventListener('resize', resize);
    World coords: x runs left→right, y is pixels from top.
    Ground Y is computed per-x from terrain segments.
 ══════════════════════════════════════════ */
-const WORLD_W = 6000;   // total world width in px
+const WORLD_W = 12000;   // total world width in px
 
 /* ── TERRAIN ──
    Array of segments: { x1, y1, x2, y2 }
@@ -133,7 +133,7 @@ player._py = groundY(player.wx);
 const WALK_SPEED   = 3;
 const BLADE_SPEED  = 6;
 const BLADE_FRICTION = 0.88; // momentum when blades on
-const JUMP_FORCE   = -13;
+const JUMP_FORCE   = -10;
 const GRAVITY      = 0.55;
 const CHAR_H       = 48;     // character hitbox height (px)
 
@@ -308,19 +308,18 @@ function drawObjects() {
       ctx.strokeStyle = 'rgba(126,190,154,0.9)';
       ctx.fillStyle = 'rgba(126,190,154,0.15)';
       ctx.lineWidth = 1.5;
-      // left blade
-      ctx.beginPath();
-      ctx.roundRect(sx - 20, sy - 14, 16, 10, 3);
-      ctx.fill(); ctx.stroke();
-      // right blade
-      ctx.beginPath();
-      ctx.roundRect(sx + 4, sy - 14, 16, 10, 3);
-      ctx.fill(); ctx.stroke();
-      // wheels
-      ctx.fillStyle = 'rgba(126,190,154,0.6)';
-      [-18,-10,6,14].forEach(ox => {
-        ctx.beginPath(); ctx.arc(sx+ox, sy-4, 3, 0, Math.PI*2); ctx.fill();
-      });
+
+      drawRollerblade(
+          sx - 10,
+          sy - 5,
+          .8
+      );
+
+      drawRollerblade(
+          sx + 12,
+          sy - 5,
+          .8
+      );
       // floating label
       ctx.shadowBlur = 0;
       ctx.font = '10px Space Mono, monospace';
@@ -443,6 +442,16 @@ function drawPlayer() {
   const sy = player._py;
   const s = Math.min(W,H) * 0.001 * 1.4; // scale relative to viewport
 
+  // Character proportions
+  const BODY_W = 11 * s;
+  const BODY_H = 17 * s;
+
+  const SHOULDER_X = BODY_W * 0.92;
+  const SHOULDER_Y = -28 * s;
+
+  const HIP_X = BODY_W * 0.3;
+  const HIP_Y = -4 * s;
+
   // walk cycle
   const walk = player.onGround && (keys['ArrowLeft']||keys['KeyA']||keys['ArrowRight']||keys['KeyD']);
   if (walk) {
@@ -490,31 +499,44 @@ function drawPlayer() {
   ss(0.75, 1.1);
   const lx1 = Math.sin(legSwing)*12*s, ly1 = Math.cos(legSwing)*18*s;
   const lx2 = Math.sin(-legSwing)*12*s, ly2 = Math.cos(-legSwing)*18*s;
-  ctx.beginPath(); ctx.moveTo(-4*s,-4*s); ctx.lineTo(-4*s+lx1, -4*s+ly1); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(4*s,-4*s);  ctx.lineTo(4*s+lx2, -4*s+ly2);  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-HIP_X*s,HIP_Y*s); ctx.lineTo(-HIP_X*s+lx1, HIP_Y*s+ly1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(HIP_X*s,HIP_Y*s);  ctx.lineTo(HIP_X*s+lx2, HIP_Y*s+ly2);  ctx.stroke();
 
   // rollerblades on feet
   if (player.hasBlades) {
-    ctx.strokeStyle = 'rgba(126,190,154,0.9)';
-    ctx.fillStyle = 'rgba(126,190,154,0.2)';
-    ctx.lineWidth = 0.9;
-    [[(-4*s+lx1-5*s), (-4*s+ly1)],[4*s+lx2-5*s, -4*s+ly2]].forEach(([bx,by])=>{
-      ctx.beginPath(); ctx.roundRect(bx, by, 10*s, 5*s, 1); ctx.fill(); ctx.stroke();
-    });
+    drawRollerblade(
+        -4*s + lx1,
+        -6*s + ly1,
+        s*.6
+    );
+
+    drawRollerblade(
+        4*s + lx2,
+        -6*s + ly2,
+        s*.6
+    );
   }
 
   // body
   ss(0.82);
   ctx.beginPath();
-  ctx.ellipse(0, -18*s, 13*s, 17*s, 0.12, 0, Math.PI*2);
+  ctx.ellipse(
+      0,
+      -18*s,
+      BODY_W,
+      BODY_H,
+      0.12,
+      0,
+      Math.PI*2
+  );
   ctx.stroke();
 
   // arms
   ss(0.7, 1.0);
   const ax1 = Math.sin(armSwing)*14*s, ay1 = -Math.cos(armSwing)*8*s+2*s;
   const ax2 = Math.sin(-armSwing)*14*s, ay2 = -Math.cos(-armSwing)*8*s+2*s;
-  ctx.beginPath(); ctx.moveTo(-12*s,-28*s); ctx.lineTo(-12*s+ax1,-28*s+ay1); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(12*s,-28*s);  ctx.lineTo(12*s+ax2,-28*s+ay2);  ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(-SHOULDER_X, SHOULDER_Y); ctx.lineTo(-SHOULDER_X + ax1, SHOULDER_Y + ay1); ctx.stroke();  
+  ctx.beginPath(); ctx.moveTo(SHOULDER_X, SHOULDER_Y); ctx.lineTo(SHOULDER_X + ax2, SHOULDER_Y + ay2); ctx.stroke();  
 
   // head
   ss(0.88);
@@ -550,6 +572,162 @@ function drawPlayer() {
 
   ctx.restore();
 }
+
+// function drawRollerblade(x, y, scale = 1) {
+//     ctx.save();
+//     ctx.translate(x, y);
+
+//     // Boot
+//     ctx.fillStyle = 'rgba(126,190,154,0.22)';
+//     ctx.strokeStyle = 'rgba(126,190,154,0.95)';
+//     ctx.lineWidth = 1;
+
+//     ctx.beginPath();
+//     ctx.roundRect(-6*scale, -8*scale, 12*scale, 8*scale, 2*scale);
+//     ctx.fill();
+//     ctx.stroke();
+
+//     // Ankle cuff
+//     ctx.beginPath();
+//     ctx.roundRect(-4*scale, -13*scale, 6*scale, 6*scale, 1.5*scale);
+//     ctx.fill();
+//     ctx.stroke();
+
+//     // Toe curve
+//     ctx.beginPath();
+//     ctx.arc(
+//         6*scale,
+//         -4*scale,
+//         2.2*scale,
+//         -Math.PI/2,
+//         Math.PI/2
+//     );
+//     ctx.stroke();
+
+//     // Frame
+//     ctx.beginPath();
+//     ctx.moveTo(-5*scale, 1*scale);
+//     ctx.lineTo(5*scale, 1*scale);
+//     ctx.stroke();
+
+//     // Wheels
+//     for (let i = 0; i < 4; i++) {
+//         ctx.beginPath();
+//         ctx.arc(
+//             (-4.5 + i*3)*scale,
+//             3*scale,
+//             1.2*scale,
+//             0,
+//             Math.PI*2
+//         );
+//         ctx.fill();
+//     }
+
+//     ctx.restore();
+// }
+function drawRollerblade(x, y, s = 1, color = '#7ebe9a') {
+    ctx.save();
+    ctx.translate(x, y);
+
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.lineWidth = 1.1 * s;
+
+    ctx.strokeStyle = GLOW;
+    ctx.fillStyle = GLOW_FILL;
+    ctx.shadowColor = GLOW;
+    ctx.shadowBlur = GLOW_BLUR * s;
+
+    // ---------- Boot ----------
+    ctx.beginPath();
+
+    // Back of cuff
+    ctx.moveTo(-7*s, -14*s);
+
+    // Top of cuff
+    ctx.lineTo(2*s, -14*s);
+
+    // Front of cuff
+    ctx.lineTo(2*s, -6*s);
+
+    // Front of boot
+    ctx.quadraticCurveTo(
+        5*s, -1*s,
+        11*s, 2*s
+    );
+
+    // Toe
+    ctx.quadraticCurveTo(
+        15*s, 3*s,
+        14*s, 9*s
+    );
+
+    // Sole
+    ctx.lineTo(-8*s, 9*s);
+
+    // Heel
+    ctx.quadraticCurveTo(
+        -10*s, 3*s,
+        -8*s, -4*s
+    );
+
+    // Close back to cuff
+    ctx.quadraticCurveTo(
+        -7*s, -8*s,
+        -7*s, -14*s
+    );
+
+    ctx.stroke();
+
+    // ---------- Ankle curve ----------
+    ctx.beginPath();
+    ctx.moveTo(-5*s,-2*s);
+
+    ctx.quadraticCurveTo(
+        -1*s,0*s,
+        1*s,-6*s
+    );
+
+    ctx.quadraticCurveTo(
+        2*s,-8*s,
+        4*s,-6*s
+    );
+
+    ctx.stroke();
+
+    // ---------- Lace hole ----------
+    ctx.beginPath();
+    ctx.arc(-1.5*s,-1.5*s,0.8*s,0,Math.PI*2);
+    ctx.fillStyle = color;
+    ctx.fill();
+
+    // ---------- Frame ----------
+    ctx.beginPath();
+    ctx.moveTo(-9*s,11*s);
+    ctx.lineTo(13*s,11*s);
+    ctx.stroke();
+
+    // ---------- Wheel Supports ----------
+    [-5,-1,3,7].forEach(px=>{
+        ctx.beginPath();
+        ctx.moveTo(px*s,11*s);
+        ctx.lineTo(px*s,13*s);
+        ctx.stroke();
+    });
+
+    // ---------- Wheels ----------
+    [-5,-1,3,7].forEach(px=>{
+        ctx.beginPath();
+        ctx.arc(px*s,15*s,2.6*s,0,Math.PI*2);
+        ctx.stroke();
+    });
+
+    ctx.restore();
+}
+const GLOW = '#7ebe9a';
+const GLOW_FILL = 'rgba(126,190,154,0.18)';
+const GLOW_BLUR = 8;
+
 
 /* ══════════════════════════════════════════
    POPUP TEXT SYSTEM
