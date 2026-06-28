@@ -135,11 +135,11 @@ const player = {
 };
 player._py = groundY(player.wx);
 
-const WALK_SPEED   = 3;
-const BLADE_SPEED  = 6;
+const WALK_SPEED   = 2;
+const BLADE_SPEED  = 5;
 const BLADE_FRICTION = 0.95; // momentum when blades on
 const JUMP_FORCE   = -10;
-const GRAVITY      = 0.55;
+const GRAVITY      = 0.45;
 const CHAR_H       = 48;     // character hitbox height (px)
 
 /* ══════════════════════════════════════════
@@ -710,6 +710,7 @@ const GLOW_BLUR = 8;
 ══════════════════════════════════════════ */
 let activePopup = null;
 const POPUP_TRIGGERS = {
+  thought: { dist:40,  text:'stupid owl... telling me to wander around.' },
   log:    { dist:80,  text:'a fallen log. might have to jump over this.' },
   blades: { dist:50,  text:'rollerblades! walk over them to pick up.' },
   net:    { dist:120, text:'a volleyball net. three animals waiting for a fourth…' },
@@ -843,7 +844,7 @@ function update() {
     player.onGround = false;
   }
   if (player.flipActive) {
-    player.flipRotation += 0.16;
+    player.flipRotation += 0.12;
     if (player.flipRotation >= Math.PI * 2) player.flipRotation -= Math.PI * 2;
   }
 
