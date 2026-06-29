@@ -22,9 +22,9 @@ canvas { display:block; }
   bottom:28px; left:50%;
   transform:translateX(-50%);
   font-family:'Space Mono',monospace;
-  font-size:18px;
+  font-size:16px;
   letter-spacing:0.1em;
-  color:rgba(255, 255, 255, 0.599);
+  color:rgba(255,255,255,0.6);
   background:rgba(20,24,32,0.55);
   border:0.5px solid rgba(255,255,255,0.08);
   padding:6px 16px;
@@ -36,19 +36,36 @@ canvas { display:block; }
   transition:opacity 0.6s ease;
 }
 #hint-box.visible { opacity:1; }
+#score-box {
+  position:fixed;
+  top:24px; left:50%;
+  transform:translateX(-50%);
+  font-family:'Space Mono',monospace;
+  font-size:14px;
+  letter-spacing:0.1em;
+  color:rgba(255,255,255,0.7);
+  background:rgba(20,24,32,0.6);
+  border:0.5px solid rgba(255,255,255,0.1);
+  padding:6px 20px;
+  border-radius:20px;
+  pointer-events:none;
+  z-index:50;
+  display:none;
+}
 </style>
 </head>
 <body>
 <div id="fade"></div>
 <canvas id="c"></canvas>
-<div id="hint-box" id="hintBox">arrow keys or wasd to move · space to jump</div>
+<div id="hint-box">arrow keys or wasd to move · space to jump</div>
+<div id="score-box" id="scoreBox">0 — 0</div>
 
 <script>
 /* ══════════════════════════════════════════
    CANVAS + RESIZE
 ══════════════════════════════════════════ */
 const canvas = document.getElementById('c');
-const ctx    = canvas.getContext('2d');
+const ctx = canvas.getContext('2d');
 let W, H;
 function resize() {
   W = canvas.width  = window.innerWidth;
@@ -58,20 +75,26 @@ resize();
 window.addEventListener('resize', resize);
 
 /* ══════════════════════════════════════════
-   WORLD CONSTANTS
-   World coords: x runs left→right, y is pixels from top.
-   Ground Y is computed per-x from terrain segments.
+   WORLD
 ══════════════════════════════════════════ */
-const WORLD_W = 12000;   // total world width in px
+const WORLD_W  = 6000;
+const BASE_GND = 0.78;
 
-/* ── TERRAIN ──
-   Array of segments: { x1, y1, x2, y2 }
-   Each segment defines a ground line from (x1,groundY+y1) to (x2,groundY+y2)
-   y offset is relative to the base ground level (positive = lower, negative = higher)
-*/
-const BASE_GND = 0.78; // fraction of H for baseline ground
+const TERRAIN = [
+  { x1:    0, y1:   0, x2:  600, y2:   0 },
+  { x1:  600, y1:   0, x2:  900, y2:-100 },
+  { x1:  900, y1:-100, x2: 1100, y2:-100 },
+  { x1: 1100, y1:-100, x2: 1300, y2:   0 },
+  { x1: 1300, y1:   0, x2: 2000, y2:   0 },
+  { x1: 2000, y1:   0, x2: 2300, y2: -60 },
+  { x1: 2300, y1: -60, x2: 2500, y2: -60 },
+  { x1: 2500, y1: -60, x2: 2800, y2:  20 },
+  { x1: 2800, y1:  20, x2: 3600, y2:  20 },
+  { x1: 3600, y1:  20, x2: 3900, y2:   0 },
+  { x1: 3900, y1:   0, x2:WORLD_W,y2:  0 },
+];
+
 function groundY(worldX) {
-  // Find which segment worldX falls in and interpolate
   for (const seg of TERRAIN) {
     if (worldX >= seg.x1 && worldX <= seg.x2) {
       const t = (worldX - seg.x1) / (seg.x2 - seg.x1);
@@ -81,95 +104,92 @@ function groundY(worldX) {
   return H * BASE_GND;
 }
 
-// y values are pixel offsets from base ground (negative = uphill)
-const TERRAIN = [
-  { x1:    0, y1:  0, x2:  600, y2:  0  }, // flat start
-  { x1:  600, y1:  0, x2:  900, y2: -100 }, // gentle rise
-  { x1:  900, y1:-100, x2: 1100, y2: -100 }, // flat plateau (obstacle here)
-  { x1: 1100, y1:-100, x2: 1300, y2:  0  }, // back down
-  { x1: 1300, y1:  0, x2: 2000, y2:  0  }, // long flat (rollerblades here)
-  { x1: 2000, y1:  0, x2: 2300, y2: -60 }, // ramp up
-  { x1: 2300, y1:-60, x2: 2500, y2: -60 }, // flat top
-  { x1: 2500, y1:-60, x2: 2800, y2:  20 }, // fun downhill
-  { x1: 2800, y1: 20, x2: 3600, y2:  20 }, // lower flat (volleyball court)
-  { x1: 3600, y1: 20, x2: 3900, y2:  0  }, // back to base
-  { x1: 3900, y1:  0, x2: WORLD_W, y2: 0 }, // remainder
-];
+/* ══════════════════════════════════════════
+   VOLLEYBALL COURT CONSTANTS
+   Net is at world x=3200, court spans 2900-3500
+   Left side: 2900-3200 (player side)
+   Right side: 3200-3500 (enemy side)
+══════════════════════════════════════════ */
+const NET_X     = 3200;
+const COURT_L   = 2850;  // left edge of player side
+const COURT_R   = 3550;  // right edge of enemy side
+const NET_H     = 110;
+const COURT_GND = () => groundY(NET_X);
 
-/* ── WORLD OBJECTS ── */
+// Serve positions
+const PLAYER_SERVE_X = 2900; // player back line for serve
+const ENEMY_SERVE_X  = 3500; // enemy back line for serve
+
+/* ══════════════════════════════════════════
+   OBJECTS
+══════════════════════════════════════════ */
 const OBJECTS = [
-  // obstacle (log)
-  { type:'log',   wx:980,  wy:0, w:40, h:28 },
-  // rollerblades
-  { type:'blades', wx:1600, wy:0, w:36, h:18, collected:false },
-  // volleyball net
-  { type:'net',   wx:3200, wy:0, w:8,  h:90 },
-  // npc animals
-  { type:'npc', wx:2820, wy:0, label:'🐰', color:'#e8d5c0' },
-  { type:'npc', wx:2860, wy:0, label:'🦔', color:'#c8b89a' },
-  { type:'npc', wx:3000, wy:0, label:'🦊', color:'#d4905a' },
-  // letter pinned to tree
-  { type:'letter', wx:3600, wy:0 },
+  { type:'log',    wx: 980, w:40, h:28 },
+  { type:'blades', wx:1600, w:36, h:18, collected:false },
+  { type:'letter', wx:3700 },
 ];
 
 /* ══════════════════════════════════════════
    PLAYER
 ══════════════════════════════════════════ */
 const player = {
-  wx: 80,           // world x
-  vy: 0,            // vertical velocity
+  wx: 80,
+  _py: 0,
+  _vx: 0,
+  vy: 0,
   onGround: false,
   hasBlades: false,
   walkFrame: 0,
   walkTimer: 0,
   facingRight: true,
-  jumping: false,
   isDucking: false,
   jumpCount: 0,
   flipActive: false,
   flipRotation: 0,
   flipDirection: 1,
-  // derived
-  get wy() { return groundY(this.wx); }, // ground y at current x
-  get py() { return this._py !== undefined ? this._py : this.wy; }, // actual y (may be airborne)
 };
-player._py = groundY(player.wx);
+player._py = 0;
 
-const WALK_SPEED   = 2;
-const BLADE_SPEED  = 5;
-const BLADE_FRICTION = 0.95; // momentum when blades on
-const JUMP_FORCE   = -10;
-const GRAVITY      = 0.45;
-const CHAR_H       = 48;     // character hitbox height (px)
+const WALK_SPEED     = 2;
+const BLADE_SPEED    = 5;
+const BLADE_FRICTION = 0.95;
+const JUMP_FORCE     = -10;
+const GRAVITY        = 0.45;
+const CHAR_H         = 48;
 
 /* ══════════════════════════════════════════
    INPUT
 ══════════════════════════════════════════ */
 const keys = {};
 window.addEventListener('keydown', e => {
+  // if (keys[e.code]) return;
   keys[e.code] = true;
   if (e.code === 'ArrowDown' || e.code === 'KeyS') player.isDucking = true;
   if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
     if (player.onGround) {
       player.vy = JUMP_FORCE;
       player.onGround = false;
-      player.jumping = true;
       player.jumpCount = 1;
       player.flipActive = false;
       player.flipRotation = 0;
-      player.flipDirection = 1;
     } else if (player.jumpCount === 1) {
-      player.vy = JUMP_FORCE;
-      player.jumpCount = 2;
-      player.flipActive = true;
-      player.flipRotation = 0;
       const baseDir = player.facingRight ? 1 : -1; // clockwise when facing right, counter-clockwise when left
       player.flipDirection = (keys['ArrowDown'] || keys['KeyS']) ? baseDir : -baseDir;
+      // In volleyball mode, second jump in air = spike attempt
+      if (vball.active && vball.phase === 'player_spike') {
+        attemptSpike();
+      } else {
+        player.vy = JUMP_FORCE * 0.8;
+        player.jumpCount = 2;
+        player.flipActive = true;
+        player.flipRotation = 0;
+        // player.flipDirection = player.facingRight ? 1 : -1;
+      }
     }
   }
 });
-window.addEventListener('keyup', e => { 
-  keys[e.code] = false; 
+window.addEventListener('keyup', e => {
+  keys[e.code] = false;
   if (e.code === 'ArrowDown' || e.code === 'KeyS') player.isDucking = false;
 });
 
@@ -184,422 +204,177 @@ function updateCamera() {
 }
 
 /* ══════════════════════════════════════════
-   PARALLAX LAYERS
+   BACKGROUND
 ══════════════════════════════════════════ */
 function drawSky() {
   const grad = ctx.createLinearGradient(0,0,0,H);
-  grad.addColorStop(0, '#060810');
+  grad.addColorStop(0,    '#060810');
   grad.addColorStop(0.55, '#0d1220');
-  grad.addColorStop(1, '#151a28');
+  grad.addColorStop(1,    '#151a28');
   ctx.fillStyle = grad;
   ctx.fillRect(0,0,W,H);
 }
 
-// Stars are fixed in screen space (fastest parallax = none)
 const STARS = Array.from({length:60}, () => ({
   x: Math.random(), y: Math.random()*0.65,
-  r: 0.5 + Math.random()*1.2,
-  a: 0.2 + Math.random()*0.6,
+  r: 0.5+Math.random()*1.2, a: 0.2+Math.random()*0.6,
   phase: Math.random()*Math.PI*2,
 }));
 let starT = 0;
 function drawStars() {
   starT += 0.008;
   STARS.forEach(s => {
-    const blink = s.a + 0.2*Math.sin(starT + s.phase);
     ctx.beginPath();
     ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
-    ctx.fillStyle = `rgba(255,255,255,${blink})`;
+    ctx.fillStyle = `rgba(255,255,255,${s.a+0.2*Math.sin(starT+s.phase)})`;
     ctx.fill();
   });
 }
 
 function drawMoon() {
-  const mx = W*0.82, my = H*0.12, mr = H*0.048;
-  ctx.beginPath(); ctx.arc(mx, my, mr, 0, Math.PI*2);
-  ctx.fillStyle = '#d8dfc8'; ctx.fill();
-  ctx.beginPath(); ctx.arc(mx+mr*0.28, my-mr*0.1, mr*0.86, 0, Math.PI*2);
-  ctx.fillStyle = '#0a0c0f'; ctx.fill();
+  const mx=W*0.82, my=H*0.12, mr=H*0.048;
+  ctx.beginPath(); ctx.arc(mx,my,mr,0,Math.PI*2); ctx.fillStyle='#d8dfc8'; ctx.fill();
+  ctx.beginPath(); ctx.arc(mx+mr*0.28,my-mr*0.1,mr*0.86,0,Math.PI*2); ctx.fillStyle='#0a0c0f'; ctx.fill();
 }
 
-// Distant tree silhouettes (parallax 0.15)
-const BG_TREES = Array.from({length:28}, (_, i) => ({
-  wx: 80 + i * 220 + Math.random()*80,
-  h: 60 + Math.random()*80,
-  w: 18 + Math.random()*22,
+const BG_TREES = Array.from({length:28}, (_,i) => ({
+  wx: 80+i*220+Math.random()*80, h:60+Math.random()*80, w:18+Math.random()*22,
 }));
 function drawBgTrees() {
   BG_TREES.forEach(t => {
-    const sx = t.wx - camX * 0.15;
+    const sx = t.wx - camX*0.15;
     if (sx < -60 || sx > W+60) return;
-    const gY = H * BASE_GND - 2;
-    ctx.strokeStyle = 'rgba(30,45,25,0.7)';
-    ctx.lineWidth = t.w * 0.15;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(sx, gY);
-    ctx.lineTo(sx, gY - t.h*0.4);
-    ctx.stroke();
-    // canopy
-    ctx.fillStyle = 'rgba(22,38,18,0.65)';
-    ctx.beginPath();
-    ctx.ellipse(sx, gY - t.h*0.55, t.w*0.5, t.h*0.55, 0, 0, Math.PI*2);
-    ctx.fill();
+    const gY = H*BASE_GND - 2;
+    ctx.strokeStyle='rgba(30,45,25,0.7)'; ctx.lineWidth=t.w*0.15; ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(sx,gY); ctx.lineTo(sx,gY-t.h*0.4); ctx.stroke();
+    ctx.fillStyle='rgba(22,38,18,0.65)';
+    ctx.beginPath(); ctx.ellipse(sx,gY-t.h*0.55,t.w*0.5,t.h*0.55,0,0,Math.PI*2); ctx.fill();
   });
 }
 
-/* ══════════════════════════════════════════
-   TERRAIN DRAWING
-══════════════════════════════════════════ */
 function drawTerrain() {
   ctx.save();
-  // Ground fill
   ctx.beginPath();
   ctx.moveTo(-camX, H);
-  // walk the terrain segments
   for (const seg of TERRAIN) {
-    const sx1 = seg.x1 - camX, sx2 = seg.x2 - camX;
-    const sy1 = H*BASE_GND + seg.y1, sy2 = H*BASE_GND + seg.y2;
-    ctx.lineTo(sx1, sy1);
-    ctx.lineTo(sx2, sy2);
+    ctx.lineTo(seg.x1-camX, H*BASE_GND+seg.y1);
+    ctx.lineTo(seg.x2-camX, H*BASE_GND+seg.y2);
   }
-  ctx.lineTo(WORLD_W - camX, H);
+  ctx.lineTo(WORLD_W-camX, H);
   ctx.closePath();
-  const gfill = ctx.createLinearGradient(0, H*BASE_GND-80, 0, H);
-  gfill.addColorStop(0, '#1e2a14');
-  gfill.addColorStop(0.3, '#151e0e');
-  gfill.addColorStop(1, '#0c1208');
-  ctx.fillStyle = gfill;
-  ctx.fill();
-
-  // Grass surface line
+  const gf = ctx.createLinearGradient(0,H*BASE_GND-80,0,H);
+  gf.addColorStop(0,'#1e2a14'); gf.addColorStop(0.3,'#151e0e'); gf.addColorStop(1,'#0c1208');
+  ctx.fillStyle=gf; ctx.fill();
   ctx.beginPath();
-  let first = true;
+  let first=true;
   for (const seg of TERRAIN) {
-    const sx1 = seg.x1 - camX, sx2 = seg.x2 - camX;
-    const sy1 = H*BASE_GND + seg.y1, sy2 = H*BASE_GND + seg.y2;
-    if (first) { ctx.moveTo(sx1, sy1); first=false; }
-    ctx.lineTo(sx2, sy2);
+    if (first) { ctx.moveTo(seg.x1-camX, H*BASE_GND+seg.y1); first=false; }
+    ctx.lineTo(seg.x2-camX, H*BASE_GND+seg.y2);
   }
-  ctx.strokeStyle = 'rgba(80,120,50,0.6)';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  ctx.strokeStyle='rgba(80,120,50,0.6)'; ctx.lineWidth=2; ctx.stroke();
   ctx.restore();
 }
 
 /* ══════════════════════════════════════════
-   WORLD OBJECTS DRAWING
+   VOLLEYBALL NET — sideways perspective
 ══════════════════════════════════════════ */
-function worldToScreen(wx, wy_offset) {
-  return { x: wx - camX, y: groundY(wx) + (wy_offset||0) };
-}
-
-function drawObjects() {
-  OBJECTS.forEach(obj => {
-    const sx = obj.wx - camX;
-    const sy = groundY(obj.wx);
-    if (sx < -200 || sx > W+200) return;
-
-    if (obj.type === 'log') {
-      // rounded log on ground
-      ctx.save();
-      ctx.strokeStyle = 'rgba(160,130,90,0.85)';
-      ctx.fillStyle = 'rgba(100,75,45,0.7)';
-      ctx.lineWidth = 1.5;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.ellipse(sx, sy - obj.h*0.5, obj.w*0.5, obj.h*0.5, 0, 0, Math.PI*2);
-      ctx.fill(); ctx.stroke();
-      // wood grain lines
-      ctx.strokeStyle = 'rgba(80,55,30,0.4)';
-      ctx.lineWidth = 0.8;
-      for (let i=-1;i<=1;i++) {
-        ctx.beginPath();
-        ctx.moveTo(sx+i*10, sy-obj.h*0.15);
-        ctx.bezierCurveTo(sx+i*10-4, sy-obj.h*0.5, sx+i*10+4, sy-obj.h*0.85, sx+i*10, sy-obj.h);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    else if (obj.type === 'blades' && !obj.collected) {
-      // rollerblades — glowing pair on ground
-      ctx.save();
-      ctx.shadowColor = '#7ebe9a';
-      ctx.shadowBlur = 10;
-      ctx.strokeStyle = 'rgba(126,190,154,0.9)';
-      ctx.fillStyle = 'rgba(126,190,154,0.15)';
-      ctx.lineWidth = 1.5;
-
-      drawRollerblade(
-          sx - 10,
-          sy - 5,
-          .8
-      );
-
-      drawRollerblade(
-          sx + 12,
-          sy - 5,
-          .8
-      );
-      // floating label
-      ctx.shadowBlur = 0;
-      ctx.font = '10px Space Mono, monospace';
-      ctx.fillStyle = 'rgba(126,190,154,0.7)';
-      ctx.textAlign = 'center';
-      ctx.fillText('rollerblades', sx, sy - 22);
-      ctx.restore();
-    }
-
-    else if (obj.type === 'net') {
-      // volleyball net
-      ctx.save();
-      ctx.strokeStyle = 'rgba(200,190,160,0.7)';
-      ctx.lineWidth = 1.5;
-      // posts
-      ctx.beginPath();
-      ctx.moveTo(sx - 60, sy);
-      ctx.lineTo(sx - 60, sy - obj.h);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.moveTo(sx + 60, sy);
-      ctx.lineTo(sx + 60, sy - obj.h);
-      ctx.stroke();
-      // top rope
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = 'rgba(220,210,170,0.85)';
-      ctx.beginPath();
-      ctx.moveTo(sx-60, sy-obj.h);
-      ctx.lineTo(sx+60, sy-obj.h);
-      ctx.stroke();
-      // net mesh
-      ctx.strokeStyle = 'rgba(200,190,160,0.35)';
-      ctx.lineWidth = 0.7;
-      for (let nx=-50; nx<=50; nx+=12) {
-        ctx.beginPath();
-        ctx.moveTo(sx+nx, sy-obj.h);
-        ctx.lineTo(sx+nx, sy);
-        ctx.stroke();
-      }
-      for (let ny=0; ny<=obj.h; ny+=15) {
-        ctx.beginPath();
-        ctx.moveTo(sx-60, sy-ny);
-        ctx.lineTo(sx+60, sy-ny);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    else if (obj.type === 'npc') {
-      // small woodland animal (circle body + label)
-      ctx.save();
-      ctx.strokeStyle = `rgba(${hexToRgb(obj.color)},0.8)`;
-      ctx.fillStyle = `rgba(${hexToRgb(obj.color)},0.15)`;
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.ellipse(sx, sy-12, 10, 12, 0, 0, Math.PI*2);
-      ctx.fill(); ctx.stroke();
-      ctx.beginPath();
-      ctx.ellipse(sx, sy-26, 8, 8, 0, 0, Math.PI*2);
-      ctx.fill(); ctx.stroke();
-      ctx.font = '16px serif';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = 'rgba(255,255,255,0.9)';
-      ctx.fillText(obj.label, sx, sy-38);
-      ctx.restore();
-    }
-
-    else if (obj.type === 'letter') {
-      // letter pinned to a tree
-      ctx.save();
-      // tree trunk
-      ctx.strokeStyle = 'rgba(150,125,90,0.7)';
-      ctx.lineWidth = 8;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(sx, sy);
-      ctx.lineTo(sx, sy-120);
-      ctx.stroke();
-      // canopy
-      ctx.fillStyle = 'rgba(20,38,16,0.6)';
-      ctx.beginPath();
-      ctx.ellipse(sx, sy-150, 45, 60, 0, 0, Math.PI*2);
-      ctx.fill();
-      // letter envelope
-      ctx.fillStyle = 'rgba(230,220,195,0.9)';
-      ctx.strokeStyle = 'rgba(160,140,100,0.8)';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.roundRect(sx-14, sy-105, 28, 20, 2);
-      ctx.fill(); ctx.stroke();
-      // envelope flap line
-      ctx.beginPath();
-      ctx.moveTo(sx-14, sy-105);
-      ctx.lineTo(sx, sy-95);
-      ctx.lineTo(sx+14, sy-105);
-      ctx.stroke();
-      // pin
-      ctx.fillStyle = 'rgba(200,80,80,0.8)';
-      ctx.beginPath();
-      ctx.arc(sx, sy-107, 3, 0, Math.PI*2);
-      ctx.fill();
-      ctx.restore();
-    }
-  });
-}
-
-function hexToRgb(hex) {
-  const r = parseInt(hex.slice(1,3),16);
-  const g = parseInt(hex.slice(3,5),16);
-  const b = parseInt(hex.slice(5,7),16);
-  return `${r},${g},${b}`;
-}
-
-/* ══════════════════════════════════════════
-   MOUSE CHARACTER DRAWING
-   Refactored to be position-aware and animated
-══════════════════════════════════════════ */
-function drawPlayer() {
-  const sx = player.wx - camX;
-  const sy = player._py;
-  const s = Math.min(W,H) * 0.001 * 1.4; // scale relative to viewport
-
-  // Character proportions
-  const BODY_W = 11 * s;
-  const BODY_H = 17 * s;
-
-  const SHOULDER_X = BODY_W * 0.92;
-  const SHOULDER_Y = -28 * s;
-
-  const HIP_X = BODY_W * 0.3;
-  const HIP_Y = -4 * s;
-
-  // walk cycle
-  const walk = player.onGround && (keys['ArrowLeft']||keys['KeyA']||keys['ArrowRight']||keys['KeyD']);
-  if (walk) {
-    player.walkTimer++;
-    if (player.walkTimer > (player.hasBlades ? 4 : 8)) {
-      player.walkFrame = (player.walkFrame + 1) % 4;
-      player.walkTimer = 0;
-    }
-  } else if (player.onGround) {
-    player.walkFrame = 0;
-  }
-
-  const frame = player.onGround ? player.walkFrame : 2; // frame 2 = legs together for jump
-  const legSwing = [0, 18, 0, -18][frame] * (Math.PI/180);
-  const armSwing = [0, -15, 0, 15][frame] * (Math.PI/180);
-  const bodyBob  = player.onGround ? [0,-1,0,1][frame] : 0;
+function drawNet() {
+  const sx  = NET_X - camX;
+  const sy  = COURT_GND();
+  const nh  = NET_H;
+  const dep = 28; // depth of 3D perspective
 
   ctx.save();
-  const rotation = player.flipActive ? player.flipDirection * player.flipRotation : 0;
-  const ROT_ORIGIN_Y = -18 * s;
-  ctx.translate(sx, sy + bodyBob + ROT_ORIGIN_Y);
-  ctx.rotate(rotation);
-  ctx.translate(0, -ROT_ORIGIN_Y);
-  if (!player.facingRight) ctx.scale(-1, 1);
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
 
-  const ss = (a, w) => {
-    ctx.strokeStyle = `rgba(200,185,170,${a})`;
-    ctx.lineWidth = w || 1.2;
-  };
+  // Sand/court floor highlight
+  ctx.fillStyle = 'rgba(180,160,100,0.08)';
+  ctx.beginPath();
+  ctx.moveTo(COURT_L-camX, sy);
+  ctx.lineTo(COURT_R-camX, sy);
+  ctx.lineTo(COURT_R-camX+dep, sy-dep*0.4);
+  ctx.lineTo(COURT_L-camX+dep, sy-dep*0.4);
+  ctx.closePath();
+  ctx.fill();
 
-  // speed lines when blading
-  if (player.hasBlades && Math.abs(player._vx||0) > 3) {
-    ctx.save();
-    ctx.strokeStyle = 'rgba(126,190,154,0.25)';
-    ctx.lineWidth = 1;
+  // Court boundary lines
+  ctx.strokeStyle = 'rgba(200,185,140,0.25)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([6,8]);
+  ctx.beginPath(); ctx.moveTo(COURT_L-camX, sy); ctx.lineTo(COURT_R-camX, sy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(COURT_L-camX, sy); ctx.lineTo(COURT_L-camX+dep, sy-dep*0.4); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(COURT_R-camX, sy); ctx.lineTo(COURT_R-camX+dep, sy-dep*0.4); ctx.stroke();
+  ctx.setLineDash([]);
 
-    // The character transform already mirrors the sprite, so these lines
-    // should keep their original side and naturally flip with the body.
-    [[-28,-20,-50,-18],[-28,-30,-46,-30],[-28,-40,-44,-42]].forEach(([x1,y1,x2,y2])=>{
-      ctx.beginPath();
-      ctx.moveTo(x1 * s, y1 * s);
-      ctx.lineTo(x2 * s, y2 * s);
-      ctx.stroke();
-    });
-    ctx.restore();
+  // Back post (far side, slightly right + up = perspective)
+  const bx = sx + dep, by = sy - dep*0.4;
+  ctx.strokeStyle = 'rgba(180,165,120,0.5)';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx, by-nh); ctx.stroke();
+
+  // Connecting lines (top and bottom of net depth)
+  ctx.strokeStyle = 'rgba(180,165,120,0.4)';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(sx, sy-nh);   ctx.lineTo(bx, by-nh); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(sx, sy);       ctx.lineTo(bx, by);    ctx.stroke();
+
+  // Net mesh — back face
+  ctx.strokeStyle = 'rgba(180,165,120,0.2)';
+  ctx.lineWidth = 0.5;
+  for (let nx=0; nx<=dep; nx+=7) {
+    ctx.beginPath(); ctx.moveTo(sx+nx, sy - (nx/dep)*dep*0.4);
+    ctx.lineTo(sx+nx, sy - (nx/dep)*dep*0.4 - nh); ctx.stroke();
+  }
+  for (let ny=0; ny<=nh; ny+=14) {
+    ctx.beginPath(); ctx.moveTo(sx, sy-ny); ctx.lineTo(bx, by-ny); ctx.stroke();
   }
 
-  // legs
-  ss(0.75, 1.1);
-  const lx1 = Math.sin(legSwing)*12*s, ly1 = Math.cos(legSwing)*18*s;
-  const lx2 = Math.sin(-legSwing)*12*s, ly2 = Math.cos(-legSwing)*18*s;
-  ctx.beginPath(); ctx.moveTo(-HIP_X*s,HIP_Y*s); ctx.lineTo(-HIP_X*s+lx1, HIP_Y*s+ly1); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(HIP_X*s,HIP_Y*s);  ctx.lineTo(HIP_X*s+lx2, HIP_Y*s+ly2);  ctx.stroke();
+  // Front post (main view)
+  ctx.strokeStyle = 'rgba(210,195,150,0.85)';
+  ctx.lineWidth = 2.5;
+  ctx.beginPath(); ctx.moveTo(sx, sy); ctx.lineTo(sx, sy-nh); ctx.stroke();
 
-  // rollerblades on feet
-  if (player.hasBlades) {
-    drawRollerblade(
-        -4*s + lx1,
-        -6*s + ly1,
-        s*.6
-    );
-
-    drawRollerblade(
-        4*s + lx2,
-        -6*s + ly2,
-        s*.6
-    );
+  // Front net face
+  ctx.strokeStyle = 'rgba(210,195,150,0.35)';
+  ctx.lineWidth = 0.8;
+  for (let ny=0; ny<=nh; ny+=14) {
+    ctx.beginPath(); ctx.moveTo(sx, sy-ny); ctx.lineTo(sx, sy-ny); // just marker
+    // diagonal mesh lines across front face width (1px wide = single post)
+    ctx.stroke();
   }
 
-  // body
-  ss(0.82);
-  ctx.beginPath();
-  ctx.ellipse(
-      0,
-      -18*s,
-      BODY_W,
-      BODY_H,
-      0.12,
-      0,
-      Math.PI*2
-  );
-  ctx.stroke();
+  // Top tape (bright stripe)
+  ctx.strokeStyle = 'rgba(230,215,170,0.9)';
+  ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(sx, sy-nh); ctx.lineTo(bx, by-nh); ctx.stroke();
 
-  // arms
-  ss(0.7, 1.0);
-  const ax1 = Math.sin(armSwing)*14*s, ay1 = -Math.cos(armSwing)*8*s+2*s;
-  const ax2 = Math.sin(-armSwing)*14*s, ay2 = -Math.cos(-armSwing)*8*s+2*s;
-  ctx.beginPath(); ctx.moveTo(-SHOULDER_X, SHOULDER_Y); ctx.lineTo(-SHOULDER_X + ax1, SHOULDER_Y + ay1); ctx.stroke();  
-  ctx.beginPath(); ctx.moveTo(SHOULDER_X, SHOULDER_Y); ctx.lineTo(SHOULDER_X + ax2, SHOULDER_Y + ay2); ctx.stroke();  
-
-  // head
-  ss(0.88);
-  ctx.beginPath();
-  ctx.ellipse(2*s, -40*s, 12*s, 11*s, 0, 0, Math.PI*2);
-  ctx.stroke();
-
-  // ears
-  ctx.beginPath(); ctx.arc(-6*s,-50*s,6*s,0,Math.PI*2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(8*s,-52*s,6*s,0,Math.PI*2);  ctx.stroke();
-  ctx.strokeStyle='rgba(200,135,140,0.35)'; ctx.lineWidth=0.7;
-  ctx.beginPath(); ctx.arc(-6*s,-50*s,3.5*s,0,Math.PI*2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(8*s,-52*s,3.5*s,0,Math.PI*2);  ctx.stroke();
-
-  // eye
-  ss(0.85,1.0);
-  ctx.beginPath(); ctx.arc(7*s,-42*s,3*s,0,Math.PI*2); ctx.stroke();
-  ctx.fillStyle='rgba(15,12,12,0.92)'; ctx.beginPath(); ctx.arc(7*s,-42*s,1.8*s,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle='rgba(255,255,240,0.82)'; ctx.beginPath(); ctx.arc(8*s,-43*s,0.8*s,0,Math.PI*2); ctx.fill();
-
-  // nose
-  ctx.fillStyle='rgba(200,135,140,0.55)'; ctx.beginPath(); ctx.arc(13*s,-39*s,1.5*s,0,Math.PI*2); ctx.fill();
-
-  // whiskers
-  ctx.strokeStyle='rgba(220,210,200,0.4)'; ctx.lineWidth=0.6;
-  [[13,-38,26,-36],[13,-40,26,-40],[13,-42,26,-45]].forEach(([x1,y1,x2,y2])=>{
-    ctx.beginPath(); ctx.moveTo(x1*s,y1*s); ctx.lineTo(x2*s,y2*s); ctx.stroke();
-  });
-
-  // tail
-  ctx.strokeStyle='rgba(185,165,150,0.5)'; ctx.lineWidth=1;
-  ctx.beginPath(); ctx.moveTo(-12*s,-10*s); ctx.bezierCurveTo(-28*s,-4*s,-34*s,6*s,-24*s,12*s); ctx.stroke();
+  // Antenna left
+  ctx.strokeStyle = 'rgba(220,80,80,0.7)';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(sx-2, sy-nh); ctx.lineTo(sx-2, sy-nh-22); ctx.stroke();
+  // antenna right (back)
+  ctx.strokeStyle = 'rgba(220,80,80,0.4)';
+  ctx.beginPath(); ctx.moveTo(bx-2, by-nh); ctx.lineTo(bx-2, by-nh-22); ctx.stroke();
 
   ctx.restore();
 }
+
+/* ══════════════════════════════════════════
+   OBJECTS
+══════════════════════════════════════════ */
+function hexToRgb(hex) {
+  return `${parseInt(hex.slice(1,3),16)},${parseInt(hex.slice(3,5),16)},${parseInt(hex.slice(5,7),16)}`;
+}
+
+function manualRoundRect(x,y,w,h,r) {
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);
+  ctx.lineTo(x+w-r,y); ctx.arcTo(x+w,y,x+w,y+r,r);
+  ctx.lineTo(x+w,y+h-r); ctx.arcTo(x+w,y+h,x+w-r,y+h,r);
+  ctx.lineTo(x+r,y+h); ctx.arcTo(x,y+h,x,y+h-r,r);
+  ctx.lineTo(x,y+r); ctx.arcTo(x,y,x+r,y,r);
+  ctx.closePath();
+}
+
 
 function drawRollerblade(x, y, s = 1, color = '#7ebe9a') {
     ctx.save();
@@ -704,226 +479,800 @@ const GLOW = '#7ebe9a';
 const GLOW_FILL = 'rgba(126,190,154,0.18)';
 const GLOW_BLUR = 8;
 
+function drawObjects() {
+  OBJECTS.forEach(obj => {
+    const sx = obj.wx - camX;
+    const sy = groundY(obj.wx);
+    if (sx < -250 || sx > W+250) return;
+    ctx.save();
+
+    if (obj.type === 'log') {
+      ctx.strokeStyle='rgba(160,130,90,0.85)'; ctx.fillStyle='rgba(100,75,45,0.7)';
+      ctx.lineWidth=1.5; ctx.lineCap='round';
+      ctx.beginPath(); ctx.ellipse(sx,sy-obj.h*0.5,obj.w*0.5,obj.h*0.5,0,0,Math.PI*2); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle='rgba(80,55,30,0.4)'; ctx.lineWidth=0.8;
+      for (let i=-1;i<=1;i++) {
+        ctx.beginPath(); ctx.moveTo(sx+i*10,sy-obj.h*0.15);
+        ctx.bezierCurveTo(sx+i*10-4,sy-obj.h*0.5,sx+i*10+4,sy-obj.h*0.85,sx+i*10,sy-obj.h); ctx.stroke();
+      }
+    }
+
+    else if (obj.type === 'blades' && !obj.collected) {
+      ctx.fillStyle='rgba(126,190,154,0.07)';
+      // ctx.beginPath(); ctx.ellipse(sx,sy-8,30,14,0,0,Math.PI*2); ctx.fill();
+      drawRollerblade(sx-20,sy-14,0.8);
+      drawRollerblade(sx+4, sy-14,0.8);
+      ctx.font='10px Space Mono,monospace'; ctx.fillStyle='rgba(126,190,154,0.7)';
+      ctx.textAlign='center'; ctx.fillText('rollerblades',sx,sy-28);
+    }
+
+    else if (obj.type === 'letter') {
+      ctx.strokeStyle='rgba(150,125,90,0.7)'; ctx.lineWidth=8; ctx.lineCap='round';
+      ctx.beginPath(); ctx.moveTo(sx,sy); ctx.lineTo(sx,sy-120); ctx.stroke();
+      ctx.fillStyle='rgba(20,38,16,0.6)';
+      ctx.beginPath(); ctx.ellipse(sx,sy-150,45,60,0,0,Math.PI*2); ctx.fill();
+      ctx.fillStyle='rgba(230,220,195,0.9)'; ctx.strokeStyle='rgba(160,140,100,0.8)'; ctx.lineWidth=1;
+      manualRoundRect(sx-14,sy-105,28,20,2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(sx-14,sy-105); ctx.lineTo(sx,sy-95); ctx.lineTo(sx+14,sy-105); ctx.stroke();
+      ctx.fillStyle='rgba(200,80,80,0.8)'; ctx.beginPath(); ctx.arc(sx,sy-107,3,0,Math.PI*2); ctx.fill();
+    }
+
+    ctx.restore();
+  });
+}
 
 /* ══════════════════════════════════════════
-   POPUP TEXT SYSTEM
+   VOLLEYBALL GAME STATE
+══════════════════════════════════════════ */
+const vball = {
+  // States:
+  // 'inactive'        — not in game, animals visible waiting
+  // 'prompt'          — player is near court, prompt shown
+  // 'player_serve'    — ball hovering at player back line, player runs up to hit
+  // 'enemy_serve'     — enemy passer runs up to hit floating ball
+  // 'player_receive'  — ball flying toward player side
+  // 'player_pass'     — player passed, heading to setter
+  // 'player_set_wait' — setter about to set
+  // 'player_spike'    — ball set for player to spike
+  // 'enemy_receive'   — fox receives the ball on the enemy side
+  // 'enemy_pass'      — hedgehog receives the fox's pass
+  // 'enemy_spike'     — fox attacks the set ball over the net
+  // 'point_scored'    — brief pause after point, then next serve
+
+  active:  false,
+  phase:  'inactive',
+  timer:   0,
+
+  // ball
+  bx: 0, by: 0, bvx: 0, bvy: 0,
+  bRadius: 12,
+  trail: [],
+
+  // who is currently running up for serve (animation)
+  serverRunning: false,
+  serverX: 0,   // current running x (world)
+  reactionTimer: 0,
+
+  // NPC world positions
+  setterX:       3060,  // friendly setter
+  enemySetterX:  3350,  // enemy setter
+  enemyPasserX:  3490,  // enemy passer (back line)
+
+  // scores
+  playerScore: 0,
+  enemyScore:  0,
+
+  // who serves next
+  nextServer: 'enemy',  // start with enemy
+
+  // spike set target
+  spikeSetX: 3080,
+};
+
+/* ── JOIN PROMPT ── */
+let joinPromptVisible = false;
+
+function showJoinPrompt() {
+  if (joinPromptVisible || vball.active) return;
+  joinPromptVisible = true;
+  showHint('press E to join the volleyball game', 99999);
+}
+function hideJoinPrompt() {
+  if (!joinPromptVisible) return;
+  joinPromptVisible = false;
+  hintBox.classList.remove('visible');
+}
+
+window.addEventListener('keydown', e => {
+  if (e.code === 'KeyE') {
+    if (joinPromptVisible && !vball.active) {
+      hideJoinPrompt();
+      startVolleyball();
+    } else if (vball.active) {
+      vball.active = false;
+      vball.phase = 'inactive';
+      document.getElementById('score-box').style.display = 'none';
+      hideJoinPrompt();
+      showHint('left the volleyball game', 1800);
+    }
+  }
+});
+
+/* ── START ── */
+function enterVolleyball() {
+  if (vball.active) return;
+  startVolleyball();
+}
+
+function startVolleyball() {
+  vball.active = true;
+  vball.phase = 'player_serve';
+  vball.playerScore = 0;
+  vball.enemyScore  = 0;
+  vball.reactionTimer = 0;
+  document.getElementById('score-box').style.display = 'block';
+  updateScoreDisplay();
+  // Move player to their side
+  player.wx = Math.min(player.wx, NET_X - 80);
+  beginNextRally();
+}
+
+function updateScoreDisplay() {
+  document.getElementById('score-box').textContent =
+    `you  ${vball.playerScore} — ${vball.enemyScore}  them`;
+}
+
+/* ── RALLY CONTROL ── */
+function beginNextRally() {
+  vball.trail = [];
+  if (vball.nextServer === 'player') {
+    beginPlayerServe();
+  } else {
+    beginEnemyServe();
+  }
+}
+
+/* ── PLAYER SERVE ──
+   Ball hovers over player back line.
+   Player runs up (moves right) and walks into it to make contact.
+*/
+function beginPlayerServe() {
+  vball.phase = 'player_serve';
+  vball.timer = 0;
+  vball.reactionTimer = 0;
+  const gY = COURT_GND();
+  vball.bx  = PLAYER_SERVE_X;
+  vball.by  = gY - NET_H * 0.8;   // ball floats at striking height
+  vball.bvx = 0;
+  vball.bvy = 0;
+  showHint('run into the ball to serve!', 99999);
+}
+
+/* ── ENEMY SERVE ──
+   Enemy passer runs from back line toward ball and hits it.
+*/
+function beginEnemyServe() {
+  vball.phase = 'enemy_serve';
+  vball.timer = 0;
+  vball.reactionTimer = 0;
+  const gY = COURT_GND();
+  vball.bx  = ENEMY_SERVE_X;
+  vball.by  = gY - NET_H * 0.8;
+  vball.bvx = 0;
+  vball.bvy = 0;
+  vball.serverRunning = true;
+  vball.serverX = ENEMY_SERVE_X + 80; // start behind ball
+  showHint('incoming serve…', 2000);
+}
+
+/* ── SCORE POINT ── */
+function scorePoint(winner, msg) {
+  if (vball.phase === 'point_scored') return; // prevent double score
+  if (winner === 'player') {
+    vball.playerScore++;
+    vball.nextServer = 'player';
+  } else {
+    vball.enemyScore++;
+    vball.nextServer = 'enemy';
+  }
+  updateScoreDisplay();
+  vball.phase = 'point_scored';
+  vball.timer = 100;
+  vball.bvx = 0; vball.bvy = -1;
+  showHint(msg + (winner === 'player' ? '  +1 you' : '  +1 them'), 2200);
+}
+
+/* ── BALL PHYSICS ── */
+function updateBall() {
+  if (!vball.active) return;
+  if (vball.phase === 'player_serve' || vball.phase === 'enemy_serve') {
+    // ball hovers — gentle float
+    vball.by += Math.sin(Date.now() * 0.003) * 0.3;
+    vball.trail = [];
+    return;
+  }
+  if (vball.phase === 'point_scored' || vball.phase === 'inactive') return;
+
+  vball.trail.push({ x: vball.bx, y: vball.by });
+  if (vball.trail.length > 12) vball.trail.shift();
+
+  vball.bx  += vball.bvx;
+  vball.by  += vball.bvy;
+  vball.bvy += 0.28;
+
+  const gY = COURT_GND();
+
+  // Ground
+  if (vball.by >= gY - vball.bRadius) {
+    vball.by = gY - vball.bRadius;
+    if (vball.bx < NET_X) scorePoint('enemy', 'ball hit the ground!');
+    else                  scorePoint('player', 'ace!');
+    return;
+  }
+
+  // Net collision — ball below net height hits net
+  const onNet = Math.abs(vball.bx - NET_X) < 6;
+  if (onNet && vball.by > gY - NET_H + 2) {
+    vball.bvx *= -0.5;
+    vball.bvx += (vball.bx < NET_X ? -0.8 : 0.8);
+    vball.by = gY - NET_H - 1;
+    vball.bvy = Math.min(vball.bvy, -1);
+  }
+
+  // Out of bounds
+  if (vball.bx < COURT_L - 60) { scorePoint('enemy',  'ball out left!');       return; }
+  if (vball.bx > COURT_R + 60) { scorePoint('player', 'ball out on their side!'); return; }
+}
+
+/* ── HELPER: arc ball from current pos to target ── */
+function launchBallTo(x1, y1, x2, y2, peakVy) {
+  const frames = Math.abs(peakVy / 0.28) * 2;
+  vball.bvx = (x2 - x1) / frames;
+  vball.bvy = peakVy;
+  vball.bx  = x1;
+  vball.by  = y1;
+}
+
+/* ── PLAYER ACTIONS ── */
+
+// Called when player walks into hovering serve ball
+function playerContactServeBall() {
+  if (vball.phase !== 'player_serve') return;
+
+  const distX = Math.abs(vball.bx - player.wx);
+  const distY = Math.abs(vball.by - (player._py - 8));
+  if (distX > 24 || distY > 32) return;
+
+  const gY = COURT_GND();
+  // Launch over net — aim for enemy back half
+  const targetX = NET_X + 80 + Math.random() * 200;
+  launchBallTo(vball.bx, vball.by, targetX, gY - 10, -11);
+  vball.phase = 'enemy_receive';
+  hintBox.classList.remove('visible');
+  showHint('nice serve!', 1500);
+}
+
+// Auto-receive when ball descends near player (forgiving)
+function tryPlayerReceive() {
+  if (vball.phase !== 'player_receive') return;
+  const distX = vball.bx - player.wx;
+  const distY = vball.by - (player._py - 8);
+  const dist  = Math.sqrt(distX * distX + distY * distY);
+  if (dist > 90 || vball.bvy < 0) return; // ball still going up
+
+  const gY    = COURT_GND();
+  const noise = (Math.random() - 0.5) * 35;
+  launchBallTo(vball.bx, vball.by, vball.setterX + noise, gY - 90, -7);
+  vball.phase = 'player_pass';
+  showHint('good pass! setter has it…', 2000);
+}
+
+// Setter auto-sets
+function setterAutoSet() {
+  const gY    = COURT_GND();
+  const setX  = 3080 + (Math.random() - 0.5) * 28;
+  vball.spikeSetX = setX;
+  launchBallTo(vball.bx, vball.by, setX, gY - NET_H - 55, -9);
+  vball.phase = 'player_spike';
+  showHint('jump + space to spike! →', 99999);
+}
+
+// Spike attempt — called on second jump press
+function attemptSpike() {
+  if (vball.phase !== 'player_spike') return;
+  const distX = vball.bx - player.wx;
+  const distY = vball.by - (player._py - CHAR_H * 0.45);
+  const dist  = Math.sqrt(distX * distX + distY * distY);
+  if (dist > 80) {
+    showHint('not close enough…', 1200);
+    return;
+  }
+  const gY      = COURT_GND();
+  const targetX = NET_X + 100 + Math.random() * 180;
+  launchBallTo(vball.bx, vball.by, targetX, gY - 10, -13);
+  player.flipActive    = true;
+  player.flipRotation  = 0;
+  player.flipDirection = 1;
+  player.jumpCount     = 2;
+  vball.phase = 'enemy_receive';
+  hintBox.classList.remove('visible');
+  showHint('spike!', 1000);
+}
+
+/* ── ENEMY AI ── */
+function clampEnemyX(x) {
+  return Math.max(NET_X + 40, Math.min(COURT_R - 40, x));
+}
+
+function updateEnemyAI() {
+  if (!vball.active) return;
+  const gY = COURT_GND();
+  vball.timer = Math.max(0, vball.timer - 1);
+  vball.reactionTimer = Math.max(0, vball.reactionTimer - 1);
+
+  // Keep the CPU moving toward the ball when it is heading toward their side.
+  if ((vball.phase === 'enemy_receive' || vball.phase === 'player_serve' || vball.phase === 'player_receive') &&
+      vball.bx > COURT_L + 80 && vball.bx < COURT_R - 80 && vball.reactionTimer === 0) {
+    const targetX = clampEnemyX(vball.bx + (player.wx < NET_X ? 18 : -10));
+    const dx = targetX - vball.enemyPasserX;
+    vball.enemyPasserX += Math.sign(dx) * Math.min(2.4, Math.abs(dx));
+
+    if (vball.bvy > 0 && Math.abs(vball.bx - vball.enemyPasserX) < 56 && vball.by > gY - 130) {
+      const targetX = clampEnemyX(vball.enemySetterX + (Math.random() - 0.5) * 70);
+      launchBallTo(vball.bx, vball.by, targetX, gY - 84, -7.2);
+      vball.phase = 'enemy_pass';
+      vball.reactionTimer = 16;
+      showHint('cpu gets the ball!', 1200);
+      return;
+    }
+  }
+
+  // point reset
+  if (vball.phase === 'point_scored' && vball.timer <= 0) {
+    beginNextRally();
+    return;
+  }
+
+  // Enemy serve: server NPC runs toward ball
+  if (vball.phase === 'enemy_serve') {
+    if (vball.serverRunning) {
+      vball.serverX -= 2.5; // run left toward ball
+      if (vball.serverX <= ENEMY_SERVE_X + 5) {
+        // contact!
+        vball.serverRunning = false;
+        const targetX = NET_X - 80 - Math.random() * 200;
+        launchBallTo(vball.bx, vball.by, targetX, gY - 10, -11);
+        vball.phase = 'player_receive';
+        showHint('incoming! get under the ball!', 99999);
+      }
+    }
+    return;
+  }
+
+  // Enemy receive: fox tracks the ball and passes to the hedgehog.
+  if (vball.phase === 'enemy_receive') {
+    const targetX = clampEnemyX(vball.bx + (player.wx < NET_X ? 24 : -8));
+    const dx = targetX - vball.enemyPasserX;
+    vball.enemyPasserX += Math.sign(dx) * Math.min(2.4, Math.abs(dx));
+
+    const distX = vball.bx - vball.enemyPasserX;
+    const distY = vball.by - gY;
+    const dist  = Math.sqrt(distX * distX + distY * distY);
+    if (dist < 90 && vball.bvy > 0 && vball.reactionTimer === 0) {
+      const passTarget = clampEnemyX(vball.enemySetterX + (Math.random() - 0.5) * 38);
+      launchBallTo(vball.bx, vball.by, passTarget, gY - 84, -6.4);
+      vball.phase = 'enemy_pass';
+      vball.reactionTimer = 16;
+      showHint('fox passes to the hedgehog', 1200);
+    }
+    return;
+  }
+
+  // Enemy pass: hedgehog sets to the fox for the attack.
+  if (vball.phase === 'enemy_pass') {
+    const targetX = clampEnemyX(vball.bx + (Math.random() - 0.5) * 24);
+    const dx = targetX - vball.enemySetterX;
+    vball.enemySetterX += Math.sign(dx) * Math.min(1.8, Math.abs(dx));
+
+    const dist = Math.abs(vball.bx - vball.enemySetterX);
+    if (dist < 50 && vball.bvy > 0 && vball.reactionTimer === 0) {
+      const spikeTarget = clampEnemyX(vball.enemyPasserX + 40 + Math.random() * 40);
+      launchBallTo(vball.bx, vball.by, spikeTarget, gY - 84, -8.2);
+      vball.phase = 'enemy_spike';
+      vball.reactionTimer = 12;
+      showHint('hedgehog sets, fox attacks', 1400);
+    }
+    return;
+  }
+
+  // Enemy spike: fox finishes the rally over the net.
+  if (vball.phase === 'enemy_spike') {
+    const targetX = clampEnemyX(vball.enemyPasserX + 24);
+    const dx = targetX - vball.enemyPasserX;
+    vball.enemyPasserX += Math.sign(dx) * Math.min(2.1, Math.abs(dx));
+
+    const distX = vball.bx - vball.enemyPasserX;
+    const distY = vball.by - (gY - 90);
+    const dist  = Math.sqrt(distX * distX + distY * distY);
+    if (dist < 54 && vball.bvy > 0 && vball.reactionTimer === 0) {
+      const spikeTarget = NET_X - 90 - Math.random() * 180;
+      launchBallTo(vball.bx, vball.by, spikeTarget, gY - 10, -13);
+      vball.phase = 'player_receive';
+      showHint('fox spikes it over!', 1400);
+    }
+    return;
+  }
+
+  // Auto-receive on player side
+  if (vball.phase === 'player_receive') {
+    tryPlayerReceive();
+    return;
+  }
+
+  // After player pass, setter auto-sets
+  if (vball.phase === 'player_pass') {
+    const dist = Math.abs(vball.bx - vball.setterX);
+    if (dist < 90 && vball.bvy > 0) {
+      setTimeout(() => {
+        if (vball.phase !== 'player_pass') return;
+        setterAutoSet();
+      }, 280 + Math.random() * 100);
+    }
+    return;
+  }
+}
+
+/* ══════════════════════════════════════════
+   DRAW VOLLEYBALL ELEMENTS
+══════════════════════════════════════════ */
+function drawBall() {
+  if (!vball.active) return;
+  const bsx = vball.bx - camX;
+  const bsy = vball.by;
+
+  // shadow on ground
+  const gY = COURT_GND();
+  const shadowScale = Math.max(0.2, 1 - (gY - vball.by) / 300);
+  ctx.save();
+  ctx.fillStyle = 'rgba(0,0,0,0.18)';
+  ctx.beginPath();
+  ctx.ellipse(bsx, gY, vball.bRadius*shadowScale*1.5, vball.bRadius*shadowScale*0.4, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+
+  // trail
+  vball.trail.forEach((p,i) => {
+    const alpha = (i / vball.trail.length) * 0.3;
+    const r = vball.bRadius * (i/vball.trail.length) * 0.7;
+    ctx.beginPath();
+    ctx.arc(p.x - camX, p.y, r, 0, Math.PI*2);
+    ctx.fillStyle = `rgba(220,210,170,${alpha})`;
+    ctx.fill();
+  });
+
+  // ball
+  ctx.save();
+  const ballGrad = ctx.createRadialGradient(bsx-3, bsy-4, 1, bsx, bsy, vball.bRadius);
+  ballGrad.addColorStop(0,   'rgba(240,235,210,0.95)');
+  ballGrad.addColorStop(0.6, 'rgba(210,195,155,0.9)');
+  ballGrad.addColorStop(1,   'rgba(180,160,110,0.85)');
+  ctx.fillStyle = ballGrad;
+  ctx.beginPath(); ctx.arc(bsx, bsy, vball.bRadius, 0, Math.PI*2); ctx.fill();
+  // seam lines
+  ctx.strokeStyle = 'rgba(150,130,90,0.5)'; ctx.lineWidth = 0.8;
+  ctx.beginPath(); ctx.arc(bsx, bsy, vball.bRadius, 0, Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(bsx-vball.bRadius, bsy); ctx.lineTo(bsx+vball.bRadius, bsy); ctx.stroke();
+  ctx.beginPath();
+  ctx.arc(bsx, bsy, vball.bRadius*0.6, -Math.PI*0.15, Math.PI*1.15); ctx.stroke();
+  ctx.restore();
+}
+
+function drawNPCs() {
+  if (!vball.active) return;
+  const gY = COURT_GND();
+
+  // Player setter (friendly)
+  drawSimpleAnimal(vball.setterX - camX, gY, '🐰', '#e8d5c0', 'setter');
+
+  // Enemy setter
+  drawSimpleAnimal(vball.enemySetterX - camX, gY, '🦊', '#d4905a', 'setter');
+
+  // Enemy passer
+  drawSimpleAnimal(vball.enemyPasserX - camX, gY, '🦔', '#c8b89a', 'passer');
+}
+
+function drawSimpleAnimal(sx, sy, emoji, color, role) {
+  ctx.save();
+  const rgb = hexToRgb(color);
+  ctx.strokeStyle = `rgba(${rgb},0.75)`;
+  ctx.fillStyle   = `rgba(${rgb},0.12)`;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.ellipse(sx, sy-12, 10, 12, 0, 0, Math.PI*2); ctx.fill(); ctx.stroke();
+  ctx.beginPath(); ctx.ellipse(sx, sy-26, 8, 8, 0, 0, Math.PI*2);   ctx.fill(); ctx.stroke();
+  ctx.font='15px serif'; ctx.textAlign='center';
+  ctx.fillStyle='rgba(255,255,255,0.88)'; ctx.fillText(emoji, sx, sy-36);
+  ctx.font='8px Space Mono,monospace'; ctx.fillStyle='rgba(200,190,170,0.5)';
+  ctx.fillText(role, sx, sy-50);
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════
+   PLAYER DRAWING
+══════════════════════════════════════════ */
+function drawPlayer() {
+  const sx = player.wx - camX;
+  const sy = player._py;
+  const s  = Math.min(W,H) * 0.001 * 1.4;
+
+  const BODY_W = 11*s, BODY_H = 17*s;
+  const SHOULDER_X = BODY_W*0.92, SHOULDER_Y = -28*s;
+  const HIP_X = BODY_W*0.3, HIP_Y = -4*s;
+
+  const moving = player.onGround && (keys['ArrowLeft']||keys['KeyA']||keys['ArrowRight']||keys['KeyD']);
+  if (moving) {
+    player.walkTimer++;
+    if (player.walkTimer >= (player.hasBlades ? 4 : 8)) { player.walkFrame=(player.walkFrame+1)%4; player.walkTimer=0; }
+  } else { player.walkFrame=0; player.walkTimer=0; }
+
+  const frame    = player.onGround ? player.walkFrame : 2;
+  const legSwing = [0,18,0,-18][frame]*(Math.PI/180);
+  const armSwing = [0,-15,0,15][frame]*(Math.PI/180);
+  const bodyBob  = player.onGround ? [0,-1,0,1][frame] : 0;
+
+  const lx1=Math.sin(legSwing)*12*s,  ly1=Math.cos(legSwing)*18*s;
+  const lx2=Math.sin(-legSwing)*12*s, ly2=Math.cos(-legSwing)*18*s;
+  const ax1=Math.sin(armSwing)*14*s,  ay1=-Math.cos(armSwing)*8*s+2*s;
+  const ax2=Math.sin(-armSwing)*14*s, ay2=-Math.cos(-armSwing)*8*s+2*s;
+
+  ctx.save();
+  const rotation   = player.flipActive ? player.flipDirection*player.flipRotation : 0;
+  const rotOriginY = -18*s;
+  ctx.translate(sx, sy+bodyBob+rotOriginY);
+  ctx.rotate(rotation);
+  ctx.translate(0,-rotOriginY);
+  if (!player.facingRight) ctx.scale(-1,1);
+  ctx.lineCap='round'; ctx.lineJoin='round';
+
+  if (player.hasBlades && Math.abs(player._vx)>3) {
+    ctx.strokeStyle='rgba(126,190,154,0.22)'; ctx.lineWidth=1;
+    [[-28,-20,-50,-18],[-28,-30,-46,-30],[-28,-40,-44,-42]].forEach(([x1,y1,x2,y2])=>{
+      ctx.beginPath(); ctx.moveTo(x1*s,y1*s); ctx.lineTo(x2*s,y2*s); ctx.stroke();
+    });
+  }
+
+  const ss=(a,w)=>{ ctx.strokeStyle=`rgba(200,185,170,${a})`; ctx.lineWidth=w||1.2; };
+
+  ss(0.75,1.1);
+  ctx.beginPath(); ctx.moveTo(-HIP_X,HIP_Y); ctx.lineTo(-HIP_X+lx1,HIP_Y+ly1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo( HIP_X,HIP_Y); ctx.lineTo( HIP_X+lx2,HIP_Y+ly2); ctx.stroke();
+
+  if (player.hasBlades) {
+    drawRollerblade(-4*s+lx1,-6*s+ly1,s*0.6);
+    drawRollerblade( 4*s+lx2,-6*s+ly2,s*0.6);
+  }
+
+  ss(0.82);
+  ctx.beginPath(); ctx.ellipse(0,-18*s,BODY_W,BODY_H,0.12,0,Math.PI*2); ctx.stroke();
+
+  ss(0.7,1.0);
+  ctx.beginPath(); ctx.moveTo(-SHOULDER_X,SHOULDER_Y); ctx.lineTo(-SHOULDER_X+ax1,SHOULDER_Y+ay1); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo( SHOULDER_X,SHOULDER_Y); ctx.lineTo( SHOULDER_X+ax2,SHOULDER_Y+ay2); ctx.stroke();
+
+  ss(0.88);
+  ctx.beginPath(); ctx.ellipse(2*s,-40*s,12*s,11*s,0,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(-6*s,-50*s,6*s,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc( 8*s,-52*s,6*s,0,Math.PI*2); ctx.stroke();
+  ctx.strokeStyle='rgba(200,135,140,0.35)'; ctx.lineWidth=0.7;
+  ctx.beginPath(); ctx.arc(-6*s,-50*s,3.5*s,0,Math.PI*2); ctx.stroke();
+  ctx.beginPath(); ctx.arc( 8*s,-52*s,3.5*s,0,Math.PI*2); ctx.stroke();
+
+  ss(0.85,1.0);
+  ctx.beginPath(); ctx.arc(7*s,-42*s,3*s,0,Math.PI*2); ctx.stroke();
+  ctx.fillStyle='rgba(15,12,12,0.92)'; ctx.beginPath(); ctx.arc(7*s,-42*s,1.8*s,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(255,255,240,0.82)'; ctx.beginPath(); ctx.arc(8*s,-43*s,0.8*s,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle='rgba(200,135,140,0.55)'; ctx.beginPath(); ctx.arc(13*s,-39*s,1.5*s,0,Math.PI*2); ctx.fill();
+
+  ctx.strokeStyle='rgba(220,210,200,0.4)'; ctx.lineWidth=0.6;
+  [[13,-38,26,-36],[13,-40,26,-40],[13,-42,26,-45]].forEach(([x1,y1,x2,y2])=>{
+    ctx.beginPath(); ctx.moveTo(x1*s,y1*s); ctx.lineTo(x2*s,y2*s); ctx.stroke();
+  });
+  ctx.strokeStyle='rgba(185,165,150,0.5)'; ctx.lineWidth=1;
+  ctx.beginPath(); ctx.moveTo(-12*s,-10*s); ctx.bezierCurveTo(-28*s,-4*s,-34*s,6*s,-24*s,12*s); ctx.stroke();
+
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════
+   POPUP
 ══════════════════════════════════════════ */
 let activePopup = null;
 const POPUP_TRIGGERS = {
-  thought: { dist:40,  text:'stupid owl... telling me to wander around.' },
-  log:    { dist:80,  text:'a fallen log. might have to jump over this.' },
-  blades: { dist:50,  text:'rollerblades! walk over them to pick up.' },
-  net:    { dist:120, text:'a volleyball net. three animals waiting for a fourth…' },
-  npc:    { dist:80,  text:'they look hopeful.' },
-  letter: { dist:70,  text:'a letter, pinned to a tree. it smells like old wood and something familiar.' },
+  log:    { dist: 80,  text:'a fallen log. might have to jump over this.' },
+  blades: { dist: 50,  text:'rollerblades! walk over them to pick up.' },
+  letter: { dist: 70,  text:'a letter, pinned to a tree. it smells like old wood.' },
 };
 
 function checkProximity() {
-  let nearest = null, nearDist = Infinity;
+  if (vball.active) { activePopup = null; return; }
+  let nearest=null, nearDist=Infinity;
   OBJECTS.forEach(obj => {
-    if (obj.type === 'blades' && obj.collected) return;
+    if (obj.type==='blades' && obj.collected) return;
+    const trig = POPUP_TRIGGERS[obj.type]; if (!trig) return;
     const dist = Math.abs(player.wx - obj.wx);
-    const trigger = POPUP_TRIGGERS[obj.type];
-    if (!trigger) return;
-    if (dist < trigger.dist && dist < nearDist) {
-      nearDist = dist;
-      nearest = { obj, trigger };
-    }
+    if (dist < trig.dist && dist < nearDist) { nearDist=dist; nearest=trig; }
   });
-  if (nearest) {
-    activePopup = nearest.trigger.text;
-  } else {
-    activePopup = null;
+  // volleyball approach
+  if (!nearest && Math.abs(player.wx - NET_X) < 250 && player.wx < NET_X) {
+    nearest = { text:'a volleyball court. three animals waiting for a fourth…' };
   }
+  activePopup = nearest ? nearest.text : null;
 }
 
 function drawPopup() {
   if (!activePopup) return;
   const sx = player.wx - camX;
-  const sy = player._py - CHAR_H * 1.5;
-  const PAD = 10, FONT = 14;
-  ctx.font = `${FONT}px Space Mono, monospace`;
-  const tw = ctx.measureText(activePopup).width;
-  const bw = tw + PAD*2, bh = FONT + PAD*2;
-  let bx = sx - bw/2;
-  bx = Math.max(10, Math.min(W-bw-10, bx));
-  const by = sy - bh - 8;
-
+  const sy = player._py - CHAR_H*1.5;
+  const PAD=10, FONT=13;
+  ctx.font=`${FONT}px Space Mono,monospace`;
+  const tw=ctx.measureText(activePopup).width;
+  const bw=tw+PAD*2, bh=FONT+PAD*2;
+  let bx=Math.max(10,Math.min(W-bw-10,sx-bw/2));
+  const by=sy-bh-8;
   ctx.save();
-  ctx.fillStyle = 'rgba(20,24,32,0.75)';
-  ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-  ctx.lineWidth = 0.5;
-  ctx.beginPath();
-  ctx.roundRect(bx, by, bw, bh, 6);
-  ctx.fill(); ctx.stroke();
-  ctx.fillStyle = 'rgba(200,195,185,0.9)';
-  ctx.textAlign = 'left';
-  ctx.fillText(activePopup, bx+PAD, by+PAD+FONT*0.85);
+  ctx.fillStyle='rgba(20,24,32,0.78)'; ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=0.5;
+  manualRoundRect(bx,by,bw,bh,6); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='rgba(200,195,185,0.9)'; ctx.textAlign='left';
+  ctx.fillText(activePopup,bx+PAD,by+PAD+FONT*0.85);
   ctx.restore();
 }
 
 /* ══════════════════════════════════════════
-   PHYSICS + MOVEMENT UPDATE
+   PHYSICS UPDATE
 ══════════════════════════════════════════ */
 let _vx = 0;
 function update() {
   const goRight = keys['ArrowRight'] || keys['KeyD'];
   const goLeft  = keys['ArrowLeft']  || keys['KeyA'];
-
-  // 1. Determine Speed & Friction
-  const spd = player.hasBlades ? BLADE_SPEED : WALK_SPEED;
+  const spd   = player.hasBlades ? BLADE_SPEED : WALK_SPEED;
   const accel = player.hasBlades ? 0.7 : 0.5;
-  
-  // Apply friction (closer to 1 = more conserved speed)
   const friction = player.isDucking ? 0.98 : (player.hasBlades ? BLADE_FRICTION : 0.9);
 
-  // 2. Horizontal Input
-  if (goRight) {
-    _vx = Math.min(_vx + accel, spd);
-    player.facingRight = true;
-  } else if (goLeft) {
-    _vx = Math.max(_vx - accel, -spd);
-    player.facingRight = false;
-  } else {
-    // Only apply friction when NO keys are pressed
-    _vx *= friction;
-    if (Math.abs(_vx) < 0.05) _vx = 0;
-  }
+  // In volleyball mode, restrict player to left side
+  const maxX = vball.active ? NET_X - 40 : WORLD_W - 20;
 
-  // 2. Hill Acceleration (NEW)
-  if (friction > .97 && player.onGround) {
+  if (goRight)     { _vx=Math.min(_vx+accel,spd);  player.facingRight=true; }
+  else if (goLeft) { _vx=Math.max(_vx-accel,-spd); player.facingRight=false; }
+  else { _vx*=friction; if(Math.abs(_vx)<0.05) _vx=0; }
+
+  if (player.onGround) {
     for (const seg of TERRAIN) {
-      if (player.wx >= seg.x1 && player.wx <= seg.x2) {
-        // Calculate the rise/run of the current segment
-        const slope = (seg.y2 - seg.y1) / (seg.x2 - seg.x1);
-        
-        // Positive slope = downhill (since y is pixels from top)
-        // Adjust the 0.5 multiplier to make the slide faster or slower
-        if (slope > 0) {
-            _vx += slope * 0.5; 
-        }
+      if (player.wx>=seg.x1 && player.wx<=seg.x2) {
+        const slope=(seg.y2-seg.y1)/(seg.x2-seg.x1);
+        if (slope>0) _vx+=slope*0.5;
         break;
       }
     }
   }
-  
+
   player._vx = _vx;
 
-  // 3. Trunk Collision (Handles horizontal bounce)
-  OBJECTS.filter(o => o.type === 'log').forEach(log => {
-    const margin = 10;
-    if (player.wx > log.wx - log.w/2 - margin && player.wx < log.wx + log.w/2 + margin) {
-       if (player._py > groundY(log.wx) - log.h && player.vy >= 0) {
-           player.wx = (player.wx > log.wx) ? log.wx + log.w/2 + margin : log.wx - log.w/2 - margin;
-           _vx = 0; // Stop horizontal movement on impact
-       }
-    }
-  });
-
-  // 4. Single Apply Movement
-  player.wx = Math.max(20, Math.min(WORLD_W - 20, player.wx + _vx));
-
-  // vertical physics
-  player._py += player.vy;
-  player.vy  += GRAVITY;
-
-  // ground collision
-  const gY = groundY(player.wx);
-  if (player._py >= gY) {
-    player._py = gY;
-    player.vy = 0;
-    if (!player.onGround) {
-      player.onGround = true;
-      player.jumpCount = 0;
-      player.flipActive = false;
-      player.flipRotation = 0;
-      player.flipDirection = 1;
-    }
-    player.jumping = false;
-  } else {
-    player.onGround = false;
-  }
-  if (player.flipActive) {
-    player.flipRotation += 0.12;
-    if (player.flipRotation >= Math.PI * 2) player.flipRotation -= Math.PI * 2;
-  }
-
-  // log collision (simple AABB on top)
+  // Log horizontal block
   OBJECTS.filter(o=>o.type==='log').forEach(log => {
-    const logTop = groundY(log.wx) - log.h;
-    const logLeft = log.wx - log.w/2, logRight = log.wx + log.w/2;
-    if (player.wx > logLeft && player.wx < logRight) {
-      if (player._py >= logTop && player._py <= logTop + 10 && player.vy >= 0) {
-        player._py = logTop;
-        player.vy = 0;
-        player.onGround = true;
+    const margin=10;
+    if (player.wx>log.wx-log.w/2-margin && player.wx<log.wx+log.w/2+margin) {
+      if (player._py>groundY(log.wx)-log.h && player.vy>=0) {
+        player.wx=(player.wx>log.wx)?log.wx+log.w/2+margin:log.wx-log.w/2-margin;
+        _vx=0;
       }
     }
   });
 
-  // rollerblades pickup
-  OBJECTS.filter(o=>o.type==='blades'&&!o.collected).forEach(b => {
-    if (Math.abs(player.wx - b.wx) < 30 && player.onGround) {
-      b.collected = true;
-      player.hasBlades = true;
-      showHint('rollerblades equipped! feel the speed.', 2500);
+  player.wx = Math.max(20, Math.min(maxX, player.wx+_vx));
+  player._py += player.vy;
+  player.vy  += GRAVITY;
+
+  const gY = groundY(player.wx);
+  if (player._py >= gY) {
+    player._py = gY;
+    player.vy  = 0;
+    if (!player.onGround) {
+      player.onGround=true; player.jumpCount=0;
+      player.flipActive=false; player.flipRotation=0;
+    }
+  } else {
+    player.onGround=false;
+  }
+
+  // Log top
+  OBJECTS.filter(o=>o.type==='log').forEach(log => {
+    const logTop=groundY(log.wx)-log.h;
+    if (player.wx>log.wx-log.w/2 && player.wx<log.wx+log.w/2) {
+      if (player._py>=logTop && player._py<=logTop+12 && player.vy>=0) {
+        player._py=logTop; player.vy=0; player.onGround=true;
+      }
     }
   });
 
+  if (player.flipActive) {
+    player.flipRotation+=0.12;
+    if (player.flipRotation>=Math.PI*2) player.flipRotation-=Math.PI*2;
+  }
+
+  // Blades pickup
+  OBJECTS.filter(o=>o.type==='blades'&&!o.collected).forEach(b=>{
+    if (Math.abs(player.wx-b.wx)<30 && player.onGround) {
+      b.collected=true; player.hasBlades=true;
+      showHint('rollerblades equipped — feel the speed',2800);
+    }
+  });
+
+  // Show the join prompt near the court, then start on E
+  if (!vball.active) {
+    if (player.wx > COURT_L - 180 && player.wx < NET_X - 40) {
+      showJoinPrompt();
+    } else {
+      hideJoinPrompt();
+    }
+  } else {
+    hideJoinPrompt();
+  }
+
+  if (vball.phase === 'player_serve') {
+    playerContactServeBall();
+  }
+
+  updateBall();
+  updateEnemyAI();
   checkProximity();
   updateCamera();
 }
 
 /* ══════════════════════════════════════════
-   HINT DISPLAY
+   HINT
 ══════════════════════════════════════════ */
 const hintBox = document.getElementById('hint-box');
 let hintTimer = null;
-function showHint(text, duration) {
-  hintBox.textContent = text;
-  hintBox.classList.add('visible');
-  if (hintTimer) clearTimeout(hintTimer);
-  hintTimer = setTimeout(() => hintBox.classList.remove('visible'), duration||3000);
+function showHint(text,ms) {
+  hintBox.textContent=text; hintBox.classList.add('visible');
+  clearTimeout(hintTimer);
+  hintTimer=setTimeout(()=>hintBox.classList.remove('visible'),ms||3000);
 }
 
 /* ══════════════════════════════════════════
    MAIN LOOP
 ══════════════════════════════════════════ */
-function render() {
+let started = false;
+function loop() {
+  if (started) update();
   ctx.clearRect(0,0,W,H);
   drawSky();
   drawStars();
   drawMoon();
   drawBgTrees();
   drawTerrain();
+  drawNet();
   drawObjects();
+  if (vball.active) { drawNPCs(); drawBall(); }
   drawPlayer();
   drawPopup();
-}
-
-let started = false;
-function loop() {
-  if (started) update();
-  render();
   requestAnimationFrame(loop);
 }
-loop();
 
 /* ══════════════════════════════════════════
-   FADE IN + START
+   INIT
 ══════════════════════════════════════════ */
 const fadeEl = document.getElementById('fade');
 window.addEventListener('load', () => {
-  // init player y
   player._py = groundY(player.wx);
+  loop();
   setTimeout(() => {
-    fadeEl.style.opacity = '0';
+    fadeEl.style.opacity='0';
     setTimeout(() => {
-      fadeEl.style.display = 'none';
-      started = true;
-      showHint('arrow keys or wasd to move · space to jump', 4000);
-    }, 1300);
-  }, 200);
+      fadeEl.style.display='none';
+      started=true;
+      showHint('arrow keys or wasd to move · space to jump',4000);
+    },1300);
+  },200);
 });
 </script>
 </body>
