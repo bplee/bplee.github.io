@@ -91,9 +91,9 @@ const TERRAIN = [
   { x1: 2000, y1:  0, x2: 2300, y2: -60 }, // ramp up
   { x1: 2300, y1:-60, x2: 2500, y2: -60 }, // flat top
   { x1: 2500, y1:-60, x2: 2800, y2:  20 }, // fun downhill
-  { x1: 2800, y1: 20, x2: 3200, y2:  20 }, // lower flat (volleyball court)
-  { x1: 3200, y1: 20, x2: 3500, y2:  0  }, // back to base
-  { x1: 3500, y1:  0, x2: WORLD_W, y2: 0 }, // remainder
+  { x1: 2800, y1: 20, x2: 3600, y2:  20 }, // lower flat (volleyball court)
+  { x1: 3600, y1: 20, x2: 3900, y2:  0  }, // back to base
+  { x1: 3900, y1:  0, x2: WORLD_W, y2: 0 }, // remainder
 ];
 
 /* ── WORLD OBJECTS ── */
@@ -103,7 +103,7 @@ const OBJECTS = [
   // rollerblades
   { type:'blades', wx:1600, wy:0, w:36, h:18, collected:false },
   // volleyball net
-  { type:'net',   wx:2900, wy:0, w:8,  h:90 },
+  { type:'net',   wx:3200, wy:0, w:8,  h:90 },
   // npc animals
   { type:'npc', wx:2820, wy:0, label:'🐰', color:'#e8d5c0' },
   { type:'npc', wx:2860, wy:0, label:'🦔', color:'#c8b89a' },
