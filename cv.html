@@ -1,0 +1,871 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Brennan Lee — CV</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1GZP6P1RD"></script>
+<script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-J1GZP6P1RD');</script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  overflow-x: hidden;
+}
+
+/* ── FIXED CANVAS VIEWPORT ── */
+#stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+#plant-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ── SCROLL DRIVER ── */
+#scroll-driver {
+  position: relative;
+  z-index: 1;
+  /* height = how many vh of scrolling the full animation takes */
+  height: 900vh;
+  pointer-events: none;
+}
+
+/* ── LABEL LAYER ── */
+#labels {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.label {
+  position: absolute;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateX(-12px);
+  transition: opacity 0.55s ease, transform 0.55s ease;
+  max-width: 280px;
+}
+.label.right {
+  transform: translateX(12px);
+}
+.label.visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.label-year {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--accent);
+  letter-spacing: 0.12em;
+  margin-bottom: 3px;
+}
+.label-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text);
+  line-height: 1.3;
+  margin-bottom: 2px;
+}
+.label-org {
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  margin-bottom: 6px;
+}
+.label-desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.label-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+.label-tag {
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  padding: 2px 7px;
+  border-radius: 3px;
+  background: rgba(126,190,154,0.08);
+  color: var(--accent);
+  border: 0.5px solid rgba(126,190,154,0.2);
+}
+.label-tag.purple {
+  background: rgba(167,139,250,0.08);
+  color: var(--accent2);
+  border-color: rgba(167,139,250,0.2);
+}
+.label-tag.amber {
+  background: rgba(246,173,85,0.08);
+  color: var(--accent3);
+  border-color: rgba(246,173,85,0.2);
+}
+
+/* pub link inside label */
+.label-pub {
+  display: block;
+  margin-top: 7px;
+  font-size: 11px;
+  color: var(--accent3);
+  text-decoration: none;
+  font-family: 'Space Mono', monospace;
+  letter-spacing: 0.04em;
+  opacity: 0.85;
+  transition: opacity 0.15s;
+}
+.label-pub:hover { opacity: 1; }
+
+/* ── CV PAGE LAYOUT ── */
+nav {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 100;
+}
+
+/* ── PROGRESS BAR ── */
+#progress-bar {
+  position: fixed;
+  bottom: 0; left: 0;
+  height: 2px;
+  background: var(--accent);
+  z-index: 100;
+  width: 0%;
+  transition: width 0.1s linear;
+  box-shadow: 0 0 8px var(--accent);
+}
+
+/* ── SCROLL HINT ── */
+#scroll-hint {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'Space Mono', monospace;
+  font-size: 10px;
+  color: var(--dim);
+  letter-spacing: 0.1em;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: opacity 0.4s ease;
+}
+#scroll-hint.hidden { opacity: 0; }
+.scroll-arrow {
+  width: 1px;
+  height: 28px;
+  background: linear-gradient(to bottom, transparent, var(--dim));
+  animation: arrowPulse 1.8s ease-in-out infinite;
+}
+@keyframes arrowPulse {
+  0%, 100% { opacity: 0.3; transform: scaleY(0.7); }
+  50%       { opacity: 1;   transform: scaleY(1); }
+}
+
+/* ── DONE STATE ── */
+#done-cta {
+  position: fixed;
+  bottom: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+  pointer-events: none;
+  text-align: center;
+}
+#done-cta.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+#done-cta a {
+  font-family: 'Space Mono', monospace;
+  font-size: 11px;
+  color: var(--accent);
+  border: 0.5px solid rgba(126,190,154,0.4);
+  background: rgba(126,190,154,0.06);
+  padding: 8px 20px;
+  border-radius: 6px;
+  text-decoration: none;
+  letter-spacing: 0.06em;
+  transition: all 0.2s;
+}
+#done-cta a:hover {
+  background: rgba(126,190,154,0.12);
+  border-color: var(--accent);
+}
+
+</style>
+</head>
+<body data-theme="dark-expressive" data-nav="cv">
+
+<!-- NAV -->
+<div id="site-nav"></div>
+
+<!-- FIXED CANVAS -->
+<div id="stage">
+  <canvas id="plant-canvas"></canvas>
+</div>
+
+<!-- LABEL LAYER -->
+<div id="labels"></div>
+
+<!-- SCROLL DRIVER (creates scrollable height) -->
+<div id="scroll-driver"></div>
+
+<!-- UI -->
+<div id="progress-bar"></div>
+<div id="scroll-hint">
+  <span>scroll to grow</span>
+  <div class="scroll-arrow"></div>
+</div>
+<div id="done-cta">
+  <a href="index.html">view full site →</a>
+</div>
+
+<script src="nav.js"></script>
+<script>
+/* ══════════════════════════════════════════
+   THEME
+══════════════════════════════════════════ */
+var currentTheme = localStorage.getItem('bl-theme') || 'dark-expressive';
+document.body.setAttribute('data-theme', currentTheme);
+
+function setTheme(theme, optionEl) {
+  currentTheme = theme;
+  document.body.setAttribute('data-theme', theme);
+  localStorage.setItem('bl-theme', theme);
+  document.querySelectorAll('.theme-option').forEach(function(el) {
+    el.classList.toggle('active', el.getAttribute('data-theme') === theme);
+  });
+  closePanel();
+  bgDirty = true;
+}
+
+function togglePanel() {
+  document.getElementById('themePanel').classList.toggle('open');
+}
+function closePanel() {
+  document.getElementById('themePanel').classList.remove('open');
+}
+
+document.getElementById('themeBtn').addEventListener('click', function(e) {
+  e.stopPropagation();
+  togglePanel();
+});
+document.addEventListener('click', function(e) {
+  if (!e.target.closest('.theme-switcher')) closePanel();
+});
+
+if (currentTheme !== 'dark-expressive') {
+  setTheme(currentTheme, null);
+}
+
+/* ══════════════════════════════════════════
+   CANVAS SETUP
+══════════════════════════════════════════ */
+const canvas = document.getElementById('plant-canvas');
+const ctx    = canvas.getContext('2d');
+let W, H;
+
+function resize() {
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  bgDirty = true;
+  buildPlantDefs();
+  positionLabels();
+}
+window.addEventListener('resize', resize);
+
+/* ══════════════════════════════════════════
+   CSS VAR READER
+══════════════════════════════════════════ */
+function cssVar(name) {
+  return getComputedStyle(document.body).getPropertyValue(name).trim();
+}
+function themeColors() {
+  return {
+    bg:      cssVar('--bg')      || '#0a0c0f',
+    bg2:     cssVar('--bg2')     || '#0f1218',
+    accent:  cssVar('--accent')  || '#7ebe9a',
+    accent2: cssVar('--accent2') || '#a78bfa',
+    accent3: cssVar('--accent3') || '#f6ad55',
+    text:    cssVar('--text')    || '#e8edf5',
+    muted:   cssVar('--muted')   || '#6b7890',
+    dim:     cssVar('--dim')     || '#3d4a60',
+    border:  cssVar('--border')  || 'rgba(255,255,255,0.07)',
+  };
+}
+
+/* ══════════════════════════════════════════
+   PLANT DEFINITION
+   Progress 0→1 maps to the full scroll height.
+   Each milestone has a `p` (progress threshold),
+   a position on the stem, and label data.
+══════════════════════════════════════════ */
+
+// Stem runs from bottom center upward.
+// We'll define it as a bezier spine with control points
+// computed relative to W, H.
+
+let STEM = [];   // array of {x,y} world points built from bezier
+let NODES = [];  // milestone nodes on/near stem
+let bgDirty = true;
+
+const MILESTONES = [
+  {
+    id: 'mit',
+    p: 0.0,
+    side: 'right',
+    year: '2015 — 2019',
+    title: 'S.B. Mathematics with Computer Science',
+    org: 'MIT',
+    desc: 'Pure mathematics foundation. Course 18C — the bridge between abstract algebra and computation.',
+    tags: [['Pure Mathematics',''],['Algorithms',''],['Linear Algebra',''],['Probability','']],
+    type: 'seed',
+  },
+  {
+    id: 'csail',
+    p: 0.10,
+    side: 'left',
+    year: 'Summer 2016',
+    title: 'Undergraduate Researcher',
+    org: 'Barzilay Lab · MIT CSAIL',
+    desc: 'First ML project: neural network for chemical retrosynthesis — one of the earliest deep learning applications to synthetic chemistry planning.',
+    tags: [['Neural Networks',''],['Retrosynthesis',''],['NLP','']],
+    type: 'leaf',
+  },
+  {
+    id: 'chodera',
+    p: 0.22,
+    side: 'right',
+    year: 'Summer 2018',
+    title: 'Undergraduate Researcher',
+    org: 'Chodera Lab · MSKCC',
+    desc: 'Matrix methods for identifying conformational events in molecular dynamics simulations. A variant of TICA for surfacing biologically meaningful transitions.',
+    tags: [['Molecular Dynamics',''],['TICA',''],['Linear Algebra','']],
+    type: 'leaf',
+  },
+  {
+    id: 'masters',
+    p: 0.36,
+    side: 'left',
+    year: '2019 — 2021',
+    title: 'M.S. Computational Biology',
+    org: 'Weill Cornell × Cornell Tech',
+    desc: 'NLP, applied machine learning, and next-generation sequencing. At the intersection of clinical medicine and computation.',
+    tags: [['NLP','purple'],['Applied ML','purple'],['NGS','purple']],
+    type: 'joint',
+  },
+  {
+    id: 'abugoot',
+    p: 0.46,
+    side: 'right',
+    year: '2019 — 2020',
+    title: 'Associate Computational Biologist',
+    org: 'Abudayyeh-Gootenberg Lab',
+    desc: 'Computational gene clustering pipeline to identify novel CRISPR effectors. Contributed to discovery of Cas7-11.',
+    tags: [['CRISPR',''],['Gene Clustering',''],['Python','']],
+    pub: { text: 'Nature 2021 · Cas7-11', href: 'https://doi.org/10.1038/s41586-021-03886-5' },
+    type: 'branch',
+  },
+  {
+    id: 'leslie',
+    p: 0.54,
+    side: 'left',
+    year: '2020 — 2021',
+    title: 'Graduate Researcher',
+    org: 'Leslie Lab · MSK',
+    desc: 'Variational inference methods for batch correction in single-cell genomics.',
+    tags: [['Variational Inference',''],['Batch Correction',''],['scRNA-seq','']],
+    type: 'branch',
+  },
+  {
+    id: 'bms',
+    p: 0.66,
+    side: 'right',
+    year: '2021 — present · 5 yrs',
+    title: 'Senior Computational Biologist',
+    org: 'Bristol Myers Squibb',
+    desc: 'Computational lead on early-stage oncology drug discovery. Own target discovery campaigns across modalities. Applied ML: computer vision for CIN, deep learning for dependency, Bayesian inference for noisy genomics.',
+    tags: [['Drug Discovery','amber'],['Target ID','amber'],['scRNA-seq',''],['Spatial TX',''],['Computer Vision',''],['Deep Learning',''],['Bayesian Inference','']],
+    pub: { text: 'ImmunoHorizons 2025 · TRM cells in NSCLC', href: 'https://doi.org/10.1093/immhor/vlaf013' },
+    type: 'joint',
+  },
+  // BMS sub-branches (leaves off the top)
+  {
+    id: 'bms_dd',
+    p: 0.76,
+    side: 'left',
+    year: '',
+    title: 'Drug Discovery & Target ID',
+    org: '',
+    desc: 'Computational lead on go/no-go decisions. scRNA-seq, spatial transcriptomics, bulk RNA-seq, pharmacology screens, mouse clinical trials.',
+    tags: [['scRNA-seq',''],['Spatial TX',''],['Pharmacology','']],
+    type: 'leaf',
+  },
+  {
+    id: 'bms_ml',
+    p: 0.84,
+    side: 'right',
+    year: '',
+    title: 'Applied Machine Learning',
+    org: '',
+    desc: 'Computer vision for chromosomal instability from H&E images. Deep learning for DepMap dependency prediction. Bayesian inference for CRISPR screen analysis.',
+    tags: [['Computer Vision',''],['H&E',''],['DepMap',''],['MAGeCK','']],
+    type: 'leaf',
+  },
+  {
+    id: 'bms_func',
+    p: 0.92,
+    side: 'left',
+    year: '',
+    title: 'Functional Genomics',
+    org: '',
+    desc: 'End-to-end CRISPR screen pipelines with CNV correction. MAGeCK integration for hit prioritization and pathway interpretation.',
+    tags: [['CRISPR',''],['MAGeCK',''],['CNV Correction','']],
+    type: 'leaf',
+  },
+];
+
+/* ══════════════════════════════════════════
+   BUILD PLANT GEOMETRY
+   Stem is an S-curve from bottom-center upward.
+   We sample it into STEM array and place
+   each milestone at its p-fraction point.
+══════════════════════════════════════════ */
+function stemPoint(t) {
+  // Stem goes from bottom-center (W*0.42, H*0.92)
+  // to top-center (W*0.5, H*0.08)
+  // with a gentle S-curve (two control points)
+  const x0 = W*0.42,  y0 = H*0.92;
+  const cx1 = W*0.35, cy1 = H*0.65;
+  const cx2 = W*0.55, cy2 = H*0.35;
+  const x3 = W*0.50,  y3 = H*0.08;
+  const mt = 1-t;
+  return {
+    x: mt*mt*mt*x0 + 3*mt*mt*t*cx1 + 3*mt*t*t*cx2 + t*t*t*x3,
+    y: mt*mt*mt*y0 + 3*mt*mt*t*cy1 + 3*mt*t*t*cy2 + t*t*t*y3,
+  };
+}
+
+function stemTangent(t) {
+  const x0=W*0.42, y0=H*0.92, cx1=W*0.35, cy1=H*0.65,
+        cx2=W*0.55, cy2=H*0.35, x3=W*0.50, y3=H*0.08;
+  const mt=1-t;
+  return {
+    x: 3*(mt*mt*(cx1-x0)+2*mt*t*(cx2-cx1)+t*t*(x3-cx2)),
+    y: 3*(mt*mt*(cy1-y0)+2*mt*t*(cy2-cy1)+t*t*(y3-cy2)),
+  };
+}
+
+function buildPlantDefs() {
+  // Sample stem into 200 points
+  STEM = [];
+  for (let i=0; i<=200; i++) STEM.push(stemPoint(i/200));
+
+  // Place each milestone at its p-point on the stem
+  NODES = MILESTONES.map(m => {
+    const pt  = stemPoint(m.p);
+    const tan = stemTangent(m.p);
+    // normal vector (perpendicular to tangent)
+    const len = Math.sqrt(tan.x*tan.x + tan.y*tan.y);
+    const nx  = -tan.y / len;
+    const ny  =  tan.x / len;
+    return { ...m, pt, nx, ny, tan };
+  });
+}
+
+/* ══════════════════════════════════════════
+   LABEL DOM CREATION
+══════════════════════════════════════════ */
+const labelsDiv = document.getElementById('labels');
+let labelEls = {};
+
+function buildLabels() {
+  labelsDiv.innerHTML = '';
+  labelEls = {};
+  NODES.forEach(n => {
+    const div = document.createElement('div');
+    div.className = `label ${n.side}`;
+    div.id = `lbl-${n.id}`;
+    let inner = '';
+    if (n.year)  inner += `<div class="label-year">${n.year}</div>`;
+    inner += `<div class="label-title">${n.title}</div>`;
+    if (n.org)   inner += `<div class="label-org">${n.org}</div>`;
+    inner += `<div class="label-desc">${n.desc}</div>`;
+    if (n.tags && n.tags.length) {
+      inner += `<div class="label-tags">${n.tags.map(([t,c])=>`<span class="label-tag ${c}">${t}</span>`).join('')}</div>`;
+    }
+    if (n.pub) {
+      inner += `<a class="label-pub" href="${n.pub.href}" target="_blank" rel="noopener">↗ ${n.pub.text}</a>`;
+    }
+    div.innerHTML = inner;
+    labelsDiv.appendChild(div);
+    labelEls[n.id] = div;
+  });
+}
+
+function positionLabels() {
+  NODES.forEach(n => {
+    const el = labelEls[n.id];
+    if (!el) return;
+    const OFFSET = 52;
+    let lx = n.pt.x + (n.side === 'right' ? OFFSET : -OFFSET);
+    let ly = n.pt.y;
+    if (n.side === 'right') {
+      el.style.left  = lx + 'px';
+      el.style.right = 'auto';
+    } else {
+      el.style.right = (W - lx) + 'px';
+      el.style.left  = 'auto';
+    }
+    el.style.top = (ly - 20) + 'px';
+  });
+}
+
+/* ══════════════════════════════════════════
+   DRAW
+══════════════════════════════════════════ */
+let progress = 0; // 0→1
+
+function draw(p) {
+  const c = themeColors();
+  ctx.clearRect(0,0,W,H);
+
+  // Background
+  const bgGrad = ctx.createLinearGradient(0, H, 0, 0);
+  const isDark = currentTheme.startsWith('dark');
+  if (isDark) {
+    bgGrad.addColorStop(0,   '#050708');
+    bgGrad.addColorStop(0.3, '#080c10');
+    bgGrad.addColorStop(1,   '#0a0c14');
+  } else {
+    bgGrad.addColorStop(0,   '#e8e2d8');
+    bgGrad.addColorStop(0.3, '#f0ece4');
+    bgGrad.addColorStop(1,   '#fafaf8');
+  }
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0,0,W,H);
+
+  // Soil mound at bottom
+  const soilColor = isDark ? '#1a1208' : '#c8b898';
+  ctx.fillStyle = soilColor;
+  ctx.beginPath();
+  ctx.ellipse(W*0.42, H*0.94, W*0.18, H*0.04, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Soil texture lines
+  ctx.strokeStyle = isDark ? 'rgba(80,55,20,0.4)' : 'rgba(100,75,40,0.3)';
+  ctx.lineWidth = 1;
+  for (let i=0; i<5; i++) {
+    const ox = (i-2)*18;
+    ctx.beginPath();
+    ctx.moveTo(W*0.42+ox, H*0.93);
+    ctx.bezierCurveTo(W*0.42+ox-4, H*0.945, W*0.42+ox+4, H*0.955, W*0.42+ox, H*0.965);
+    ctx.stroke();
+  }
+
+  if (p <= 0.001) {
+    drawSeed(c, p);
+    return;
+  }
+
+  // How far along the stem to draw
+  const stemP = Math.min(1, p * 1.5); // stem draws faster than p so top reached at p~0.67
+
+  // ── STEM ──
+  const stemLen = Math.floor(stemP * STEM.length);
+  if (stemLen > 1) {
+    // Stem fill glow
+    ctx.save();
+    ctx.lineWidth = getThickness(0) * 2.5;
+    ctx.strokeStyle = c.accent + '18';
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.filter = 'blur(6px)';
+    ctx.beginPath();
+    ctx.moveTo(STEM[0].x, STEM[0].y);
+    for (let i=1; i<stemLen; i++) ctx.lineTo(STEM[i].x, STEM[i].y);
+    ctx.stroke();
+    ctx.filter = 'none';
+    ctx.restore();
+
+    // Stem main line — thickness varies (thin at base when young, thicker at BMS)
+    // Draw in segments with varying width
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (let i=1; i<stemLen; i++) {
+      const t = i/STEM.length;
+      ctx.lineWidth = getThickness(t);
+      ctx.strokeStyle = stemColor(c, t, isDark);
+      ctx.beginPath();
+      ctx.moveTo(STEM[i-1].x, STEM[i-1].y);
+      ctx.lineTo(STEM[i].x, STEM[i].y);
+      ctx.stroke();
+    }
+
+    // Tip glow dot
+    const tip = STEM[stemLen-1];
+    ctx.save();
+    ctx.shadowColor = c.accent;
+    ctx.shadowBlur  = 12;
+    ctx.fillStyle   = c.accent;
+    ctx.beginPath();
+    ctx.arc(tip.x, tip.y, 3, 0, Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // ── SEED / SPROUT NEAR BASE ──
+  drawSeed(c, p);
+
+  // ── NODES + LEAVES ──
+  NODES.forEach((n, i) => {
+    if (p < n.p) return;
+    const localP = Math.min(1, (p - n.p) / 0.06); // 0→1 over 6% of total scroll
+    drawNode(n, localP, c, isDark, stemP);
+  });
+}
+
+function getThickness(t) {
+  // Thin (1.5px) at base, grows to 4px at BMS (p~0.66), stays thick above
+  return 1.5 + Math.min(t / 0.66, 1) * 2.8;
+}
+
+function stemColor(c, t, isDark) {
+  // Younger (lower t) = lighter/more yellow-green; older = richer sage
+  if (isDark) {
+    const g = Math.round(150 + t*60);
+    const rb = Math.round(40 + t*30);
+    return `rgba(${rb},${g},${rb*1.2},0.92)`;
+  } else {
+    const g = Math.round(120 + t*80);
+    return `rgba(30,${g},60,0.88)`;
+  }
+}
+
+function drawSeed(c, p) {
+  const sx = W*0.42, sy = H*0.90;
+  if (p < 0.005) {
+    // Just a seed
+    ctx.save();
+    ctx.fillStyle = c.accent + 'cc';
+    ctx.strokeStyle = c.accent;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 6, 8, 0.3, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  // Seed + small sprout loop
+  const sproutH = Math.min(30, p * 300);
+  ctx.save();
+  ctx.strokeStyle = c.accent;
+  ctx.lineWidth = 1.5;
+  ctx.lineCap = 'round';
+  // cotyledon leaves (two small rounded leaves at base)
+  const lp = Math.min(1, p*8);
+  ctx.fillStyle = c.accent + Math.round(lp*220).toString(16).padStart(2,'0');
+  ctx.strokeStyle = c.accent;
+  // left cotyledon
+  ctx.save();
+  ctx.translate(sx-2, sy-2);
+  ctx.rotate(-0.5);
+  ctx.scale(lp, lp);
+  ctx.beginPath();
+  ctx.ellipse(-6, 0, 8, 4, -0.3, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+  // right cotyledon
+  ctx.save();
+  ctx.translate(sx+2, sy-2);
+  ctx.rotate(0.5);
+  ctx.scale(lp, lp);
+  ctx.beginPath();
+  ctx.ellipse(6, 0, 8, 4, 0.3, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+  ctx.restore();
+}
+
+function drawNode(n, localP, c, isDark, stemP) {
+  const pt = n.pt;
+  // Don't draw if stem hasn't reached this point yet
+  if (n.p > stemP) return;
+
+  // Node dot on stem
+  ctx.save();
+  const dotR = n.type === 'joint' ? 5 : 3.5;
+  ctx.shadowColor = n.type === 'joint' ? c.accent : c.accent + '88';
+  ctx.shadowBlur  = n.type === 'joint' ? 10 : 6;
+  ctx.fillStyle   = c.accent;
+  ctx.strokeStyle = isDark ? '#0a0c0f' : '#fafaf8';
+  ctx.lineWidth   = 1.5;
+  ctx.beginPath();
+  ctx.arc(pt.x, pt.y, dotR * localP, 0, Math.PI*2);
+  ctx.fill(); ctx.stroke();
+  ctx.restore();
+
+  // Connector line from stem to label
+  const OFFSET = 44;
+  const ex = pt.x + (n.side === 'right' ? OFFSET : -OFFSET);
+  ctx.save();
+  ctx.globalAlpha = localP * 0.55;
+  ctx.strokeStyle = c.accent;
+  ctx.lineWidth   = 0.8;
+  ctx.setLineDash([3,4]);
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(pt.x, pt.y);
+  ctx.lineTo(ex, pt.y);
+  ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Leaf shape for leaf/branch types
+  if (n.type === 'leaf' || n.type === 'branch') {
+    drawLeaf(pt, n.side, localP, c, n.type === 'branch');
+  }
+
+  // Joint ring for joint types
+  if (n.type === 'joint') {
+    ctx.save();
+    ctx.globalAlpha = localP * 0.25;
+    ctx.strokeStyle = c.accent;
+    ctx.lineWidth   = 1;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 12 * localP, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.globalAlpha = localP * 0.1;
+    ctx.beginPath();
+    ctx.arc(pt.x, pt.y, 20 * localP, 0, Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Show/hide label
+  const el = labelEls[n.id];
+  if (el) {
+    if (localP > 0.4) el.classList.add('visible');
+    else              el.classList.remove('visible');
+  }
+}
+
+function drawLeaf(pt, side, p, c, isBranch) {
+  const dir = side === 'right' ? 1 : -1;
+  const lw  = isBranch ? 38 : 28;
+  const lh  = isBranch ? 16 : 11;
+  const angle = side === 'right' ? -0.4 : 0.4;
+
+  ctx.save();
+  ctx.translate(pt.x + dir*14*p, pt.y - 6*p);
+  ctx.rotate(angle);
+  ctx.scale(p, p);
+
+  // leaf fill
+  ctx.fillStyle = c.accent + '55';
+  ctx.strokeStyle = c.accent;
+  ctx.lineWidth = 1.2;
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.quadraticCurveTo(dir*lw*0.5, -lh*1.2, dir*lw, 0);
+  ctx.quadraticCurveTo(dir*lw*0.5,  lh*0.8,  0, 0);
+  ctx.fill(); ctx.stroke();
+
+  // leaf vein
+  ctx.strokeStyle = c.accent + 'aa';
+  ctx.lineWidth = 0.6;
+  ctx.beginPath();
+  ctx.moveTo(0,0);
+  ctx.lineTo(dir*lw*0.85, 0);
+  ctx.stroke();
+  // secondary veins
+  for (let i=1; i<=3; i++) {
+    const vx = dir*lw*i*0.22;
+    ctx.beginPath();
+    ctx.moveTo(vx, 0);
+    ctx.lineTo(vx + dir*6, -lh*0.55);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+/* ══════════════════════════════════════════
+   SCROLL HANDLER
+══════════════════════════════════════════ */
+const driver = document.getElementById('scroll-driver');
+const progressBar = document.getElementById('progress-bar');
+const scrollHint  = document.getElementById('scroll-hint');
+const doneCta     = document.getElementById('done-cta');
+
+function onScroll() {
+  const scrollTop = window.scrollY || window.pageYOffset || 0;
+  const maxScroll = Math.max(1, driver.offsetHeight - window.innerHeight);
+  progress = Math.max(0, Math.min(1, scrollTop / maxScroll));
+
+  progressBar.style.width = (progress * 100) + '%';
+
+  if (progress > 0.03) scrollHint.classList.add('hidden');
+  else                 scrollHint.classList.remove('hidden');
+
+  if (progress > 0.96) doneCta.classList.add('visible');
+  else                 doneCta.classList.remove('visible');
+
+  draw(progress);
+}
+
+window.addEventListener('scroll', onScroll, { passive: true });
+
+/* ══════════════════════════════════════════
+   INIT + LOOP
+══════════════════════════════════════════ */
+bgDirty = false;
+let raf;
+
+function tick() {
+  if (bgDirty) { draw(progress); bgDirty = false; }
+  raf = requestAnimationFrame(tick);
+}
+
+window.addEventListener('load', () => {
+  resize();
+  buildLabels();
+  positionLabels();
+  window.scrollTo(0, 0);
+  progress = 0;
+  draw(0);
+  tick();
+  onScroll();
+});
+
+window.addEventListener('DOMContentLoaded', () => {
+  resize();
+  buildLabels();
+  positionLabels();
+  draw(0);
+});
+</script>
+</body>
+</html>

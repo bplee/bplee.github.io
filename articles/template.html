@@ -18,62 +18,12 @@
   gtag('config', 'G-J1GZP6P1RD');
 </script>
 </head>
-<body data-theme="dark-expressive">
-<nav>
-  <div class="nav-brand">
-    <a href="../" class="nav-logo">李毘安</a>
-    <span class="nav-divider">|</span>
-    <a href="../wander/" class="nav-wander">wander</a>
-  </div>
-  <ul class="nav-links">
-    <li><a href="../#projects">projects</a></li>
-    <li><a href="../#writing">writing</a></li>
-    <li><a href="../#contact">contact</a></li>
-    <li><a href="../files/cv.pdf" target="_blank" rel="noopener" class="nav-resume">resume ↗</a></li>
-    <li>
-      <div class="theme-switcher">
-        <button class="theme-btn" id="themeBtn" aria-label="Change theme">
-          <div class="theme-btn-dots" id="themeBtnDots">
-            <span style="background:#0a0c0f;border:0.5px solid #333;"></span>
-            <span style="background:#fafaf8;border:0.5px solid #ccc;"></span>
-            <span style="background:#0c0c0c;border:0.5px solid #222;"></span>
-            <span style="background:#ffffff;border:0.5px solid #ddd;"></span>
-          </div>
-          theme
-        </button>
-        <div class="theme-panel" id="themePanel">
-          <div class="theme-panel-label">Choose a theme</div>
-          <div class="theme-axis">
-            <span>← dark</span>
-            <span>light →</span>
-          </div>
-          <div class="theme-grid">
-            <button class="theme-option active" data-theme="dark-expressive" onclick="setTheme('dark-expressive', this)">
-              <div class="theme-swatch swatch-de"></div>
-              <div class="theme-name"><strong>Expressive</strong>dark</div>
-            </button>
-            <button class="theme-option" data-theme="light-expressive" onclick="setTheme('light-expressive', this)">
-              <div class="theme-swatch swatch-le"></div>
-              <div class="theme-name"><strong>Expressive</strong>light</div>
-            </button>
-            <button class="theme-option" data-theme="dark-minimal" onclick="setTheme('dark-minimal', this)">
-              <div class="theme-swatch swatch-dm"></div>
-              <div class="theme-name"><strong>Minimal</strong>dark</div>
-            </button>
-            <button class="theme-option" data-theme="light-minimal" onclick="setTheme('light-minimal', this)">
-              <div class="theme-swatch swatch-lm"></div>
-              <div class="theme-name"><strong>Minimal</strong>light</div>
-            </button>
-          </div>
-          <div class="theme-axis" style="justify-content:space-between; padding: 6px 2px 0;">
-            <span>expressive ↑</span>
-            <span>↓ minimal</span>
-          </div>
-        </div>
-      </div>
-    </li>
-  </ul>
-</nav>
+<body data-theme="dark-expressive" data-nav="home">
+
+<!-- NAV -->
+<div id="site-nav"></div>
+
+<script src="../nav.js"></script>
 
 <section class="hero">
   <div class="hero-content">
