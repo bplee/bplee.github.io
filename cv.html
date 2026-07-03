@@ -51,6 +51,101 @@ body {
   overflow: hidden;
 }
 
+/* ── INSTITUTION RULER ── */
+#career-ruler {
+  position: fixed;
+  left: clamp(14px, 3vw, 42px);
+  top: 8vh;
+  width: 112px;
+  height: 84vh;
+  z-index: 9;
+  pointer-events: none;
+  opacity: 0.95;
+}
+.ruler-line {
+  position: absolute;
+  left: 54px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  overflow: hidden;
+}
+.ruler-progress {
+  position: absolute;
+  inset: 0;
+  clip-path: inset(100% 0 0 0);
+  transition: clip-path 0.08s linear;
+}
+.ruler-segment {
+  position: absolute;
+  left: 0;
+  width: 100%;
+  border-radius: 999px;
+}
+.ruler-segment.mit { background: #7ebe9a; }
+.ruler-segment.weill { background: #a78bfa; }
+.ruler-segment.bms { background: #f6ad55; }
+.ruler-tick {
+  position: absolute;
+  left: 43px;
+  width: 11px;
+  height: 1px;
+  background: var(--dim);
+  transform: translateY(-0.5px);
+}
+.ruler-tick.quarter { width: 8px; left: 46px; opacity: 0.55; }
+.ruler-tick.half { width: 14px; left: 40px; opacity: 0.75; }
+.ruler-tick.major {
+  left: 30px;
+  width: 24px;
+  background: var(--muted);
+}
+.ruler-year {
+  position: absolute;
+  left: 0;
+  width: 26px;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  line-height: 1;
+  text-align: right;
+  letter-spacing: 0;
+}
+.ruler-node {
+  position: absolute;
+  left: 48px;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--bg);
+  border-radius: 50%;
+  transform: translateY(-50%);
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.18), 0 0 12px currentColor;
+}
+.ruler-node.mit { color: #7ebe9a; background: #7ebe9a; }
+.ruler-node.weill { color: #f6ad55; background: #f6ad55; }
+.ruler-node.bms { color: #a78bfa; background: #a78bfa; }
+.ruler-node.now {
+  width: 16px;
+  height: 16px;
+  left: 47px;
+}
+.ruler-place {
+  position: absolute;
+  left: 70px;
+  transform: translateY(-50%);
+  font-family: 'Space Mono', monospace;
+  font-size: 9px;
+  line-height: 1.2;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+.ruler-place.mit { color: #7ebe9a; }
+.ruler-place.weill { color: #a78bfa; }
+.ruler-place.bms { color: #f6ad55; }
+
 .label {
   position: absolute;
   pointer-events: auto;
@@ -214,6 +309,27 @@ nav {
   border-color: var(--accent);
 }
 
+@media (max-width: 720px) {
+  #career-ruler {
+    left: 8px;
+    width: 66px;
+    opacity: 0.8;
+  }
+  .ruler-line { left: 40px; }
+  .ruler-tick { left: 31px; width: 9px; }
+  .ruler-tick.quarter { left: 34px; width: 6px; }
+  .ruler-tick.half { left: 29px; width: 11px; }
+  .ruler-tick.major { left: 23px; width: 17px; }
+  .ruler-year {
+    width: 22px;
+    font-size: 8px;
+  }
+  .ruler-node { left: 35px; width: 11px; height: 11px; }
+  .ruler-node.now { left: 34px; width: 13px; height: 13px; }
+  .ruler-place { display: none; }
+  .label { max-width: 210px; }
+}
+
 </style>
 </head>
 <body data-theme="dark-expressive" data-nav="cv">
@@ -229,6 +345,9 @@ nav {
 <!-- LABEL LAYER -->
 <div id="labels"></div>
 
+<!-- CAREER RULER -->
+<div id="career-ruler" aria-hidden="true"></div>
+
 <!-- SCROLL DRIVER (creates scrollable height) -->
 <div id="scroll-driver"></div>
 
@@ -239,7 +358,7 @@ nav {
   <div class="scroll-arrow"></div>
 </div>
 <div id="done-cta">
-  <a href="index.html">view full site →</a>
+  <!-- <a href="index.html">view full site →</a> -->
 </div>
 
 <script src="nav.js"></script>
@@ -292,6 +411,7 @@ function resize() {
   H = canvas.height = window.innerHeight;
   bgDirty = true;
   buildPlantDefs();
+  buildCareerRuler();
   positionLabels();
 }
 window.addEventListener('resize', resize);
@@ -332,17 +452,17 @@ let NODES = [];  // milestone nodes on/near stem
 let bgDirty = true;
 
 const MILESTONES = [
-  {
-    id: 'mit',
-    p: 0.0,
-    side: 'right',
-    year: '2015 — 2019',
-    title: 'S.B. Mathematics with Computer Science',
-    org: 'MIT',
-    desc: 'Pure mathematics foundation. Course 18C — the bridge between abstract algebra and computation.',
-    tags: [['Pure Mathematics',''],['Algorithms',''],['Linear Algebra',''],['Probability','']],
-    type: 'seed',
-  },
+  // {
+  //   id: 'mit',
+  //   p: 0.0,
+  //   side: 'right',
+  //   year: '2015 — 2019',
+  //   title: 'S.B. Mathematics with Computer Science',
+  //   org: 'MIT',
+  //   desc: 'Pure mathematics foundation. Course 18C — the bridge between abstract algebra and computation.',
+  //   tags: [['Pure Mathematics',''],['Algorithms',''],['Linear Algebra',''],['Probability','']],
+  //   type: 'seed',
+  // },
   {
     id: 'csail',
     p: 0.10,
@@ -365,17 +485,17 @@ const MILESTONES = [
     tags: [['Molecular Dynamics',''],['TICA',''],['Linear Algebra','']],
     type: 'leaf',
   },
-  {
-    id: 'masters',
-    p: 0.36,
-    side: 'left',
-    year: '2019 — 2021',
-    title: 'M.S. Computational Biology',
-    org: 'Weill Cornell × Cornell Tech',
-    desc: 'NLP, applied machine learning, and next-generation sequencing. At the intersection of clinical medicine and computation.',
-    tags: [['NLP','purple'],['Applied ML','purple'],['NGS','purple']],
-    type: 'joint',
-  },
+  // {
+  //   id: 'masters',
+  //   p: 0.36,
+  //   side: 'left',
+  //   year: '2019 — 2021',
+  //   title: 'M.S. Computational Biology',
+  //   org: 'Weill Cornell × Cornell Tech',
+  //   desc: 'NLP, applied machine learning, and next-generation sequencing. At the intersection of clinical medicine and computation.',
+  //   tags: [['NLP','purple'],['Applied ML','purple'],['NGS','purple']],
+  //   type: 'joint',
+  // },
   {
     id: 'abugoot',
     p: 0.46,
@@ -500,6 +620,19 @@ function buildPlantDefs() {
 ══════════════════════════════════════════ */
 const labelsDiv = document.getElementById('labels');
 let labelEls = {};
+const careerRuler = document.getElementById('career-ruler');
+const careerStartYear = 2015;
+const careerCurrentYear = new Date().getFullYear();
+const careerSegments = [
+  { id: 'mit', label: 'MIT', start: 2015, end: 2019 },
+  { id: 'weill', label: 'Weill Cornell', start: 2019, end: 2021 },
+  { id: 'bms', label: 'BMS', start: 2021, end: careerCurrentYear },
+];
+
+function careerYearPct(year) {
+  const span = Math.max(1, careerCurrentYear - careerStartYear);
+  return ((careerCurrentYear - year) / span) * 100;
+}
 
 function buildLabels() {
   labelsDiv.innerHTML = '';
@@ -523,6 +656,50 @@ function buildLabels() {
     labelsDiv.appendChild(div);
     labelEls[n.id] = div;
   });
+}
+
+function buildCareerRuler() {
+  if (!careerRuler) return;
+
+  const stemTop = stemPoint(1).y;
+  const stemBottom = stemPoint(0).y;
+  careerRuler.style.top = stemTop + 'px';
+  careerRuler.style.height = (stemBottom - stemTop) + 'px';
+
+  let html = '<div class="ruler-line"><div class="ruler-progress">';
+  careerSegments.forEach(segment => {
+    const top = careerYearPct(segment.end);
+    const bottom = careerYearPct(segment.start);
+    html += `<span class="ruler-segment ${segment.id}" style="top:${top}%;height:${bottom - top}%;"></span>`;
+  });
+  html += '</div></div>';
+
+  for (let q = careerStartYear * 4; q <= careerCurrentYear * 4; q++) {
+    const value = q / 4;
+    const top = careerYearPct(value);
+    const tickClass = q % 4 === 0 ? 'major' : q % 2 === 0 ? 'half' : 'quarter';
+    html += `<span class="ruler-tick ${tickClass}" style="top:${top}%;"></span>`;
+    if (q % 4 === 0) {
+      html += `<span class="ruler-year" style="top:${top}%;">${value}</span>`;
+    }
+  }
+
+  const boundaryNodes = [
+    { year: 2015, cls: 'mit' },
+    { year: 2019, cls: 'weill' },
+    { year: 2021, cls: 'bms' },
+    { year: careerCurrentYear, cls: 'bms now' },
+  ];
+  boundaryNodes.forEach(node => {
+    html += `<span class="ruler-node ${node.cls}" style="top:${careerYearPct(node.year)}%;"></span>`;
+  });
+
+  careerSegments.forEach(segment => {
+    const top = (careerYearPct(segment.start) + careerYearPct(segment.end)) / 2;
+    html += `<span class="ruler-place ${segment.id}" style="top:${top}%;">${segment.label}</span>`;
+  });
+
+  careerRuler.innerHTML = html;
 }
 
 function positionLabels() {
@@ -826,6 +1003,11 @@ function onScroll() {
   progress = Math.max(0, Math.min(1, scrollTop / maxScroll));
 
   progressBar.style.width = (progress * 100) + '%';
+  const rulerProgress = document.querySelector('.ruler-progress');
+  if (rulerProgress) {
+    const rulerFill = Math.min(1, progress * 1.5) * 100;
+    rulerProgress.style.clipPath = `inset(${100 - rulerFill}% 0 0 0)`;
+  }
 
   if (progress > 0.03) scrollHint.classList.add('hidden');
   else                 scrollHint.classList.remove('hidden');
