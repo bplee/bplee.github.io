@@ -361,7 +361,7 @@ function resize() {
   W = canvas.width  = window.innerWidth;
   H = canvas.height = window.innerHeight;
   bgDirty = true;
-  buildPlantDefs();   // needs W,H — safe here
+  buildPlantDefs();
   buildCareerRuler();
   positionChips();
 }
@@ -387,28 +387,28 @@ function themeColors() {
    MILESTONES
 ══════════════════════════════════════════ */
 const MILESTONES = [
-  { id:'csail',    p:0.10, side:'left',  year:'Summer 2016',
+  { id:'csail',    p:0.15, side:'left',  year:'Summer 2016',
     title:'Barzilay Lab · MIT CSAIL', org:'Undergraduate Researcher',
     desc:'First ML project: neural network for chemical retrosynthesis — one of the earliest deep learning applications to synthetic chemistry planning.',
     tags:[['Neural Networks',''],['Retrosynthesis',''],['NLP','']], type:'leaf' },
-  { id:'chodera',  p:0.22, side:'right', year:'Summer 2018',
+  { id:'koch',     p:0.26, side:'right',  year:'2017 — 2018',
+    title:'Langer Lab · Koch Institute', org:'Undergraduate Researcher',
+    desc:'Computational and wet lab work for identification of novel glucose binders to improve glucose monitor sensitivity.',
+    tags:[['Schrödinger',''],['Binding Assays','']], type:'branch' },
+  { id:'chodera',  p:0.32, side:'left', year:'Summer 2018',
     title:'Chodera Lab · MSKCC', org:'Undergraduate Researcher',
     desc:'Matrix methods for identifying conformational events in molecular dynamics simulations. A TICA variant for surfacing biologically meaningful transitions.',
     tags:[['Molecular Dynamics',''],['TICA',''],['Linear Algebra','']], type:'leaf' },
-  { id:'koch',     p:0.34, side:'left',  year:'2018 — 2019',
-    title:'Koch Lab · MIT', org:'Undergraduate Researcher',
-    desc:'Computational and wet lab work for identification of novel glucose binders to improve glucose monitor sensitivity.',
-    tags:[['Schrödinger',''],['Binding Assays','']], type:'branch' },
-  { id:'abugoot',  p:0.46, side:'right', year:'2019 — 2020',
-    title:'Abudayyeh-Gootenberg Lab', org:'Associate Computational Biologist',
+  { id:'abugoot',  p:0.40, side:'right', year:'2019 — 2020',
+    title:'Abudayyeh-Gootenberg Lab · MIT', org:'Associate Computational Biologist',
     desc:'Computational gene clustering pipeline to identify novel CRISPR effectors. Contributed to discovery of Cas7-11.',
     tags:[['CRISPR',''],['Gene Clustering',''],['Python','']],
     pub:{ text:'Nature 2021 · Cas7-11', href:'https://doi.org/10.1038/s41586-021-03886-5' }, type:'branch' },
-  { id:'leslie',   p:0.56, side:'left',  year:'2020 — 2021',
+  { id:'leslie',   p:0.50, side:'left',  year:'2020 — 2021',
     title:'Leslie Lab · MSKCC', org:'Graduate Researcher',
     desc:'Variational inference methods for batch correction in single-cell genomics.',
     tags:[['Variational Inference',''],['Batch Correction',''],['scRNA-seq','']], type:'branch' },
-  { id:'bms',      p:0.68, side:'right', year:'2021 — present · 5 yrs',
+  { id:'bms',      p:0.68, side:'right', year:'2021 — present',
     title:'Bristol Myers Squibb', org:'Senior Computational Biologist',
     desc:'Computational lead on early-stage oncology drug discovery. Own target discovery campaigns across modalities. Computer vision for CIN, deep learning for dependency, Bayesian inference for noisy genomics.',
     tags:[['Drug Discovery','amber'],['Target ID','amber'],['scRNA-seq',''],['Spatial TX',''],['Computer Vision',''],['Deep Learning',''],['Bayesian Inference','']],
@@ -528,9 +528,9 @@ function positionChips() {
 const careerStartYear   = 2015;
 const careerCurrentYear = new Date().getFullYear();
 const careerSegments = [
-  { id:'mit',   label:'MIT',           start:2015, end:2019 },
-  { id:'weill', label:'Weill Cornell', start:2019, end:2021 },
-  { id:'bms',   label:'BMS',           start:2021, end:careerCurrentYear },
+  { id:'mit',   label:'MIT',           start:2015.75, end:2019.75 },
+  { id:'weill', label:'Weill Cornell', start:2019.75, end:2021.5 },
+  { id:'bms',   label:'BMS',           start:2021.5, end:careerCurrentYear },
 ];
 function careerYearPct(year) {
   return ((careerCurrentYear - year) / Math.max(1, careerCurrentYear - careerStartYear)) * 100;
@@ -556,7 +556,7 @@ function buildCareerRuler() {
     html += `<span class="ruler-tick ${cls}" style="top:${top}%;"></span>`;
     if (q%4===0) html += `<span class="ruler-year" style="top:${top}%;">${Math.round(val)}</span>`;
   }
-  [{year:2015,cls:'mit'},{year:2019,cls:'weill'},{year:2021,cls:'bms'},{year:careerCurrentYear,cls:'bms now'}]
+  [{year:2015.75,cls:'mit'},{year:2019.75,cls:'weill'},{year:2021.5,cls:'bms'},{year:careerCurrentYear,cls:'bms now'}]
     .forEach(n => html+=`<span class="ruler-node ${n.cls}" style="top:${careerYearPct(n.year)}%;"></span>`);
   careerSegments.forEach(seg => {
     const mid=(careerYearPct(seg.start)+careerYearPct(seg.end))/2;
