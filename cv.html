@@ -12,1041 +12,714 @@
 <script>window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('js',new Date());gtag('config','G-J1GZP6P1RD');</script>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { width:100%; min-height:100%; overflow-x:hidden; background:var(--bg); color:var(--text); font-family:'Space Grotesk',sans-serif; }
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: 'Space Grotesk', sans-serif;
-  overflow-x: hidden;
-}
-
-/* ── FIXED CANVAS VIEWPORT ── */
-#stage {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-}
-#plant-canvas {
-  width: 100%;
-  height: 100%;
-  display: block;
-}
+/* ── CANVAS ── */
+#stage { position:fixed; inset:0; z-index:0; pointer-events:none; }
+#plant-canvas { width:100%; height:100%; display:block; }
 
 /* ── SCROLL DRIVER ── */
-#scroll-driver {
-  position: relative;
-  z-index: 1;
-  /* height = how many vh of scrolling the full animation takes */
-  height: 900vh;
-  pointer-events: none;
+#scroll-driver { position:relative; z-index:1; height:900vh; pointer-events:none; }
+
+/* ── DIMMER ── */
+#dimmer {
+  position:fixed; inset:0; z-index:8;
+  background:rgba(0,0,0,0); pointer-events:none;
+  transition:background 0.4s ease;
+}
+#dimmer.active { background:rgba(0,0,0,0.55); pointer-events:auto; }
+[data-theme="light-expressive"] #dimmer.active,
+[data-theme="light-minimal"]    #dimmer.active { background:rgba(240,235,228,0.65); }
+
+/* ── CHIP LAYER ── */
+#chips {
+  position:fixed; inset:0; z-index:10;
+  pointer-events:none;
+  overflow:visible;  /* FIX: was hidden — clips expanded chips */
 }
 
-/* ── LABEL LAYER ── */
-#labels {
-  position: fixed;
-  inset: 0;
-  z-index: 10;
-  pointer-events: none;
+/* ── CHIP ── */
+.chip {
+  position:absolute;
+  pointer-events:auto;
+  cursor:pointer;
+  /* FIX: start invisible but no translateX so no jump */
+  opacity:0;
+  transition:
+    opacity 0.5s ease,
+    width 0.45s cubic-bezier(0.34,1.1,0.64,1),
+    filter 0.35s ease,
+    background 0.3s ease,
+    border-color 0.3s ease,
+    box-shadow 0.3s ease;
+
+  background: rgba(255,255,255,0.07);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 14px;
+  box-shadow:
+    0 4px 24px rgba(0,0,0,0.28),
+    inset 0 1px 0 rgba(255,255,255,0.20),
+    inset 0 -1px 0 rgba(0,0,0,0.10);
+
+  width: 220px;
+  padding: 10px 14px;
   overflow: hidden;
 }
+.chip.visible { opacity:1; }
+.chip.dimmed  { filter:brightness(0.3) blur(1.5px); pointer-events:none; }
 
-/* ── INSTITUTION RULER ── */
+.chip.expanded {
+  width: 300px;
+  z-index: 20;
+  background: rgba(255,255,255,0.12);
+  border-color: rgba(255,255,255,0.24);
+  box-shadow:
+    0 8px 40px rgba(0,0,0,0.45),
+    inset 0 1px 0 rgba(255,255,255,0.28),
+    inset 0 -1px 0 rgba(0,0,0,0.12),
+    0 0 0 1px rgba(255,255,255,0.05);
+  cursor: default;
+}
+
+[data-theme="light-expressive"] .chip,
+[data-theme="light-minimal"]    .chip {
+  background: rgba(255,255,255,0.5);
+  border-color: rgba(0,0,0,0.10);
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10), inset 0 1px 0 rgba(255,255,255,0.85);
+}
+[data-theme="light-expressive"] .chip.expanded,
+[data-theme="light-minimal"]    .chip.expanded {
+  background: rgba(255,255,255,0.78);
+  border-color: rgba(0,0,0,0.14);
+}
+
+/* ── CHIP HEADER ── */
+.chip-header {
+  display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; user-select:none;
+}
+.chip-title  { font-size:13px; font-weight:500; color:var(--text); line-height:1.3; flex:1; min-width:0; }
+.chip-year   { font-family:'Space Mono',monospace; font-size:9px; color:var(--accent); letter-spacing:0.1em; white-space:nowrap; flex-shrink:0; }
+.chip-expand-icon {
+  font-size:12px; color:var(--dim); margin-left:2px; flex-shrink:0;
+  transition:transform 0.3s ease, color 0.2s;
+  display:inline-block;
+}
+.chip.expanded .chip-expand-icon { transform:rotate(45deg); color:var(--muted); }
+
+/* ── CHIP BODY ── */
+.chip-body {
+  max-height:0; overflow:hidden; opacity:0;
+  transition: max-height 0.45s cubic-bezier(0.34,1.1,0.64,1), opacity 0.3s ease;
+}
+.chip.expanded .chip-body { max-height:500px; opacity:1; }
+
+.chip-org   { font-family:'Space Mono',monospace; font-size:9px; color:var(--muted); letter-spacing:0.06em; margin:7px 0 5px; }
+.chip-desc  { font-size:12px; color:var(--muted); line-height:1.65; margin-bottom:8px; }
+.chip-tags  { display:flex; flex-wrap:wrap; gap:4px; margin-bottom:6px; }
+.chip-tag   {
+  font-family:'Space Mono',monospace; font-size:9px; padding:2px 7px; border-radius:3px;
+  background:rgba(126,190,154,0.10); color:var(--accent); border:0.5px solid rgba(126,190,154,0.22);
+}
+.chip-tag.purple { background:rgba(167,139,250,0.10); color:var(--accent2); border-color:rgba(167,139,250,0.22); }
+.chip-tag.amber  { background:rgba(246,173,85,0.10);  color:var(--accent3); border-color:rgba(246,173,85,0.22); }
+.chip-pub {
+  display:block; font-family:'Space Mono',monospace; font-size:10px;
+  color:var(--accent3); text-decoration:none; opacity:0.85; margin-top:4px;
+  transition:opacity 0.15s;
+}
+.chip-pub:hover { opacity:1; }
+.chip-close {
+  display:inline-block; margin-top:10px; font-family:'Space Mono',monospace;
+  font-size:9px; color:var(--dim); letter-spacing:0.06em; cursor:pointer; transition:color 0.2s;
+}
+.chip-close:hover { color:var(--muted); }
+
+/* ── CAREER RULER ── */
 #career-ruler {
-  position: fixed;
-  left: clamp(14px, 3vw, 42px);
-  top: 8vh;
-  width: 112px;
-  height: 84vh;
-  z-index: 9;
-  pointer-events: none;
-  opacity: 0.95;
+  position:fixed; left:clamp(14px,3vw,42px); top:8vh;
+  width:112px; height:84vh; z-index:9; pointer-events:none; opacity:0.95;
+  transition:filter 0.35s ease;
 }
+#career-ruler.dimmed { filter:brightness(0.25) blur(1px); }
 .ruler-line {
-  position: absolute;
-  left: 54px;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  border-radius: 999px;
-  background: rgba(255,255,255,0.08);
-  overflow: hidden;
+  position:absolute; left:54px; top:0; bottom:0;
+  width:2px; border-radius:999px; background:rgba(255,255,255,0.08); overflow:hidden;
 }
-.ruler-progress {
-  position: absolute;
-  inset: 0;
-  clip-path: inset(100% 0 0 0);
-  transition: clip-path 0.08s linear;
-}
-.ruler-segment {
-  position: absolute;
-  left: 0;
-  width: 100%;
-  border-radius: 999px;
-}
-.ruler-segment.mit { background: #7ebe9a; }
-.ruler-segment.weill { background: #a78bfa; }
-.ruler-segment.bms { background: #f6ad55; }
-.ruler-tick {
-  position: absolute;
-  left: 43px;
-  width: 11px;
-  height: 1px;
-  background: var(--dim);
-  transform: translateY(-0.5px);
-}
-.ruler-tick.quarter { width: 8px; left: 46px; opacity: 0.55; }
-.ruler-tick.half { width: 14px; left: 40px; opacity: 0.75; }
-.ruler-tick.major {
-  left: 30px;
-  width: 24px;
-  background: var(--muted);
-}
+.ruler-progress { position:absolute; inset:0; clip-path:inset(100% 0 0 0); transition:clip-path 0.08s linear; }
+.ruler-segment  { position:absolute; left:0; width:100%; border-radius:999px; }
+.ruler-segment.mit   { background:#7ebe9a; }
+.ruler-segment.weill { background:#f6ad55; }
+.ruler-segment.bms   { background:#a78bfa; }
+.ruler-tick         { position:absolute; left:43px; width:11px; height:1px; background:var(--dim); transform:translateY(-0.5px); }
+.ruler-tick.quarter { width:8px;  left:46px; opacity:0.55; }
+.ruler-tick.half    { width:14px; left:40px; opacity:0.75; }
+.ruler-tick.major   { left:30px;  width:24px; background:var(--muted); }
 .ruler-year {
-  position: absolute;
-  left: 0;
-  width: 26px;
-  transform: translateY(-50%);
-  color: var(--muted);
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  line-height: 1;
-  text-align: right;
-  letter-spacing: 0;
+  position:absolute; left:0; width:26px; transform:translateY(-50%);
+  color:var(--muted); font-family:'Space Mono',monospace; font-size:9px; line-height:1; text-align:right;
 }
 .ruler-node {
-  position: absolute;
-  left: 48px;
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--bg);
-  border-radius: 50%;
-  transform: translateY(-50%);
-  box-shadow: 0 0 0 1px rgba(255,255,255,0.18), 0 0 12px currentColor;
+  position:absolute; left:48px; width:14px; height:14px;
+  border:2px solid var(--bg); border-radius:50%; transform:translateY(-50%);
+  box-shadow:0 0 0 1px rgba(255,255,255,0.18), 0 0 12px currentColor;
 }
-.ruler-node.mit { color: #7ebe9a; background: #7ebe9a; }
-.ruler-node.weill { color: #f6ad55; background: #f6ad55; }
-.ruler-node.bms { color: #a78bfa; background: #a78bfa; }
-.ruler-node.now {
-  width: 16px;
-  height: 16px;
-  left: 47px;
-}
+.ruler-node.mit   { color:#7ebe9a; background:#7ebe9a; }
+.ruler-node.weill { color:#f6ad55; background:#f6ad55; }
+.ruler-node.bms   { color:#a78bfa; background:#a78bfa; }
+.ruler-node.now   { width:16px; height:16px; left:47px; }
 .ruler-place {
-  position: absolute;
-  left: 70px;
-  transform: translateY(-50%);
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  line-height: 1.2;
-  letter-spacing: 0.04em;
-  white-space: nowrap;
+  position:absolute; left:70px; transform:translateY(-50%);
+  font-family:'Space Mono',monospace; font-size:9px; line-height:1.2; letter-spacing:0.04em; white-space:nowrap;
 }
-.ruler-place.mit { color: #7ebe9a; }
-.ruler-place.weill { color: #a78bfa; }
-.ruler-place.bms { color: #f6ad55; }
+.ruler-place.mit   { color:#7ebe9a; }
+.ruler-place.weill { color:#f6ad55; }
+.ruler-place.bms   { color:#a78bfa; }
 
-.label {
-  position: absolute;
-  pointer-events: auto;
-  opacity: 0;
-  transform: translateX(-12px);
-  transition: opacity 0.55s ease, transform 0.55s ease;
-  max-width: 280px;
-}
-.label.right {
-  transform: translateX(12px);
-}
-.label.visible {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-.label-year {
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  color: var(--accent);
-  letter-spacing: 0.12em;
-  margin-bottom: 3px;
-}
-.label-title {
-  font-size: 14px;
-  font-weight: 500;
-  color: var(--text);
-  line-height: 1.3;
-  margin-bottom: 2px;
-}
-.label-org {
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  color: var(--muted);
-  letter-spacing: 0.04em;
-  margin-bottom: 6px;
-}
-.label-desc {
-  font-size: 12px;
-  color: var(--muted);
-  line-height: 1.6;
-}
-.label-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-  margin-top: 6px;
-}
-.label-tag {
-  font-family: 'Space Mono', monospace;
-  font-size: 9px;
-  padding: 2px 7px;
-  border-radius: 3px;
-  background: rgba(126,190,154,0.08);
-  color: var(--accent);
-  border: 0.5px solid rgba(126,190,154,0.2);
-}
-.label-tag.purple {
-  background: rgba(167,139,250,0.08);
-  color: var(--accent2);
-  border-color: rgba(167,139,250,0.2);
-}
-.label-tag.amber {
-  background: rgba(246,173,85,0.08);
-  color: var(--accent3);
-  border-color: rgba(246,173,85,0.2);
-}
-
-/* pub link inside label */
-.label-pub {
-  display: block;
-  margin-top: 7px;
-  font-size: 11px;
-  color: var(--accent3);
-  text-decoration: none;
-  font-family: 'Space Mono', monospace;
-  letter-spacing: 0.04em;
-  opacity: 0.85;
-  transition: opacity 0.15s;
-}
-.label-pub:hover { opacity: 1; }
-
-/* ── CV PAGE LAYOUT ── */
+/* ── NAV (inline — no nav.js dependency) ── */
 nav {
-  position: fixed;
-  top: 0; left: 0; right: 0;
-  z-index: 100;
+  position:fixed; top:0; left:0; right:0; z-index:100;
+  display:flex; justify-content:space-between; align-items:center;
+  padding:1rem 3rem;
+  border-bottom:0.5px solid var(--border);
+  background:rgba(10,12,15,0.75);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
 }
+[data-theme="light-expressive"] nav,
+[data-theme="light-minimal"]    nav { background:rgba(250,250,248,0.82); }
+
+.nav-brand { display:flex; align-items:center; gap:10px; }
+.nav-logo  { font-family:'Space Mono',monospace; font-size:13px; color:var(--accent); text-decoration:none; letter-spacing:0.06em; }
+.nav-divider { color:var(--dim); font-family:'Space Mono',monospace; font-size:13px; }
+.nav-wander  { font-family:'Space Mono',monospace; font-size:13px; color:var(--muted); text-decoration:none; letter-spacing:0.06em; transition:color 0.2s; }
+.nav-wander:hover { color:var(--text); }
+.nav-back  { font-family:'Space Mono',monospace; font-size:11px; color:var(--muted); text-decoration:none; letter-spacing:0.06em; transition:color 0.2s; }
+.nav-back:hover { color:var(--text); }
+.nav-right { display:flex; align-items:center; gap:1.5rem; }
+
+/* theme switcher */
+.theme-switcher { position:relative; }
+.theme-btn {
+  display:flex; align-items:center; gap:6px; padding:5px 10px; border-radius:6px;
+  border:0.5px solid var(--border2); background:transparent; color:var(--muted);
+  font-family:'Space Mono',monospace; font-size:10px; letter-spacing:0.06em; cursor:pointer; transition:all 0.2s;
+}
+.theme-btn:hover { color:var(--text); border-color:var(--dim); }
+.theme-btn-dots { display:grid; grid-template-columns:1fr 1fr; gap:2px; width:14px; height:14px; }
+.theme-btn-dots span { border-radius:1px; display:block; }
+.theme-panel {
+  position:absolute; top:calc(100% + 10px); right:0;
+  background:var(--bg2); border:0.5px solid var(--border2); border-radius:10px;
+  padding:10px; display:none; z-index:200; min-width:200px;
+  box-shadow:0 8px 32px rgba(0,0,0,0.3);
+}
+.theme-panel.open { display:block; }
+.theme-panel-label { font-family:'Space Mono',monospace; font-size:9px; color:var(--dim); letter-spacing:0.1em; text-transform:uppercase; padding:2px 4px 8px; }
+.theme-axis { display:flex; justify-content:space-between; padding:6px 2px 2px; font-family:'Space Mono',monospace; font-size:8px; color:var(--dim); }
+.theme-grid { display:grid; grid-template-columns:1fr 1fr; gap:6px; }
+.theme-option { border:0.5px solid var(--border2); border-radius:7px; padding:10px; cursor:pointer; transition:all 0.15s; background:transparent; text-align:left; }
+.theme-option:hover { border-color:var(--accent); }
+.theme-option.active { border-color:var(--accent); background:rgba(126,190,154,0.06); }
+.theme-swatch { width:100%; height:28px; border-radius:4px; margin-bottom:7px; border:0.5px solid rgba(0,0,0,0.1); }
+.swatch-de { background:linear-gradient(135deg,#0a0c0f 50%,#7ebe9a 150%); }
+.swatch-le { background:linear-gradient(135deg,#f0ece4 50%,#0891b2 150%); }
+.swatch-dm { background:linear-gradient(135deg,#0c0c0c 50%,#333 150%); }
+.swatch-lm { background:linear-gradient(135deg,#ffffff 50%,#aaa 150%); }
+.theme-name { font-family:'Space Mono',monospace; font-size:9px; color:var(--muted); }
+.theme-name strong { display:block; color:var(--text); font-size:10px; margin-bottom:1px; }
 
 /* ── PROGRESS BAR ── */
-#progress-bar {
-  position: fixed;
-  bottom: 0; left: 0;
-  height: 2px;
-  background: var(--accent);
-  z-index: 100;
-  width: 0%;
-  transition: width 0.1s linear;
-  box-shadow: 0 0 8px var(--accent);
-}
+#progress-bar { position:fixed; bottom:0; left:0; height:2px; background:var(--accent); z-index:100; width:0%; transition:width 0.1s linear; box-shadow:0 0 8px var(--accent); }
 
 /* ── SCROLL HINT ── */
 #scroll-hint {
-  position: fixed;
-  bottom: 32px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-family: 'Space Mono', monospace;
-  font-size: 10px;
-  color: var(--dim);
-  letter-spacing: 0.1em;
-  z-index: 20;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  transition: opacity 0.4s ease;
+  position:fixed; bottom:32px; left:50%; transform:translateX(-50%);
+  font-family:'Space Mono',monospace; font-size:10px; color:var(--dim); letter-spacing:0.1em;
+  z-index:20; display:flex; flex-direction:column; align-items:center; gap:6px; transition:opacity 0.4s ease;
 }
-#scroll-hint.hidden { opacity: 0; }
-.scroll-arrow {
-  width: 1px;
-  height: 28px;
-  background: linear-gradient(to bottom, transparent, var(--dim));
-  animation: arrowPulse 1.8s ease-in-out infinite;
-}
-@keyframes arrowPulse {
-  0%, 100% { opacity: 0.3; transform: scaleY(0.7); }
-  50%       { opacity: 1;   transform: scaleY(1); }
-}
+#scroll-hint.hidden { opacity:0; pointer-events:none; }
+.scroll-arrow { width:1px; height:28px; background:linear-gradient(to bottom,transparent,var(--dim)); animation:arrowPulse 1.8s ease-in-out infinite; }
+@keyframes arrowPulse { 0%,100%{opacity:0.3;transform:scaleY(0.7);}50%{opacity:1;transform:scaleY(1);} }
 
-/* ── DONE STATE ── */
-#done-cta {
-  position: fixed;
-  bottom: 48px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 20;
-  opacity: 0;
-  transition: opacity 0.6s ease;
-  pointer-events: none;
-  text-align: center;
+@media (max-width:720px) {
+  #career-ruler { left:8px; width:66px; opacity:0.8; }
+  .ruler-line { left:40px; } .ruler-tick { left:31px; width:9px; }
+  .ruler-tick.quarter { left:34px; width:6px; } .ruler-tick.half { left:29px; width:11px; }
+  .ruler-tick.major { left:23px; width:17px; } .ruler-year { width:22px; font-size:8px; }
+  .ruler-node { left:35px; width:11px; height:11px; } .ruler-node.now { left:34px; width:13px; height:13px; }
+  .ruler-place { display:none; }
+  .chip { width:180px; } .chip.expanded { width:230px; }
+  nav { padding:0.75rem 1rem; }
 }
-#done-cta.visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-#done-cta a {
-  font-family: 'Space Mono', monospace;
-  font-size: 11px;
-  color: var(--accent);
-  border: 0.5px solid rgba(126,190,154,0.4);
-  background: rgba(126,190,154,0.06);
-  padding: 8px 20px;
-  border-radius: 6px;
-  text-decoration: none;
-  letter-spacing: 0.06em;
-  transition: all 0.2s;
-}
-#done-cta a:hover {
-  background: rgba(126,190,154,0.12);
-  border-color: var(--accent);
-}
-
-@media (max-width: 720px) {
-  #career-ruler {
-    left: 8px;
-    width: 66px;
-    opacity: 0.8;
-  }
-  .ruler-line { left: 40px; }
-  .ruler-tick { left: 31px; width: 9px; }
-  .ruler-tick.quarter { left: 34px; width: 6px; }
-  .ruler-tick.half { left: 29px; width: 11px; }
-  .ruler-tick.major { left: 23px; width: 17px; }
-  .ruler-year {
-    width: 22px;
-    font-size: 8px;
-  }
-  .ruler-node { left: 35px; width: 11px; height: 11px; }
-  .ruler-node.now { left: 34px; width: 13px; height: 13px; }
-  .ruler-place { display: none; }
-  .label { max-width: 210px; }
-}
-
 </style>
 </head>
-<body data-theme="dark-expressive" data-nav="cv">
+<body data-theme="dark-expressive">
 
-<!-- NAV -->
-<div id="site-nav"></div>
+<!-- NAV (inline, no nav.js) -->
+<nav>
+  <div class="nav-brand">
+    <a href="index.html" class="nav-back">← back</a>
+    <span class="nav-divider">|</span>
+    <a href="index.html" class="nav-logo">李毘安</a>
+  </div>
+  <div class="nav-right">
+    <a href="files/cv.pdf" target="_blank" rel="noopener" class="nav-back">resume ↗</a>
+    <div class="theme-switcher">
+      <button class="theme-btn" id="themeBtn" aria-label="Change theme">
+        <div class="theme-btn-dots">
+          <span style="background:#0a0c0f;border:0.5px solid #333;"></span>
+          <span style="background:#fafaf8;border:0.5px solid #ccc;"></span>
+          <span style="background:#0c0c0c;border:0.5px solid #222;"></span>
+          <span style="background:#ffffff;border:0.5px solid #ddd;"></span>
+        </div>
+        theme
+      </button>
+      <div class="theme-panel" id="themePanel">
+        <div class="theme-panel-label">Choose a theme</div>
+        <div class="theme-axis"><span>← dark</span><span>light →</span></div>
+        <div class="theme-grid">
+          <button class="theme-option active" data-theme="dark-expressive" onclick="setTheme('dark-expressive',this)">
+            <div class="theme-swatch swatch-de"></div>
+            <div class="theme-name"><strong>Expressive</strong>dark</div>
+          </button>
+          <button class="theme-option" data-theme="light-expressive" onclick="setTheme('light-expressive',this)">
+            <div class="theme-swatch swatch-le"></div>
+            <div class="theme-name"><strong>Expressive</strong>light</div>
+          </button>
+          <button class="theme-option" data-theme="dark-minimal" onclick="setTheme('dark-minimal',this)">
+            <div class="theme-swatch swatch-dm"></div>
+            <div class="theme-name"><strong>Minimal</strong>dark</div>
+          </button>
+          <button class="theme-option" data-theme="light-minimal" onclick="setTheme('light-minimal',this)">
+            <div class="theme-swatch swatch-lm"></div>
+            <div class="theme-name"><strong>Minimal</strong>light</div>
+          </button>
+        </div>
+        <div class="theme-axis" style="justify-content:space-between;padding:6px 2px 0;"><span>expressive ↑</span><span>↓ minimal</span></div>
+      </div>
+    </div>
+  </div>
+</nav>
 
-<!-- FIXED CANVAS -->
-<div id="stage">
-  <canvas id="plant-canvas"></canvas>
-</div>
-
-<!-- LABEL LAYER -->
-<div id="labels"></div>
-
-<!-- CAREER RULER -->
+<div id="stage"><canvas id="plant-canvas"></canvas></div>
+<div id="dimmer"></div>
+<div id="chips"></div>
 <div id="career-ruler" aria-hidden="true"></div>
-
-<!-- SCROLL DRIVER (creates scrollable height) -->
 <div id="scroll-driver"></div>
-
-<!-- UI -->
 <div id="progress-bar"></div>
-<div id="scroll-hint">
-  <span>scroll to grow</span>
-  <div class="scroll-arrow"></div>
-</div>
-<div id="done-cta">
-  <!-- <a href="index.html">view full site →</a> -->
-</div>
+<div id="scroll-hint"><span>scroll to grow</span><div class="scroll-arrow"></div></div>
 
-<script src="nav.js"></script>
 <script>
 /* ══════════════════════════════════════════
-   THEME
+   THEME — runs immediately, DOM already has themeBtn
 ══════════════════════════════════════════ */
 var currentTheme = localStorage.getItem('bl-theme') || 'dark-expressive';
 document.body.setAttribute('data-theme', currentTheme);
+var bgDirty = true;
 
 function setTheme(theme, optionEl) {
   currentTheme = theme;
   document.body.setAttribute('data-theme', theme);
   localStorage.setItem('bl-theme', theme);
-  document.querySelectorAll('.theme-option').forEach(function(el) {
-    el.classList.toggle('active', el.getAttribute('data-theme') === theme);
-  });
+  document.querySelectorAll('.theme-option').forEach(el =>
+    el.classList.toggle('active', el.getAttribute('data-theme') === theme));
   closePanel();
   bgDirty = true;
 }
+function togglePanel() { document.getElementById('themePanel').classList.toggle('open'); }
+function closePanel()  { document.getElementById('themePanel').classList.remove('open'); }
 
-function togglePanel() {
-  document.getElementById('themePanel').classList.toggle('open');
-}
-function closePanel() {
-  document.getElementById('themePanel').classList.remove('open');
-}
+document.getElementById('themeBtn').addEventListener('click', e => { e.stopPropagation(); togglePanel(); });
+document.addEventListener('click', e => { if (!e.target.closest('.theme-switcher')) closePanel(); });
 
-document.getElementById('themeBtn').addEventListener('click', function(e) {
-  e.stopPropagation();
-  togglePanel();
-});
-document.addEventListener('click', function(e) {
-  if (!e.target.closest('.theme-switcher')) closePanel();
-});
-
+// restore theme on load
 if (currentTheme !== 'dark-expressive') {
-  setTheme(currentTheme, null);
+  document.querySelectorAll('.theme-option').forEach(el =>
+    el.classList.toggle('active', el.getAttribute('data-theme') === currentTheme));
 }
 
 /* ══════════════════════════════════════════
-   CANVAS SETUP
+   CANVAS
 ══════════════════════════════════════════ */
 const canvas = document.getElementById('plant-canvas');
 const ctx    = canvas.getContext('2d');
 let W, H;
 
+// FIX: declare all DOM refs before any function uses them
+const chipsDiv    = document.getElementById('chips');
+const dimmerEl    = document.getElementById('dimmer');
+const rulerEl     = document.getElementById('career-ruler');
+const driver      = document.getElementById('scroll-driver');
+const progressBar = document.getElementById('progress-bar');
+const scrollHint  = document.getElementById('scroll-hint');
+
+let STEM = [], NODES = [], chipEls = {}, openChip = null;
+let progress = 0;
+
 function resize() {
   W = canvas.width  = window.innerWidth;
   H = canvas.height = window.innerHeight;
   bgDirty = true;
-  buildPlantDefs();
+  buildPlantDefs();   // needs W,H — safe here
   buildCareerRuler();
-  positionLabels();
+  positionChips();
 }
 window.addEventListener('resize', resize);
 
 /* ══════════════════════════════════════════
-   CSS VAR READER
+   CSS VARS
 ══════════════════════════════════════════ */
-function cssVar(name) {
-  return getComputedStyle(document.body).getPropertyValue(name).trim();
-}
 function themeColors() {
+  const s = getComputedStyle(document.body);
+  const g = n => s.getPropertyValue(n).trim();
   return {
-    bg:      cssVar('--bg')      || '#0a0c0f',
-    bg2:     cssVar('--bg2')     || '#0f1218',
-    accent:  cssVar('--accent')  || '#7ebe9a',
-    accent2: cssVar('--accent2') || '#a78bfa',
-    accent3: cssVar('--accent3') || '#f6ad55',
-    text:    cssVar('--text')    || '#e8edf5',
-    muted:   cssVar('--muted')   || '#6b7890',
-    dim:     cssVar('--dim')     || '#3d4a60',
-    border:  cssVar('--border')  || 'rgba(255,255,255,0.07)',
+    bg:      g('--bg')      || '#0a0c0f',
+    accent:  g('--accent')  || '#7ebe9a',
+    accent2: g('--accent2') || '#a78bfa',
+    accent3: g('--accent3') || '#f6ad55',
+    text:    g('--text')    || '#e8edf5',
+    muted:   g('--muted')   || '#6b7890',
   };
 }
 
 /* ══════════════════════════════════════════
-   PLANT DEFINITION
-   Progress 0→1 maps to the full scroll height.
-   Each milestone has a `p` (progress threshold),
-   a position on the stem, and label data.
+   MILESTONES
 ══════════════════════════════════════════ */
-
-// Stem runs from bottom center upward.
-// We'll define it as a bezier spine with control points
-// computed relative to W, H.
-
-let STEM = [];   // array of {x,y} world points built from bezier
-let NODES = [];  // milestone nodes on/near stem
-let bgDirty = true;
-
 const MILESTONES = [
-  // {
-  //   id: 'mit',
-  //   p: 0.0,
-  //   side: 'right',
-  //   year: '2015 — 2019',
-  //   title: 'S.B. Mathematics with Computer Science',
-  //   org: 'MIT',
-  //   desc: 'Pure mathematics foundation. Course 18C — the bridge between abstract algebra and computation.',
-  //   tags: [['Pure Mathematics',''],['Algorithms',''],['Linear Algebra',''],['Probability','']],
-  //   type: 'seed',
-  // },
-  {
-    id: 'csail',
-    p: 0.10,
-    side: 'left',
-    year: 'Summer 2016',
-    title: 'Undergraduate Researcher',
-    org: 'Barzilay Lab · MIT CSAIL',
-    desc: 'First ML project: neural network for chemical retrosynthesis — one of the earliest deep learning applications to synthetic chemistry planning.',
-    tags: [['Neural Networks',''],['Retrosynthesis',''],['NLP','']],
-    type: 'leaf',
-  },
-  {
-    id: 'chodera',
-    p: 0.22,
-    side: 'right',
-    year: 'Summer 2018',
-    title: 'Undergraduate Researcher',
-    org: 'Chodera Lab · MSKCC',
-    desc: 'Matrix methods for identifying conformational events in molecular dynamics simulations. A variant of TICA for surfacing biologically meaningful transitions.',
-    tags: [['Molecular Dynamics',''],['TICA',''],['Linear Algebra','']],
-    type: 'leaf',
-  },
-  // {
-  //   id: 'masters',
-  //   p: 0.36,
-  //   side: 'left',
-  //   year: '2019 — 2021',
-  //   title: 'M.S. Computational Biology',
-  //   org: 'Weill Cornell × Cornell Tech',
-  //   desc: 'NLP, applied machine learning, and next-generation sequencing. At the intersection of clinical medicine and computation.',
-  //   tags: [['NLP','purple'],['Applied ML','purple'],['NGS','purple']],
-  //   type: 'joint',
-  // },
-  {
-    id: 'abugoot',
-    p: 0.46,
-    side: 'right',
-    year: '2019 — 2020',
-    title: 'Associate Computational Biologist',
-    org: 'Abudayyeh-Gootenberg Lab',
-    desc: 'Computational gene clustering pipeline to identify novel CRISPR effectors. Contributed to discovery of Cas7-11.',
-    tags: [['CRISPR',''],['Gene Clustering',''],['Python','']],
-    pub: { text: 'Nature 2021 · Cas7-11', href: 'https://doi.org/10.1038/s41586-021-03886-5' },
-    type: 'branch',
-  },
-  {
-    id: 'leslie',
-    p: 0.54,
-    side: 'left',
-    year: '2020 — 2021',
-    title: 'Graduate Researcher',
-    org: 'Leslie Lab · MSK',
-    desc: 'Variational inference methods for batch correction in single-cell genomics.',
-    tags: [['Variational Inference',''],['Batch Correction',''],['scRNA-seq','']],
-    type: 'branch',
-  },
-  {
-    id: 'bms',
-    p: 0.66,
-    side: 'right',
-    year: '2021 — present · 5 yrs',
-    title: 'Senior Computational Biologist',
-    org: 'Bristol Myers Squibb',
-    desc: 'Computational lead on early-stage oncology drug discovery. Own target discovery campaigns across modalities. Applied ML: computer vision for CIN, deep learning for dependency, Bayesian inference for noisy genomics.',
-    tags: [['Drug Discovery','amber'],['Target ID','amber'],['scRNA-seq',''],['Spatial TX',''],['Computer Vision',''],['Deep Learning',''],['Bayesian Inference','']],
-    pub: { text: 'ImmunoHorizons 2025 · TRM cells in NSCLC', href: 'https://doi.org/10.1093/immhor/vlaf013' },
-    type: 'joint',
-  },
-  // BMS sub-branches (leaves off the top)
-  {
-    id: 'bms_dd',
-    p: 0.76,
-    side: 'left',
-    year: '',
-    title: 'Drug Discovery & Target ID',
-    org: '',
-    desc: 'Computational lead on go/no-go decisions. scRNA-seq, spatial transcriptomics, bulk RNA-seq, pharmacology screens, mouse clinical trials.',
-    tags: [['scRNA-seq',''],['Spatial TX',''],['Pharmacology','']],
-    type: 'leaf',
-  },
-  {
-    id: 'bms_ml',
-    p: 0.84,
-    side: 'right',
-    year: '',
-    title: 'Applied Machine Learning',
-    org: '',
-    desc: 'Computer vision for chromosomal instability from H&E images. Deep learning for DepMap dependency prediction. Bayesian inference for CRISPR screen analysis.',
-    tags: [['Computer Vision',''],['H&E',''],['DepMap',''],['MAGeCK','']],
-    type: 'leaf',
-  },
-  {
-    id: 'bms_func',
-    p: 0.92,
-    side: 'left',
-    year: '',
-    title: 'Functional Genomics',
-    org: '',
-    desc: 'End-to-end CRISPR screen pipelines with CNV correction. MAGeCK integration for hit prioritization and pathway interpretation.',
-    tags: [['CRISPR',''],['MAGeCK',''],['CNV Correction','']],
-    type: 'leaf',
-  },
+  { id:'csail',    p:0.10, side:'left',  year:'Summer 2016',
+    title:'Barzilay Lab · MIT CSAIL', org:'Undergraduate Researcher',
+    desc:'First ML project: neural network for chemical retrosynthesis — one of the earliest deep learning applications to synthetic chemistry planning.',
+    tags:[['Neural Networks',''],['Retrosynthesis',''],['NLP','']], type:'leaf' },
+  { id:'chodera',  p:0.22, side:'right', year:'Summer 2018',
+    title:'Chodera Lab · MSKCC', org:'Undergraduate Researcher',
+    desc:'Matrix methods for identifying conformational events in molecular dynamics simulations. A TICA variant for surfacing biologically meaningful transitions.',
+    tags:[['Molecular Dynamics',''],['TICA',''],['Linear Algebra','']], type:'leaf' },
+  { id:'koch',     p:0.34, side:'left',  year:'2018 — 2019',
+    title:'Koch Lab · MIT', org:'Undergraduate Researcher',
+    desc:'Computational and wet lab work for identification of novel glucose binders to improve glucose monitor sensitivity.',
+    tags:[['Schrödinger',''],['Binding Assays','']], type:'branch' },
+  { id:'abugoot',  p:0.46, side:'right', year:'2019 — 2020',
+    title:'Abudayyeh-Gootenberg Lab', org:'Associate Computational Biologist',
+    desc:'Computational gene clustering pipeline to identify novel CRISPR effectors. Contributed to discovery of Cas7-11.',
+    tags:[['CRISPR',''],['Gene Clustering',''],['Python','']],
+    pub:{ text:'Nature 2021 · Cas7-11', href:'https://doi.org/10.1038/s41586-021-03886-5' }, type:'branch' },
+  { id:'leslie',   p:0.56, side:'left',  year:'2020 — 2021',
+    title:'Leslie Lab · MSKCC', org:'Graduate Researcher',
+    desc:'Variational inference methods for batch correction in single-cell genomics.',
+    tags:[['Variational Inference',''],['Batch Correction',''],['scRNA-seq','']], type:'branch' },
+  { id:'bms',      p:0.68, side:'right', year:'2021 — present · 5 yrs',
+    title:'Bristol Myers Squibb', org:'Senior Computational Biologist',
+    desc:'Computational lead on early-stage oncology drug discovery. Own target discovery campaigns across modalities. Computer vision for CIN, deep learning for dependency, Bayesian inference for noisy genomics.',
+    tags:[['Drug Discovery','amber'],['Target ID','amber'],['scRNA-seq',''],['Spatial TX',''],['Computer Vision',''],['Deep Learning',''],['Bayesian Inference','']],
+    pub:{ text:'ImmunoHorizons 2025 · TRM cells in NSCLC', href:'https://doi.org/10.1093/immhor/vlaf013' }, type:'joint' },
+  { id:'bms_dd',   p:0.78, side:'left',  year:'',
+    title:'Drug Discovery & Target ID', org:'@ BMS',
+    desc:'Computational lead on go/no-go decisions. scRNA-seq, spatial transcriptomics, bulk RNA-seq, pharmacology screens, mouse clinical trials.',
+    tags:[['scRNA-seq',''],['Spatial TX',''],['Pharmacology','']], type:'leaf' },
+  { id:'bms_ml',   p:0.86, side:'right', year:'',
+    title:'Applied Machine Learning', org:'@ BMS',
+    desc:'Computer vision for chromosomal instability from H&E images. Deep learning for DepMap dependency prediction. Bayesian inference for CRISPR screen analysis.',
+    tags:[['Computer Vision',''],['H&E',''],['DepMap',''],['MAGeCK','']], type:'leaf' },
+  { id:'bms_func', p:0.93, side:'left',  year:'',
+    title:'Functional Genomics', org:'@ BMS',
+    desc:'End-to-end CRISPR screen pipelines with CNV correction. MAGeCK integration for hit prioritization and pathway interpretation.',
+    tags:[['CRISPR',''],['MAGeCK',''],['CNV Correction','']], type:'leaf' },
 ];
 
 /* ══════════════════════════════════════════
-   BUILD PLANT GEOMETRY
-   Stem is an S-curve from bottom-center upward.
-   We sample it into STEM array and place
-   each milestone at its p-fraction point.
+   STEM GEOMETRY
 ══════════════════════════════════════════ */
 function stemPoint(t) {
-  // Stem goes from bottom-center (W*0.42, H*0.92)
-  // to top-center (W*0.5, H*0.08)
-  // with a gentle S-curve (two control points)
-  const x0 = W*0.42,  y0 = H*0.92;
-  const cx1 = W*0.35, cy1 = H*0.65;
-  const cx2 = W*0.55, cy2 = H*0.35;
-  const x3 = W*0.50,  y3 = H*0.08;
-  const mt = 1-t;
-  return {
-    x: mt*mt*mt*x0 + 3*mt*mt*t*cx1 + 3*mt*t*t*cx2 + t*t*t*x3,
-    y: mt*mt*mt*y0 + 3*mt*mt*t*cy1 + 3*mt*t*t*cy2 + t*t*t*y3,
-  };
-}
-
-function stemTangent(t) {
-  const x0=W*0.42, y0=H*0.92, cx1=W*0.35, cy1=H*0.65,
-        cx2=W*0.55, cy2=H*0.35, x3=W*0.50, y3=H*0.08;
+  if (!W || !H) return { x:0, y:0 };
+  const x0=W*0.42,y0=H*0.92, cx1=W*0.35,cy1=H*0.65, cx2=W*0.55,cy2=H*0.35, x3=W*0.50,y3=H*0.08;
   const mt=1-t;
-  return {
-    x: 3*(mt*mt*(cx1-x0)+2*mt*t*(cx2-cx1)+t*t*(x3-cx2)),
-    y: 3*(mt*mt*(cy1-y0)+2*mt*t*(cy2-cy1)+t*t*(y3-cy2)),
-  };
+  return { x:mt*mt*mt*x0+3*mt*mt*t*cx1+3*mt*t*t*cx2+t*t*t*x3, y:mt*mt*mt*y0+3*mt*mt*t*cy1+3*mt*t*t*cy2+t*t*t*y3 };
+}
+function stemTangent(t) {
+  if (!W || !H) return { x:1, y:0 };
+  const x0=W*0.42,y0=H*0.92, cx1=W*0.35,cy1=H*0.65, cx2=W*0.55,cy2=H*0.35, x3=W*0.50,y3=H*0.08;
+  const mt=1-t;
+  return { x:3*(mt*mt*(cx1-x0)+2*mt*t*(cx2-cx1)+t*t*(x3-cx2)), y:3*(mt*mt*(cy1-y0)+2*mt*t*(cy2-cy1)+t*t*(y3-cy2)) };
 }
 
 function buildPlantDefs() {
-  // Sample stem into 200 points
   STEM = [];
-  for (let i=0; i<=200; i++) STEM.push(stemPoint(i/200));
-
-  // Place each milestone at its p-point on the stem
+  for (let i=0;i<=200;i++) STEM.push(stemPoint(i/200));
   NODES = MILESTONES.map(m => {
-    const pt  = stemPoint(m.p);
-    const tan = stemTangent(m.p);
-    // normal vector (perpendicular to tangent)
-    const len = Math.sqrt(tan.x*tan.x + tan.y*tan.y);
-    const nx  = -tan.y / len;
-    const ny  =  tan.x / len;
-    return { ...m, pt, nx, ny, tan };
+    const pt=stemPoint(m.p), tan=stemTangent(m.p);
+    const len=Math.max(0.001, Math.sqrt(tan.x*tan.x+tan.y*tan.y));
+    return { ...m, pt, nx:-tan.y/len, ny:tan.x/len, tan };
   });
 }
 
 /* ══════════════════════════════════════════
-   LABEL DOM CREATION
+   CHIPS
 ══════════════════════════════════════════ */
-const labelsDiv = document.getElementById('labels');
-let labelEls = {};
-const careerRuler = document.getElementById('career-ruler');
-const careerStartYear = 2015;
-const careerCurrentYear = new Date().getFullYear();
-const careerSegments = [
-  { id: 'mit', label: 'MIT', start: 2015, end: 2019 },
-  { id: 'weill', label: 'Weill Cornell', start: 2019, end: 2021 },
-  { id: 'bms', label: 'BMS', start: 2021, end: careerCurrentYear },
-];
-
-function careerYearPct(year) {
-  const span = Math.max(1, careerCurrentYear - careerStartYear);
-  return ((careerCurrentYear - year) / span) * 100;
+function buildChips() {
+  chipsDiv.innerHTML = '';
+  chipEls = {};
+  NODES.forEach(n => {
+    const el = document.createElement('div');
+    el.className = `chip ${n.side}`;
+    el.id = `chip-${n.id}`;
+    el.innerHTML = chipHTML(n);
+    chipsDiv.appendChild(el);
+    chipEls[n.id] = el;
+    el.querySelector('.chip-header').addEventListener('click', () => toggleChip(n.id));
+    const cb = el.querySelector('.chip-close');
+    if (cb) cb.addEventListener('click', e => { e.stopPropagation(); closeAllChips(); });
+  });
+  dimmerEl.addEventListener('click', closeAllChips);
 }
 
-function buildLabels() {
-  labelsDiv.innerHTML = '';
-  labelEls = {};
+function chipHTML(n) {
+  const tags = n.tags?.length
+    ? `<div class="chip-tags">${n.tags.map(([t,c])=>`<span class="chip-tag ${c}">${t}</span>`).join('')}</div>` : '';
+  const pub  = n.pub ? `<a class="chip-pub" href="${n.pub.href}" target="_blank" rel="noopener">↗ ${n.pub.text}</a>` : '';
+  const org  = n.org ? `<div class="chip-org">${n.org}</div>` : '';
+  return `
+    <div class="chip-header">
+      <span class="chip-title">${n.title}</span>
+      ${n.year ? `<span class="chip-year">${n.year}</span>` : ''}
+      <span class="chip-expand-icon">+</span>
+    </div>
+    <div class="chip-body">${org}<div class="chip-desc">${n.desc}</div>${tags}${pub}<span class="chip-close">close ×</span></div>`;
+}
+
+function toggleChip(id) {
+  if (openChip === id) { closeAllChips(); return; }
+  // close any open one first
+  Object.values(chipEls).forEach(el => el.classList.remove('expanded', 'dimmed'));
+  openChip = id;
+  chipEls[id].classList.add('expanded');
+  Object.entries(chipEls).forEach(([k,v]) => { if (k !== id) v.classList.add('dimmed'); });
+  dimmerEl.classList.add('active');
+  rulerEl.classList.add('dimmed');
+}
+
+function closeAllChips() {
+  Object.values(chipEls).forEach(el => el.classList.remove('expanded', 'dimmed'));
+  openChip = null;
+  dimmerEl.classList.remove('active');
+  rulerEl.classList.remove('dimmed');
+}
+
+function positionChips() {
+  if (!NODES.length) return;
+  const OFFSET = 50;
   NODES.forEach(n => {
-    const div = document.createElement('div');
-    div.className = `label ${n.side}`;
-    div.id = `lbl-${n.id}`;
-    let inner = '';
-    if (n.year)  inner += `<div class="label-year">${n.year}</div>`;
-    inner += `<div class="label-title">${n.title}</div>`;
-    if (n.org)   inner += `<div class="label-org">${n.org}</div>`;
-    inner += `<div class="label-desc">${n.desc}</div>`;
-    if (n.tags && n.tags.length) {
-      inner += `<div class="label-tags">${n.tags.map(([t,c])=>`<span class="label-tag ${c}">${t}</span>`).join('')}</div>`;
+    const el = chipEls[n.id];
+    if (!el || !n.pt) return;
+    if (n.side === 'right') {
+      el.style.left  = (n.pt.x + OFFSET) + 'px';
+      el.style.right = 'auto';
+    } else {
+      el.style.right = (W - n.pt.x + OFFSET) + 'px';
+      el.style.left  = 'auto';
     }
-    if (n.pub) {
-      inner += `<a class="label-pub" href="${n.pub.href}" target="_blank" rel="noopener">↗ ${n.pub.text}</a>`;
-    }
-    div.innerHTML = inner;
-    labelsDiv.appendChild(div);
-    labelEls[n.id] = div;
+    el.style.top = (n.pt.y - 22) + 'px';
   });
+}
+
+/* ══════════════════════════════════════════
+   CAREER RULER
+══════════════════════════════════════════ */
+const careerStartYear   = 2015;
+const careerCurrentYear = new Date().getFullYear();
+const careerSegments = [
+  { id:'mit',   label:'MIT',           start:2015, end:2019 },
+  { id:'weill', label:'Weill Cornell', start:2019, end:2021 },
+  { id:'bms',   label:'BMS',           start:2021, end:careerCurrentYear },
+];
+function careerYearPct(year) {
+  return ((careerCurrentYear - year) / Math.max(1, careerCurrentYear - careerStartYear)) * 100;
 }
 
 function buildCareerRuler() {
-  if (!careerRuler) return;
-
-  const stemTop = stemPoint(1).y;
+  if (!rulerEl || !W || !H) return;
+  const stemTop    = stemPoint(1).y;
   const stemBottom = stemPoint(0).y;
-  careerRuler.style.top = stemTop + 'px';
-  careerRuler.style.height = (stemBottom - stemTop) + 'px';
+  rulerEl.style.top    = stemTop + 'px';
+  rulerEl.style.height = (stemBottom - stemTop) + 'px';
 
   let html = '<div class="ruler-line"><div class="ruler-progress">';
-  careerSegments.forEach(segment => {
-    const top = careerYearPct(segment.end);
-    const bottom = careerYearPct(segment.start);
-    html += `<span class="ruler-segment ${segment.id}" style="top:${top}%;height:${bottom - top}%;"></span>`;
+  careerSegments.forEach(seg => {
+    const top=careerYearPct(seg.end), bot=careerYearPct(seg.start);
+    html += `<span class="ruler-segment ${seg.id}" style="top:${top}%;height:${bot-top}%;"></span>`;
   });
   html += '</div></div>';
 
-  for (let q = careerStartYear * 4; q <= careerCurrentYear * 4; q++) {
-    const value = q / 4;
-    const top = careerYearPct(value);
-    const tickClass = q % 4 === 0 ? 'major' : q % 2 === 0 ? 'half' : 'quarter';
-    html += `<span class="ruler-tick ${tickClass}" style="top:${top}%;"></span>`;
-    if (q % 4 === 0) {
-      html += `<span class="ruler-year" style="top:${top}%;">${value}</span>`;
-    }
+  for (let q=careerStartYear*4; q<=careerCurrentYear*4; q++) {
+    const val=q/4, top=careerYearPct(val);
+    const cls = q%4===0?'major':q%2===0?'half':'quarter';
+    html += `<span class="ruler-tick ${cls}" style="top:${top}%;"></span>`;
+    if (q%4===0) html += `<span class="ruler-year" style="top:${top}%;">${Math.round(val)}</span>`;
   }
-
-  const boundaryNodes = [
-    { year: 2015, cls: 'mit' },
-    { year: 2019, cls: 'weill' },
-    { year: 2021, cls: 'bms' },
-    { year: careerCurrentYear, cls: 'bms now' },
-  ];
-  boundaryNodes.forEach(node => {
-    html += `<span class="ruler-node ${node.cls}" style="top:${careerYearPct(node.year)}%;"></span>`;
+  [{year:2015,cls:'mit'},{year:2019,cls:'weill'},{year:2021,cls:'bms'},{year:careerCurrentYear,cls:'bms now'}]
+    .forEach(n => html+=`<span class="ruler-node ${n.cls}" style="top:${careerYearPct(n.year)}%;"></span>`);
+  careerSegments.forEach(seg => {
+    const mid=(careerYearPct(seg.start)+careerYearPct(seg.end))/2;
+    html+=`<span class="ruler-place ${seg.id}" style="top:${mid}%;">${seg.label}</span>`;
   });
-
-  careerSegments.forEach(segment => {
-    const top = (careerYearPct(segment.start) + careerYearPct(segment.end)) / 2;
-    html += `<span class="ruler-place ${segment.id}" style="top:${top}%;">${segment.label}</span>`;
-  });
-
-  careerRuler.innerHTML = html;
-}
-
-function positionLabels() {
-  NODES.forEach(n => {
-    const el = labelEls[n.id];
-    if (!el) return;
-    const OFFSET = 52;
-    let lx = n.pt.x + (n.side === 'right' ? OFFSET : -OFFSET);
-    let ly = n.pt.y;
-    if (n.side === 'right') {
-      el.style.left  = lx + 'px';
-      el.style.right = 'auto';
-    } else {
-      el.style.right = (W - lx) + 'px';
-      el.style.left  = 'auto';
-    }
-    el.style.top = (ly - 20) + 'px';
-  });
+  rulerEl.innerHTML = html;
 }
 
 /* ══════════════════════════════════════════
    DRAW
 ══════════════════════════════════════════ */
-let progress = 0; // 0→1
+function getThickness(t) { return 1.5 + Math.min(t/0.66,1)*2.8; }
+function stemColor(c,t,isDark) {
+  if (isDark) { const g=Math.round(150+t*60),rb=Math.round(40+t*30); return `rgba(${rb},${g},${Math.round(rb*1.2)},0.92)`; }
+  return `rgba(30,${Math.round(120+t*80)},60,0.88)`;
+}
 
 function draw(p) {
-  const c = themeColors();
+  if (!W || !H) return;
+  const c=themeColors(), isDark=currentTheme.startsWith('dark');
   ctx.clearRect(0,0,W,H);
 
-  // Background
-  const bgGrad = ctx.createLinearGradient(0, H, 0, 0);
-  const isDark = currentTheme.startsWith('dark');
-  if (isDark) {
-    bgGrad.addColorStop(0,   '#050708');
-    bgGrad.addColorStop(0.3, '#080c10');
-    bgGrad.addColorStop(1,   '#0a0c14');
+  const bg=ctx.createLinearGradient(0,H,0,0);
+  if (isDark) { bg.addColorStop(0,'#050708'); bg.addColorStop(0.3,'#080c10'); bg.addColorStop(1,'#0a0c14'); }
+  else        { bg.addColorStop(0,'#e8e2d8'); bg.addColorStop(0.3,'#f0ece4'); bg.addColorStop(1,'#fafaf8'); }
+  ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+
+  // soil
+  ctx.fillStyle=isDark?'#1a1208':'#c8b898';
+  ctx.beginPath(); ctx.ellipse(W*0.42,H*0.94,W*0.18,H*0.04,0,0,Math.PI*2); ctx.fill();
+  ctx.strokeStyle=isDark?'rgba(80,55,20,0.4)':'rgba(100,75,40,0.3)'; ctx.lineWidth=1;
+  for (let i=0;i<5;i++) {
+    const ox=(i-2)*18;
+    ctx.beginPath(); ctx.moveTo(W*0.42+ox,H*0.93);
+    ctx.bezierCurveTo(W*0.42+ox-4,H*0.945,W*0.42+ox+4,H*0.955,W*0.42+ox,H*0.965); ctx.stroke();
+  }
+
+  const stemP=Math.min(1,p*1.5), stemLen=Math.floor(stemP*STEM.length);
+
+  if (stemLen>1) {
+    ctx.save(); ctx.lineWidth=getThickness(0)*2.5; ctx.strokeStyle=c.accent+'18';
+    ctx.lineCap='round'; ctx.lineJoin='round'; ctx.filter='blur(6px)';
+    ctx.beginPath(); ctx.moveTo(STEM[0].x,STEM[0].y);
+    for (let i=1;i<stemLen;i++) ctx.lineTo(STEM[i].x,STEM[i].y);
+    ctx.stroke(); ctx.filter='none'; ctx.restore();
+
+    ctx.lineCap='round'; ctx.lineJoin='round';
+    for (let i=1;i<stemLen;i++) {
+      const t=i/STEM.length;
+      ctx.lineWidth=getThickness(t); ctx.strokeStyle=stemColor(c,t,isDark);
+      ctx.beginPath(); ctx.moveTo(STEM[i-1].x,STEM[i-1].y); ctx.lineTo(STEM[i].x,STEM[i].y); ctx.stroke();
+    }
+    const tip=STEM[stemLen-1];
+    ctx.save(); ctx.shadowColor=c.accent; ctx.shadowBlur=12; ctx.fillStyle=c.accent;
+    ctx.beginPath(); ctx.arc(tip.x,tip.y,3,0,Math.PI*2); ctx.fill(); ctx.restore();
+  }
+
+  // seed
+  const sx=W*0.42, sy=H*0.90;
+  if (p<0.005) {
+    ctx.save(); ctx.fillStyle=c.accent+'cc'; ctx.strokeStyle=c.accent; ctx.lineWidth=1;
+    ctx.beginPath(); ctx.ellipse(sx,sy,6,8,0.3,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
   } else {
-    bgGrad.addColorStop(0,   '#e8e2d8');
-    bgGrad.addColorStop(0.3, '#f0ece4');
-    bgGrad.addColorStop(1,   '#fafaf8');
-  }
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0,0,W,H);
-
-  // Soil mound at bottom
-  const soilColor = isDark ? '#1a1208' : '#c8b898';
-  ctx.fillStyle = soilColor;
-  ctx.beginPath();
-  ctx.ellipse(W*0.42, H*0.94, W*0.18, H*0.04, 0, 0, Math.PI*2);
-  ctx.fill();
-
-  // Soil texture lines
-  ctx.strokeStyle = isDark ? 'rgba(80,55,20,0.4)' : 'rgba(100,75,40,0.3)';
-  ctx.lineWidth = 1;
-  for (let i=0; i<5; i++) {
-    const ox = (i-2)*18;
-    ctx.beginPath();
-    ctx.moveTo(W*0.42+ox, H*0.93);
-    ctx.bezierCurveTo(W*0.42+ox-4, H*0.945, W*0.42+ox+4, H*0.955, W*0.42+ox, H*0.965);
-    ctx.stroke();
-  }
-
-  if (p <= 0.001) {
-    drawSeed(c, p);
-    return;
-  }
-
-  // How far along the stem to draw
-  const stemP = Math.min(1, p * 1.5); // stem draws faster than p so top reached at p~0.67
-
-  // ── STEM ──
-  const stemLen = Math.floor(stemP * STEM.length);
-  if (stemLen > 1) {
-    // Stem fill glow
-    ctx.save();
-    ctx.lineWidth = getThickness(0) * 2.5;
-    ctx.strokeStyle = c.accent + '18';
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.filter = 'blur(6px)';
-    ctx.beginPath();
-    ctx.moveTo(STEM[0].x, STEM[0].y);
-    for (let i=1; i<stemLen; i++) ctx.lineTo(STEM[i].x, STEM[i].y);
-    ctx.stroke();
-    ctx.filter = 'none';
+    const lp=Math.min(1,p*8);
+    ctx.save(); ctx.strokeStyle=c.accent;
+    ctx.fillStyle=c.accent+Math.round(lp*220).toString(16).padStart(2,'0');
+    ctx.save(); ctx.translate(sx-2,sy-2); ctx.rotate(-0.5); ctx.scale(lp,lp);
+    ctx.beginPath(); ctx.ellipse(-6,0,8,4,-0.3,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+    ctx.save(); ctx.translate(sx+2,sy-2); ctx.rotate(0.5); ctx.scale(lp,lp);
+    ctx.beginPath(); ctx.ellipse(6,0,8,4,0.3,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
     ctx.restore();
+  }
 
-    // Stem main line — thickness varies (thin at base when young, thicker at BMS)
-    // Draw in segments with varying width
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    for (let i=1; i<stemLen; i++) {
-      const t = i/STEM.length;
-      ctx.lineWidth = getThickness(t);
-      ctx.strokeStyle = stemColor(c, t, isDark);
-      ctx.beginPath();
-      ctx.moveTo(STEM[i-1].x, STEM[i-1].y);
-      ctx.lineTo(STEM[i].x, STEM[i].y);
-      ctx.stroke();
+  // nodes
+  NODES.forEach(n => {
+    if (p < n.p) return;
+    const localP=Math.min(1,(p-n.p)/0.06);
+    if (n.p > stemP) return;
+
+    // dot
+    ctx.save();
+    const dotR=n.type==='joint'?5:3.5;
+    ctx.shadowColor=n.type==='joint'?c.accent:c.accent+'88';
+    ctx.shadowBlur=n.type==='joint'?10:6;
+    ctx.fillStyle=c.accent; ctx.strokeStyle=isDark?'#0a0c0f':'#fafaf8'; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.arc(n.pt.x,n.pt.y,dotR*localP,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+
+    // connector
+    const ex=n.pt.x+(n.side==='right'?44:-44);
+    ctx.save(); ctx.globalAlpha=localP*0.45; ctx.strokeStyle=c.accent; ctx.lineWidth=0.8;
+    ctx.setLineDash([3,4]); ctx.lineCap='round';
+    ctx.beginPath(); ctx.moveTo(n.pt.x,n.pt.y); ctx.lineTo(ex,n.pt.y); ctx.stroke();
+    ctx.setLineDash([]); ctx.restore();
+
+    // leaf
+    if (n.type==='leaf'||n.type==='branch') {
+      const dir=n.side==='right'?1:-1, lw=n.type==='branch'?38:28, lh=n.type==='branch'?16:11;
+      ctx.save(); ctx.translate(n.pt.x+dir*14*localP, n.pt.y-6*localP);
+      ctx.rotate(n.side==='right'?-0.4:0.4); ctx.scale(localP,localP);
+      ctx.fillStyle=c.accent+'55'; ctx.strokeStyle=c.accent; ctx.lineWidth=1.2;
+      ctx.beginPath(); ctx.moveTo(0,0);
+      ctx.quadraticCurveTo(dir*lw*0.5,-lh*1.2,dir*lw,0);
+      ctx.quadraticCurveTo(dir*lw*0.5,lh*0.8,0,0); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle=c.accent+'aa'; ctx.lineWidth=0.6;
+      ctx.beginPath(); ctx.moveTo(0,0); ctx.lineTo(dir*lw*0.85,0); ctx.stroke();
+      for (let i=1;i<=3;i++) { const vx=dir*lw*i*0.22; ctx.beginPath(); ctx.moveTo(vx,0); ctx.lineTo(vx+dir*6,-lh*0.55); ctx.stroke(); }
+      ctx.restore();
     }
 
-    // Tip glow dot
-    const tip = STEM[stemLen-1];
-    ctx.save();
-    ctx.shadowColor = c.accent;
-    ctx.shadowBlur  = 12;
-    ctx.fillStyle   = c.accent;
-    ctx.beginPath();
-    ctx.arc(tip.x, tip.y, 3, 0, Math.PI*2);
-    ctx.fill();
-    ctx.restore();
-  }
+    // joint ring
+    if (n.type==='joint') {
+      ctx.save(); ctx.globalAlpha=localP*0.22; ctx.strokeStyle=c.accent; ctx.lineWidth=1;
+      ctx.beginPath(); ctx.arc(n.pt.x,n.pt.y,12*localP,0,Math.PI*2); ctx.stroke();
+      ctx.globalAlpha=localP*0.08; ctx.beginPath(); ctx.arc(n.pt.x,n.pt.y,20*localP,0,Math.PI*2); ctx.stroke(); ctx.restore();
+    }
 
-  // ── SEED / SPROUT NEAR BASE ──
-  drawSeed(c, p);
-
-  // ── NODES + LEAVES ──
-  NODES.forEach((n, i) => {
-    if (p < n.p) return;
-    const localP = Math.min(1, (p - n.p) / 0.06); // 0→1 over 6% of total scroll
-    drawNode(n, localP, c, isDark, stemP);
+    // chip visibility
+    const el=chipEls[n.id];
+    if (el) {
+      if (localP>0.3) el.classList.add('visible');
+      else            el.classList.remove('visible');
+    }
   });
 }
 
-function getThickness(t) {
-  // Thin (1.5px) at base, grows to 4px at BMS (p~0.66), stays thick above
-  return 1.5 + Math.min(t / 0.66, 1) * 2.8;
-}
-
-function stemColor(c, t, isDark) {
-  // Younger (lower t) = lighter/more yellow-green; older = richer sage
-  if (isDark) {
-    const g = Math.round(150 + t*60);
-    const rb = Math.round(40 + t*30);
-    return `rgba(${rb},${g},${rb*1.2},0.92)`;
-  } else {
-    const g = Math.round(120 + t*80);
-    return `rgba(30,${g},60,0.88)`;
-  }
-}
-
-function drawSeed(c, p) {
-  const sx = W*0.42, sy = H*0.90;
-  if (p < 0.005) {
-    // Just a seed
-    ctx.save();
-    ctx.fillStyle = c.accent + 'cc';
-    ctx.strokeStyle = c.accent;
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.ellipse(sx, sy, 6, 8, 0.3, 0, Math.PI*2);
-    ctx.fill(); ctx.stroke();
-    ctx.restore();
-    return;
-  }
-  // Seed + small sprout loop
-  const sproutH = Math.min(30, p * 300);
-  ctx.save();
-  ctx.strokeStyle = c.accent;
-  ctx.lineWidth = 1.5;
-  ctx.lineCap = 'round';
-  // cotyledon leaves (two small rounded leaves at base)
-  const lp = Math.min(1, p*8);
-  ctx.fillStyle = c.accent + Math.round(lp*220).toString(16).padStart(2,'0');
-  ctx.strokeStyle = c.accent;
-  // left cotyledon
-  ctx.save();
-  ctx.translate(sx-2, sy-2);
-  ctx.rotate(-0.5);
-  ctx.scale(lp, lp);
-  ctx.beginPath();
-  ctx.ellipse(-6, 0, 8, 4, -0.3, 0, Math.PI*2);
-  ctx.fill(); ctx.stroke();
-  ctx.restore();
-  // right cotyledon
-  ctx.save();
-  ctx.translate(sx+2, sy-2);
-  ctx.rotate(0.5);
-  ctx.scale(lp, lp);
-  ctx.beginPath();
-  ctx.ellipse(6, 0, 8, 4, 0.3, 0, Math.PI*2);
-  ctx.fill(); ctx.stroke();
-  ctx.restore();
-  ctx.restore();
-}
-
-function drawNode(n, localP, c, isDark, stemP) {
-  const pt = n.pt;
-  // Don't draw if stem hasn't reached this point yet
-  if (n.p > stemP) return;
-
-  // Node dot on stem
-  ctx.save();
-  const dotR = n.type === 'joint' ? 5 : 3.5;
-  ctx.shadowColor = n.type === 'joint' ? c.accent : c.accent + '88';
-  ctx.shadowBlur  = n.type === 'joint' ? 10 : 6;
-  ctx.fillStyle   = c.accent;
-  ctx.strokeStyle = isDark ? '#0a0c0f' : '#fafaf8';
-  ctx.lineWidth   = 1.5;
-  ctx.beginPath();
-  ctx.arc(pt.x, pt.y, dotR * localP, 0, Math.PI*2);
-  ctx.fill(); ctx.stroke();
-  ctx.restore();
-
-  // Connector line from stem to label
-  const OFFSET = 44;
-  const ex = pt.x + (n.side === 'right' ? OFFSET : -OFFSET);
-  ctx.save();
-  ctx.globalAlpha = localP * 0.55;
-  ctx.strokeStyle = c.accent;
-  ctx.lineWidth   = 0.8;
-  ctx.setLineDash([3,4]);
-  ctx.lineCap = 'round';
-  ctx.beginPath();
-  ctx.moveTo(pt.x, pt.y);
-  ctx.lineTo(ex, pt.y);
-  ctx.stroke();
-  ctx.setLineDash([]);
-  ctx.restore();
-
-  // Leaf shape for leaf/branch types
-  if (n.type === 'leaf' || n.type === 'branch') {
-    drawLeaf(pt, n.side, localP, c, n.type === 'branch');
-  }
-
-  // Joint ring for joint types
-  if (n.type === 'joint') {
-    ctx.save();
-    ctx.globalAlpha = localP * 0.25;
-    ctx.strokeStyle = c.accent;
-    ctx.lineWidth   = 1;
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, 12 * localP, 0, Math.PI*2);
-    ctx.stroke();
-    ctx.globalAlpha = localP * 0.1;
-    ctx.beginPath();
-    ctx.arc(pt.x, pt.y, 20 * localP, 0, Math.PI*2);
-    ctx.stroke();
-    ctx.restore();
-  }
-
-  // Show/hide label
-  const el = labelEls[n.id];
-  if (el) {
-    if (localP > 0.4) el.classList.add('visible');
-    else              el.classList.remove('visible');
-  }
-}
-
-function drawLeaf(pt, side, p, c, isBranch) {
-  const dir = side === 'right' ? 1 : -1;
-  const lw  = isBranch ? 38 : 28;
-  const lh  = isBranch ? 16 : 11;
-  const angle = side === 'right' ? -0.4 : 0.4;
-
-  ctx.save();
-  ctx.translate(pt.x + dir*14*p, pt.y - 6*p);
-  ctx.rotate(angle);
-  ctx.scale(p, p);
-
-  // leaf fill
-  ctx.fillStyle = c.accent + '55';
-  ctx.strokeStyle = c.accent;
-  ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  ctx.moveTo(0, 0);
-  ctx.quadraticCurveTo(dir*lw*0.5, -lh*1.2, dir*lw, 0);
-  ctx.quadraticCurveTo(dir*lw*0.5,  lh*0.8,  0, 0);
-  ctx.fill(); ctx.stroke();
-
-  // leaf vein
-  ctx.strokeStyle = c.accent + 'aa';
-  ctx.lineWidth = 0.6;
-  ctx.beginPath();
-  ctx.moveTo(0,0);
-  ctx.lineTo(dir*lw*0.85, 0);
-  ctx.stroke();
-  // secondary veins
-  for (let i=1; i<=3; i++) {
-    const vx = dir*lw*i*0.22;
-    ctx.beginPath();
-    ctx.moveTo(vx, 0);
-    ctx.lineTo(vx + dir*6, -lh*0.55);
-    ctx.stroke();
-  }
-
-  ctx.restore();
-}
-
 /* ══════════════════════════════════════════
-   SCROLL HANDLER
+   SCROLL
 ══════════════════════════════════════════ */
-const driver = document.getElementById('scroll-driver');
-const progressBar = document.getElementById('progress-bar');
-const scrollHint  = document.getElementById('scroll-hint');
-const doneCta     = document.getElementById('done-cta');
-
 function onScroll() {
-  const scrollTop = window.scrollY || window.pageYOffset || 0;
-  const maxScroll = Math.max(1, driver.offsetHeight - window.innerHeight);
-  progress = Math.max(0, Math.min(1, scrollTop / maxScroll));
+  console.log("scroll", window.scrollY);
+  const scrollTop=window.scrollY||0;
+  const maxScroll=Math.max(1, driver.offsetHeight - window.innerHeight);
+  progress=Math.max(0,Math.min(1,scrollTop/maxScroll));
+  progressBar.style.width=(progress*100)+'%';
 
-  progressBar.style.width = (progress * 100) + '%';
-  const rulerProgress = document.querySelector('.ruler-progress');
-  if (rulerProgress) {
-    const rulerFill = Math.min(1, progress * 1.5) * 100;
-    rulerProgress.style.clipPath = `inset(${100 - rulerFill}% 0 0 0)`;
-  }
+  const rp=document.querySelector('.ruler-progress');
+  if (rp) rp.style.clipPath=`inset(${100-Math.min(1,progress*1.5)*100}% 0 0 0)`;
 
-  if (progress > 0.03) scrollHint.classList.add('hidden');
-  else                 scrollHint.classList.remove('hidden');
-
-  if (progress > 0.96) doneCta.classList.add('visible');
-  else                 doneCta.classList.remove('visible');
+  if (progress>0.03) scrollHint.classList.add('hidden');
+  else               scrollHint.classList.remove('hidden');
 
   draw(progress);
 }
-
-window.addEventListener('scroll', onScroll, { passive: true });
+window.addEventListener('scroll', onScroll, { passive:true });
 
 /* ══════════════════════════════════════════
-   INIT + LOOP
+   INIT — single entry point, load event only
 ══════════════════════════════════════════ */
-bgDirty = false;
-let raf;
-
-function tick() {
-  if (bgDirty) { draw(progress); bgDirty = false; }
-  raf = requestAnimationFrame(tick);
-}
+function tick() { if (bgDirty) { draw(progress); bgDirty=false; } requestAnimationFrame(tick); }
 
 window.addEventListener('load', () => {
-  resize();
-  buildLabels();
-  positionLabels();
-  window.scrollTo(0, 0);
-  progress = 0;
+  // FIX: resize first so W/H exist before anything else runs
+  W = canvas.width  = window.innerWidth;
+  H = canvas.height = window.innerHeight;
+  buildPlantDefs();
+  buildCareerRuler();
+  buildChips();         // FIX: called exactly once
+  positionChips();
+  window.scrollTo(0,0);
+  progress=0;
   draw(0);
-  tick();
+  requestAnimationFrame(tick);
   onScroll();
-});
-
-window.addEventListener('DOMContentLoaded', () => {
-  resize();
-  buildLabels();
-  positionLabels();
-  draw(0);
 });
 </script>
 </body>
