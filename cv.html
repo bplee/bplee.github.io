@@ -19,7 +19,7 @@ html, body { width:100%; min-height:100%; overflow-x:hidden; background:var(--bg
 #plant-canvas { width:100%; height:100%; display:block; }
 
 /* ── SCROLL DRIVER ── */
-#scroll-driver { position:relative; z-index:1; height:900vh; pointer-events:none; }
+#scroll-driver { position:relative; z-index:1; height:500vh; pointer-events:none; }
 
 /* ── DIMMER ── */
 #dimmer {
@@ -682,7 +682,7 @@ function draw(p) {
     ctx.bezierCurveTo(W*0.42+ox-4,H*0.945,W*0.42+ox+4,H*0.955,W*0.42+ox,H*0.965); ctx.stroke();
   }
 
-  const stemP=Math.min(1,p*1.5), stemLen=Math.floor(stemP*STEM.length);
+  const stemP=p, stemLen=Math.floor(stemP*STEM.length);
 
   if (stemLen>1) {
     ctx.save(); ctx.lineWidth=getThickness(0)*2.5; ctx.strokeStyle=c.accent+'18';
@@ -784,7 +784,7 @@ function onScroll() {
   progressBar.style.width=(progress*100)+'%';
 
   const rp=document.querySelector('.ruler-progress');
-  if (rp) rp.style.clipPath=`inset(${100-Math.min(1,progress*1.5)*100}% 0 0 0)`;
+  if (rp) rp.style.clipPath=`inset(${100-progress*100}% 0 0 0)`;
 
   if (progress>0.03) scrollHint.classList.add('hidden');
   else               scrollHint.classList.remove('hidden');
