@@ -15,7 +15,7 @@
 html, body { width:100%; min-height:100%; overflow-x:hidden; background:var(--bg); color:var(--text); font-family:'Space Grotesk',sans-serif; }
 
 /* ── CANVAS ── */
-#stage { position:fixed; inset:0; z-index:0; pointer-events:none; }
+#stage { position:fixed; inset:0; z-index:5; pointer-events:none; }
 #plant-canvas { width:100%; height:100%; display:block; }
 
 /* ── SCROLL DRIVER ── */
@@ -23,7 +23,7 @@ html, body { width:100%; min-height:100%; overflow-x:hidden; background:var(--bg
 
 /* ── DIMMER ── */
 #dimmer {
-  position:fixed; inset:0; z-index:8;
+  position:fixed; inset:0; z-index:2;
   background:rgba(0,0,0,0); pointer-events:none;
   transition:background 0.4s ease;
 }
@@ -63,7 +63,7 @@ html, body { width:100%; min-height:100%; overflow-x:hidden; background:var(--bg
     inset 0 1px 0 rgba(255,255,255,0.20),
     inset 0 -1px 0 rgba(0,0,0,0.10);
 
-  width: 220px;
+  width: 250px;
   padding: 10px 14px;
   overflow: hidden;
 }
@@ -82,7 +82,23 @@ html, body { width:100%; min-height:100%; overflow-x:hidden; background:var(--bg
     0 0 0 1px rgba(255,255,255,0.05);
   cursor: default;
 }
+/* Dimmer adjustment for Light Themes */
+[data-theme="light-expressive"] #dimmer.active,
+[data-theme="light-minimal"] #dimmer.active { 
+  background: rgba(240, 235, 228, 0.7); /* Lighter backdrop for light theme */
+}
 
+/* Ensure chips remain legible when dimmed in Light Mode */
+[data-theme^="light"] .chip.dimmed {
+  filter: brightness(0.9) blur(1px); /* Less aggressive dimming for light mode */
+  opacity: 0.6;
+}
+
+/* Explicitly handle the 'expanded' state for Light Themes if needed */
+[data-theme^="light"] .chip.expanded {
+  background: rgba(255, 255, 255, 0.95);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+}
 [data-theme="light-expressive"] .chip,
 [data-theme="light-minimal"]    .chip {
   background: rgba(255,255,255,0.5);
@@ -302,8 +318,8 @@ nav {
   </div>
 </nav>
 
-<div id="stage"><canvas id="plant-canvas"></canvas></div>
 <div id="dimmer"></div>
+<div id="stage"><canvas id="plant-canvas"></canvas></div>
 <div id="chips"></div>
 <div id="career-ruler" aria-hidden="true"></div>
 <div id="scroll-driver"></div>
@@ -358,12 +374,32 @@ let STEM = [], NODES = [], chipEls = {}, openChip = null;
 let progress = 0;
 
 function resize() {
-  W = canvas.width  = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  bgDirty = true;
+  const dpr = window.devicePixelRatio || 1;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+
+  // Set the canvas size attributes (the actual buffer)
+  canvas.setAttribute('width', w * dpr);
+  canvas.setAttribute('height', h * dpr);
+
+  // Set the display size (CSS pixels)
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+
+  // IMPORTANT: Reset the context scale
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(dpr, dpr);
+
+  W = w;
+  H = h;
+  
+  // Crucial: Re-run your building functions with the new width
   buildPlantDefs();
   buildCareerRuler();
   positionChips();
+  
+  // Re-draw immediately
+  draw(progress); 
 }
 window.addEventListener('resize', resize);
 
@@ -445,7 +481,8 @@ function stemTangent(t) {
 
 function buildPlantDefs() {
   STEM = [];
-  for (let i=0;i<=200;i++) STEM.push(stemPoint(i/200));
+  const segments = 600;
+  for (let i=0;i<=segments;i++) STEM.push(stemPoint(i/segments));
   NODES = MILESTONES.map(m => {
     const pt=stemPoint(m.p), tan=stemTangent(m.p);
     const len=Math.max(0.001, Math.sqrt(tan.x*tan.x+tan.y*tan.y));
@@ -489,13 +526,19 @@ function chipHTML(n) {
 
 function toggleChip(id) {
   if (openChip === id) { closeAllChips(); return; }
-  // close any open one first
+  // Close others
   Object.values(chipEls).forEach(el => el.classList.remove('expanded', 'dimmed'));
   openChip = id;
   chipEls[id].classList.add('expanded');
-  Object.entries(chipEls).forEach(([k,v]) => { if (k !== id) v.classList.add('dimmed'); });
+  // Apply dimming
+  Object.entries(chipEls).forEach(([k,v]) => { 
+    if (k !== id) v.classList.add('dimmed'); 
+  });
   dimmerEl.classList.add('active');
   rulerEl.classList.add('dimmed');
+  // Optional: If you want to force a specific color based on the current theme
+  const isLight = document.body.getAttribute('data-theme').startsWith('light');
+  dimmerEl.style.background = isLight ? 'rgba(240, 235, 228, 0.7)' : 'rgba(0,0,0,0.55)';
 }
 
 function closeAllChips() {
@@ -686,7 +729,7 @@ function draw(p) {
    SCROLL
 ══════════════════════════════════════════ */
 function onScroll() {
-  console.log("scroll", window.scrollY);
+  // console.log("scroll", window.scrollY);
   const scrollTop=window.scrollY||0;
   const maxScroll=Math.max(1, driver.offsetHeight - window.innerHeight);
   progress=Math.max(0,Math.min(1,scrollTop/maxScroll));
