@@ -414,28 +414,29 @@ function resize() {
   const w = window.innerWidth;
   const h = window.innerHeight;
 
-  // Set the canvas size attributes (the actual buffer)
-  canvas.setAttribute('width', w * dpr);
-  canvas.setAttribute('height', h * dpr);
+  // 1. Set the physical buffer size (the "memory" size)
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
 
-  // Set the display size (CSS pixels)
+  // 2. Set the display size (the "CSS" size)
   canvas.style.width = w + 'px';
   canvas.style.height = h + 'px';
 
-  // IMPORTANT: Reset the context scale
+  // 3. Reset the context scale
+  // This is the "magic" step: it forces 1 unit in your code
+  // to equal 1 physical pixel on the high-res screen.
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.scale(dpr, dpr);
 
   W = w;
   H = h;
   
-  // Crucial: Re-run your building functions with the new width
+  // Re-initialize layouts
   buildPlantDefs();
   buildCareerRuler();
   positionChips();
   
-  // Re-draw immediately
-  draw(progress); 
+  bgDirty = true;
 }
 window.addEventListener('resize', resize);
 
@@ -798,11 +799,8 @@ window.addEventListener('scroll', onScroll, { passive:true });
 function tick() { if (bgDirty) { draw(progress); bgDirty=false; } requestAnimationFrame(tick); }
 
 window.addEventListener('load', () => {
-  // FIX: resize first so W/H exist before anything else runs
-  W = canvas.width  = window.innerWidth;
-  H = canvas.height = window.innerHeight;
-  buildPlantDefs();
-  buildCareerRuler();
+  resize();
+
   buildChips();         // FIX: called exactly once
   positionChips();
   window.scrollTo(0,0);
