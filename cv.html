@@ -702,22 +702,47 @@ function draw(p) {
     ctx.beginPath(); ctx.arc(tip.x,tip.y,3,0,Math.PI*2); ctx.fill(); ctx.restore();
   }
 
-  // seed
-  const sx=W*0.42, sy=H*0.90;
-  if (p<0.005) {
-    ctx.save(); ctx.fillStyle=c.accent+'cc'; ctx.strokeStyle=c.accent; ctx.lineWidth=1;
-    ctx.beginPath(); ctx.ellipse(sx,sy,6,8,0.3,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
-  } else {
-    const lp=Math.min(1,p*8);
-    ctx.save(); ctx.strokeStyle=c.accent;
-    ctx.fillStyle=c.accent+Math.round(lp*220).toString(16).padStart(2,'0');
-    ctx.save(); ctx.translate(sx-2,sy-2); ctx.rotate(-0.5); ctx.scale(lp,lp);
-    ctx.beginPath(); ctx.ellipse(-6,0,8,4,-0.3,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
-    ctx.save(); ctx.translate(sx+2,sy-2); ctx.rotate(0.5); ctx.scale(lp,lp);
-    ctx.beginPath(); ctx.ellipse(6,0,8,4,0.3,0,Math.PI*2); ctx.fill(); ctx.stroke(); ctx.restore();
+  // seed / sprout transition
+  const sx = W * 0.42;
+  const sy = H * 0.92; // Ensure this matches your stem start
+  
+  // 1. The Seed (Fades out by p=0.05)
+  if (p < 0.05) {
+    const seedOpacity = 1 - (p / 0.05);
+    ctx.save();
+    ctx.globalAlpha = seedOpacity;
+    ctx.fillStyle = c.accent + 'cc';
+    ctx.strokeStyle = c.accent;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.ellipse(sx, sy, 6, 8, 0.3, 0, Math.PI * 2);
+    ctx.fill(); ctx.stroke();
     ctx.restore();
   }
 
+  // 2. The Sprout (Starts appearing at p=0.01)
+  if (p > 0.01) {
+    const lp = Math.min(1, p * 5); // Sprout grows quickly
+    ctx.save();
+    ctx.strokeStyle = c.accent;
+    ctx.fillStyle = c.accent + Math.round(lp * 180).toString(16).padStart(2, '0');
+    
+    // Draw left and right sprout leaves
+    const drawSproutLeaf = (angle, offset) => {
+      ctx.save();
+      ctx.translate(sx + offset, sy - 2);
+      ctx.rotate(angle);
+      ctx.scale(lp, lp);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 8, 4, 0, 0, Math.PI * 2);
+      ctx.fill(); ctx.stroke();
+      ctx.restore();
+    };
+    
+    drawSproutLeaf(-0.5, -4);
+    drawSproutLeaf(0.5, 4);
+    ctx.restore();
+  }
   // nodes
   NODES.forEach(n => {
   // A chip appears when the stem reaches its specific p value
