@@ -29,9 +29,6 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-grid" aria-hidden="true"></div>
-  <div class="heatmap-wrap" aria-hidden="true">
-    <canvas id="heatmap" width="340" height="500"></canvas>
-  </div>
   <div class="hero-content">
     <div class="hero-eyebrow">Machine Learning · Computational Biology · Data Science</div>
     <h1>Brennan<br><em>Lee</em></h1>
@@ -241,7 +238,6 @@ function setTheme(theme, optionEl) {
     el.classList.toggle('active', el.getAttribute('data-theme') === theme);
   });
   closePanel();
-  updateHeatmapFade();
 }
 
 function togglePanel() {
@@ -265,81 +261,9 @@ if (currentTheme !== 'dark-expressive') {
 }
 
 /* ══════════════════════════════════════════
-   HEATMAP
-══════════════════════════════════════════ */
-(function () {
-  var canvas = document.getElementById('heatmap');
-  if (!canvas) return;
-  var ctx = canvas.getContext('2d');
-  var ROWS = 24, COLS = 18;
-  var CW = canvas.width / COLS;
-  var CH = canvas.height / ROWS;
-
-  var base = Array.from({length: ROWS}, function(_, r) {
-    return Array.from({length: COLS}, function(_, c) {
-      return Math.min(1, Math.max(0,
-        Math.sin(r * 0.42 + c * 0.31) * 0.45 +
-        Math.cos(r * 0.18 - c * 0.55) * 0.25 +
-        0.5 + (Math.random() - 0.5) * 0.2
-      ));
-    });
-  });
-
-  var phase = Array.from({length: ROWS}, function() {
-    return Array.from({length: COLS}, function() { return Math.random() * Math.PI * 2; });
-  });
-  var speed = Array.from({length: ROWS}, function() {
-    return Array.from({length: COLS}, function() { return 0.004 + Math.random() * 0.006; });
-  });
-
-  function lerp(a, b, t) { return a + (b - a) * t; }
-  function toRGB(v) {
-    var r, g, b, t;
-    if (v < 0.25)      { t = v/0.25;       r=lerp(8,6,t);   g=lerp(30,85,t);  b=lerp(80,160,t); }
-    else if (v < 0.5)  { t=(v-0.25)/0.25;  r=lerp(6,18,t);  g=lerp(85,165,t); b=lerp(160,205,t); }
-    else if (v < 0.75) { t=(v-0.5)/0.25;   r=lerp(18,230,t);g=lerp(165,220,t);b=lerp(205,90,t); }
-    else               { t=(v-0.75)/0.25;  r=lerp(230,255,t);g=lerp(220,70,t);b=lerp(90,35,t); }
-    return [Math.round(r), Math.round(g), Math.round(b)];
-  }
-
-  var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-  function getFadeColor() {
-    var t = document.body.getAttribute('data-theme') || 'dark-expressive';
-    if (t === 'light-expressive') return 'rgba(250,250,248,';
-    return 'rgba(10,12,15,';
-  }
-
-  function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (var r = 0; r < ROWS; r++) {
-      for (var c = 0; c < COLS; c++) {
-        if (!reduced) phase[r][c] += speed[r][c];
-        var v = Math.max(0, Math.min(1, base[r][c] + Math.sin(phase[r][c]) * 0.14));
-        var rgb = toRGB(v);
-        ctx.fillStyle = 'rgba('+rgb[0]+','+rgb[1]+','+rgb[2]+',0.82)';
-        ctx.fillRect(Math.round(c*CW)+1, Math.round(r*CH)+1, Math.ceil(CW)-2, Math.ceil(CH)-2);
-      }
-    }
-    var fc = getFadeColor();
-    var g1 = ctx.createLinearGradient(0, 0, canvas.width*0.45, 0);
-    g1.addColorStop(0, fc+'1)'); g1.addColorStop(1, fc+'0)');
-    ctx.fillStyle = g1; ctx.fillRect(0,0,canvas.width,canvas.height);
-    var g2 = ctx.createLinearGradient(0, 0, 0, canvas.height*0.25);
-    g2.addColorStop(0, fc+'1)'); g2.addColorStop(1, fc+'0)');
-    ctx.fillStyle = g2; ctx.fillRect(0,0,canvas.width,canvas.height);
-    var g3 = ctx.createLinearGradient(0, canvas.height*0.75, 0, canvas.height);
-    g3.addColorStop(0, fc+'0)'); g3.addColorStop(1, fc+'1)');
-    ctx.fillStyle = g3; ctx.fillRect(0,0,canvas.width,canvas.height);
-    requestAnimationFrame(draw);
-  }
-  draw();
-})();
-
-/* ══════════════════════════════════════════
    SKILLS BAR CYCLING
 ══════════════════════════════════════════ */
-(function() {
+(function() { 
   const skillsBar = document.querySelector('.skills-bar');
   const skillsTags = document.querySelector('.skills-tags');
   if (!skillsBar || !skillsTags) return;
@@ -372,26 +296,24 @@ if (currentTheme !== 'dark-expressive') {
   //   animationId = requestAnimationFrame(animate);
   // }
   function animate() {
-  // 1. Properly smooth the velocity (Deceleration/Acceleration)
-  // 0.05 is your "friction" factor. Lower = smoother/slower, Higher = snappier.
-  currentVelocity += (targetVelocity - currentVelocity) * 0.05; 
+    // Smooth velocity transitions
+    currentVelocity += (targetVelocity - currentVelocity) * 0.15;
+    
+    // Snap to target when close enough
+    if (Math.abs(currentVelocity - targetVelocity) < 0.01) {
+      currentVelocity = targetVelocity;
+    }
 
-  // 2. Update scroll position
-  skillsBar.scrollLeft += currentVelocity;
+    // Update scroll position
+    skillsBar.scrollLeft += currentVelocity;
 
-  // 3. Seamless Loop
-  if (skillsBar.scrollLeft >= fullWidth) {
-    // Subtract fullWidth so it continues smoothly without resetting the velocity
-    skillsBar.scrollLeft -= fullWidth;
-  }
+    // Seamless loop: when we reach the duplicate section, jump back to start
+    if (skillsBar.scrollLeft >= fullWidth) {
+      skillsBar.scrollLeft -= fullWidth;
+    }
 
-  // 4. Optimization: Only animate if moving OR if we are currently decelerating
-  if (Math.abs(currentVelocity) > 0.01 || isHovering) {
     animationId = requestAnimationFrame(animate);
-  } else {
-    animationId = null; // Pause animation loop when fully stopped
   }
-}
 
   // Mouse events
   skillsBar.addEventListener('mouseenter', function() {
@@ -404,8 +326,10 @@ if (currentTheme !== 'dark-expressive') {
     targetVelocity = velocity; // Resume normal cycling
   });
 
-  // Start animation
-  animate();
+  // Start animation after a brief delay to ensure DOM has rendered
+  setTimeout(function() {
+    animate();
+  }, 50);
 })();
 </script>
 
