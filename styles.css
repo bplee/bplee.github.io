@@ -207,7 +207,7 @@ h1 em { font-style: normal; color: var(--accent); }
 [data-theme="dark-minimal"] .btn-primary, [data-theme="light-minimal"] .btn-primary { background: var(--text); color: var(--bg); border-radius: 3px; }
 
 /* SKILLS BAR */
-.skills-bar { border-top: 0.5px solid var(--border); border-bottom: 0.5px solid var(--border); padding: 1.25rem 3rem; display: flex; align-items: center; gap: 2rem; overflow-x: auto; background: var(--bg2); scrollbar-width: none; }
+.skills-bar { border-top: 0.5px solid var(--border); border-bottom: 0.5px solid var(--border); padding: 1.25rem 3rem; display: flex; align-items: center; gap: 2rem; overflow-x: auto; background: var(--bg2); scrollbar-width: none; user-select: none; }
 .skills-bar::-webkit-scrollbar { display: none; }
 [data-theme="dark-minimal"] .skills-bar, [data-theme="light-minimal"] .skills-bar { display: none; }
 
