@@ -286,8 +286,8 @@ nav {
 
 /* ── SCROLL HINT ── */
 #scroll-hint {
-  position:fixed; bottom:32px; left:50%; transform:translateX(-50%);
-  font-family:'Space Mono',monospace; font-size:10px; color:var(--dim); letter-spacing:0.1em;
+  position:fixed; bottom:70px; left:50%; transform:translateX(-50%);
+  font-family:'Space Mono',monospace; font-size:14px; color:var(--dim); letter-spacing:0.1em;
   z-index:20; display:flex; flex-direction:column; align-items:center; gap:6px; transition:opacity 0.4s ease;
 }
 #scroll-hint.hidden { opacity:0; pointer-events:none; }
@@ -316,7 +316,6 @@ nav {
     <a href="index.html" class="nav-logo">李毘安</a>
   </div>
   <div class="nav-right">
-    <a href="files/cv.pdf" target="_blank" rel="noopener" class="nav-back">resume ↗</a>
     <div class="theme-switcher">
       <button class="theme-btn" id="themeBtn" aria-label="Change theme">
         <div class="theme-btn-dots">
@@ -483,20 +482,20 @@ const MILESTONES = [
     tags:[['Variational Inference',''],['Batch Correction',''],['scRNA-seq','']], type:'branch' },
   { id:'bms',      p:0.68, side:'right', year:'2021 — present',
     title:'Bristol Myers Squibb', org:'Senior Computational Biologist',
-    desc:'Computational lead on early-stage oncology drug discovery. Own target discovery campaigns across modalities. Computer vision for CIN, deep learning for dependency, Bayesian inference for noisy genomics.',
+    desc:'My job falls into 3 categores (1) Computational lead on early-stage oncology drug discovery programs. (2) Owning target discovery campaigns across different modalities. (3) Applied ML scientist for cancer dependency and patient biomarker stratification.',
     tags:[['Drug Discovery','amber'],['Target ID','amber'],['scRNA-seq',''],['Spatial TX',''],['Computer Vision',''],['Deep Learning',''],['Bayesian Inference','']],
     pub:{ text:'ImmunoHorizons 2025 · TRM cells in NSCLC', href:'https://doi.org/10.1093/immhor/vlaf013' }, type:'joint' },
   { id:'bms_dd',   p:0.78, side:'left',  year:'',
-    title:'Drug Discovery & Target ID', org:'@ BMS',
-    desc:'Computational lead on go/no-go decisions. scRNA-seq, spatial transcriptomics, bulk RNA-seq, pharmacology screens, mouse clinical trials.',
+    title:'Computational Lead', org:'@ BMS',
+    desc:'Computational lead on drug programs. Helping design and analyse critical experiments for biomarker ID, therpeutic MoA, resistance mechanisms, PD marker ID, etc. to contribute to go/no-go decisions. scRNA-seq, spatial transcriptomics, bulk RNA-seq, pharmacology screens, functional genomic screens, in vivo clinical trials.',
     tags:[['scRNA-seq',''],['Spatial TX',''],['Pharmacology','']], type:'leaf' },
   { id:'bms_ml',   p:0.86, side:'right', year:'',
     title:'Applied Machine Learning', org:'@ BMS',
-    desc:'Computer vision for chromosomal instability from H&E images. Deep learning for DepMap dependency prediction. Bayesian inference for CRISPR screen analysis.',
+    desc:'Computer vision for chromosomal instability from H&E images. Attention-based Deep learning for DepMap dependency prediction. Bayesian inference for CRISPR screen analysis.',
     tags:[['Computer Vision',''],['H&E',''],['DepMap',''],['MAGeCK','']], type:'leaf' },
   { id:'bms_func', p:0.93, side:'left',  year:'',
-    title:'Functional Genomics', org:'@ BMS',
-    desc:'End-to-end CRISPR screen pipelines with CNV correction. MAGeCK integration for hit prioritization and pathway interpretation.',
+    title:'Novel Target ID', org:'@ BMS',
+    desc:'Led multiple novel target ID workstreams for different drug modalities. Deep experience analysing focused functional genomics screens of all kinds. Currated biomarker-centric and screen-centric target priortization pipelines, establishing pipelines to allow for the company to evaluate competitor drug candidates and propose novel opportunities.',
     tags:[['CRISPR',''],['MAGeCK',''],['CNV Correction','']], type:'leaf' },
 ];
 

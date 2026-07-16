@@ -3,7 +3,6 @@
   if (!mount) return;
 
   const page = document.body.getAttribute('data-nav') || 'home';
-  const resumeHref = 'https://github.com/bplee/bplee.github.io/raw/master/files/cv.pdf';
   
   // Detect if we're in a subdirectory (articles/)
   const isSubdir = window.location.pathname.includes('/articles/');
@@ -21,7 +20,6 @@
           <a href="index.html" class="nav-back">← back</a>
           <span class="nav-logo">李毘安 · cv</span>
           <div class="cv-nav-actions">
-            <a href="${resumeHref}" target="_blank" rel="noopener" class="nav-resume">resume ↗</a>
             <div class="theme-switcher">
               <button class="theme-btn" id="themeBtn" aria-label="Change theme">
                 <div class="theme-btn-dots" id="themeBtnDots">
@@ -81,7 +79,6 @@
           <li><a href="${writingHref}">writing</a></li>
           <li><a href="${contactHref}">contact</a></li>
           <li><a href="${cvHref}">cv</a></li>
-          <li><a href="${resumeHref}" target="_blank" rel="noopener" class="nav-resume">resume ↗</a></li>
           <li>
             <div class="theme-switcher">
               <button class="theme-btn" id="themeBtn" aria-label="Change theme">
