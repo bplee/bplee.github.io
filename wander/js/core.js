@@ -152,22 +152,25 @@ window.addEventListener('keyup', e => {
 ══════════════════════════════════════════ */
 let camX = 0;
 let camY = 0;   // vertical camera: negative = looking up (the hill), positive = looking down (the cavern)
+// phone held upright: there's spare height, so sit the world higher (ground ~62% down instead of 78%)
+function isPortrait() { return MOBILE && window.innerHeight > window.innerWidth; }
+function viewBias() { return isPortrait() ? H * 0.16 : 0; }
 function updateCamera() {
   if (scene === 'tavern') {
     // room fits on screen → center it; otherwise follow the player
     const target = W >= ROOM_W ? (ROOM_W - W) / 2 : Math.max(0, Math.min(ROOM_W - W, player.wx - W * 0.5));
     camX += (target - camX) * 0.15;
-    camY += (0 - camY) * 0.2;
+    camY += (viewBias() - camY) * 0.2;
     return;
   }
   if (scene === 'cavern') {
     const tx = Math.max(0, Math.min(CAVE_W - W, player.wx - W * 0.45));
     camX += (tx - camX) * 0.1;
-    camY += ((player._py - H * 0.58) - camY) * 0.08;
+    camY += ((player._py - H * 0.58 + viewBias()) - camY) * 0.08;
     return;
   }
   // only look up once you climb past the middle of the screen
-  const ty = Math.min(0, player._py - H * 0.55);
+  const ty = Math.min(0, player._py - H * 0.55) + viewBias();
   camY += (ty - camY) * 0.08;
   // During volleyball keep the whole court framed, nudged by the player
   const target = vball.active

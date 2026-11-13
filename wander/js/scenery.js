@@ -62,7 +62,7 @@ function hillY(x, layer) {
     : H*BASE_GND - 30 - Math.sin(x*0.0034+2)*26 - Math.sin(x*0.0091)*12;
 }
 function drawHills() {
-  ctx.save(); ctx.translate(0, -camY * 0.3);
+  ctx.save(); ctx.translate(0, -(viewBias() + (camY - viewBias()) * 0.3));
   [[0, 0.04, 'rgba(20,28,44,0.9)'], [1, 0.1, 'rgba(16,26,24,0.95)']].forEach(([layer, par, col]) => {
     ctx.beginPath(); ctx.moveTo(0, H);
     for (let sx = 0; sx <= W + 10; sx += 10) ctx.lineTo(sx, hillY(sx + camX*par, layer));
@@ -78,7 +78,7 @@ const BG_TREES = Array.from({length:40}, (_,i) => ({
   pine: Math.random() < 0.45, ph: Math.random()*6,
 }));
 function drawBgTrees() {
-  ctx.save(); ctx.translate(0, -camY * 0.4);
+  ctx.save(); ctx.translate(0, -(viewBias() + (camY - viewBias()) * 0.4));
   drawBgTreesInner();
   ctx.restore();
 }
@@ -121,7 +121,7 @@ function groundPath(step) {
 function drawTerrain() {
   ctx.save();
   const pts = groundPath(6);
-  const bottom = H - Math.min(0, camY) + 40;
+  const bottom = H + Math.abs(camY) + 40;
   ctx.beginPath();
   ctx.moveTo(pts[0][0] - camX, bottom);
   pts.forEach(([x, y]) => ctx.lineTo(x - camX, y));

@@ -116,14 +116,10 @@ function onMove(e) {
   }
   const j = touchUI.joy;
   if (!j || e.pointerId !== j.id) return;
-  let dx = x - j.x0, dy = y - j.y0;
-  const d = Math.hypot(dx, dy);
-  if (d > JOY_R) { // the base follows your thumb if you drag past the edge
-    j.x0 = x - dx * JOY_R / d; j.y0 = y - dy * JOY_R / d;
-    const el = document.getElementById('joy'); el.style.left = j.x0 + 'px'; el.style.top = j.y0 + 'px';
-    dx = x - j.x0; dy = y - j.y0;
-  }
-  moveKnob(dx, dy);
+  // the base stays where your thumb first landed; the knob just stops at the rim
+  const dx = x - j.x0, dy = y - j.y0;
+  const d = Math.hypot(dx, dy), k = d > JOY_R ? JOY_R / d : 1;
+  moveKnob(dx * k, dy * k);
   setDir('right', 'ArrowRight', dx > 14);
   setDir('left',  'ArrowLeft',  dx < -14);
   setDir('down',  'ArrowDown',  dy > 30 && dy > Math.abs(dx) * 0.8);

@@ -525,11 +525,11 @@ function drawTavernInterior() {
   for (let x = 60; x < ROOM_W; x += 240) { ctx.fillRect(ox + x, 0, 10, B - 118); }
 
   // floor
-  ctx.fillStyle = '#20160f'; ctx.fillRect(ox, F, ROOM_W, H - F);
+  ctx.fillStyle = '#20160f'; ctx.fillRect(ox, F, ROOM_W, H - F + Math.max(0, camY) + 20);
   ctx.strokeStyle = 'rgba(150,115,80,0.5)'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.moveTo(ox, F); ctx.lineTo(ox + ROOM_W, F); ctx.stroke();
   ctx.strokeStyle = 'rgba(90,68,45,0.3)'; ctx.lineWidth = 1;
-  for (let y = F + 14; y < H; y += 14) { ctx.beginPath(); ctx.moveTo(ox, y); ctx.lineTo(ox + ROOM_W, y); ctx.stroke(); }
+  for (let y = F + 14; y < H + Math.max(0, camY); y += 14) { ctx.beginPath(); ctx.moveTo(ox, y); ctx.lineTo(ox + ROOM_W, y); ctx.stroke(); }
 
   // windows: one by the door downstairs, one up high over the stairs
   [[115, F - 150, 70, 60], [1270, B - 100, 74, 64]].forEach(([x, y, w, h]) => {

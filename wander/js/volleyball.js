@@ -439,7 +439,7 @@ function partnerSet() {
   // set toward wherever the player is standing (within reason)
   const setX = Math.max(COURT_L + 60, Math.min(NET_X - 50, 3060 + (player.wx - 3060) * 0.5));
   vball.lastTouch = 'player';
-  launchTo(setX, gY - NET_H - 50, 46);
+  launchTo(setX, gY - NET_H - 40, 46); // set height suits the mouse's reach
   hopNPC(partner, -4);
   vball.phase = 'player_spike';
   showHint('jump into the set to spike it  ·  hold ↓ to tip', 99999);

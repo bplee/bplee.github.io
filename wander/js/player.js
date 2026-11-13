@@ -32,7 +32,7 @@ const CHAR_H         = 48;
    PLAYER DRAWING
 ══════════════════════════════════════════ */
 function drawPlayer() {
-  const s  = Math.min(W,H) * 0.001 * 1.4;
+  const s  = playerScale();
   const sx = player.wx - camX;
   const sy = player._py - 14*s;   // legs reach 14s below the hips' origin — lift so the feet touch the ground
 
@@ -153,7 +153,8 @@ window.addEventListener('keydown', e => {
 });
 
 // how big the mouse is on screen (it scales with the window), and its body box
-function playerScale() { return Math.min(W, H) * 0.0014; }
+// the mouse's size: fixed on phones (the world is scaled to fit there), a little under the old size on computers
+function playerScale() { return MOBILE ? 0.8 : Math.min(W, H) * 0.0012; }
 function playerBox() {
   const s = playerScale();
   return { s, top: player._py - 72 * s, bottom: player._py, half: 12 * s, cx: player.wx };

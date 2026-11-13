@@ -33,11 +33,14 @@ function update() {
 function draw() {
   ctx.clearRect(0,0,W,H);
   if (scene === 'tavern') {
+    ctx.fillStyle = '#0a0c0f'; ctx.fillRect(0, 0, W, H);
+    ctx.save(); ctx.translate(0, -Math.round(camY));   // camY is 0 except on an upright phone
     drawTavernInterior();
     drawPlayer();
     drawDrinkFx();
     drawTavernOverlay();
     drawPopup();
+    ctx.restore();
     return;
   }
   if (scene === 'cavern') {

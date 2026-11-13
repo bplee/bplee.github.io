@@ -205,3 +205,14 @@ kbd {
   #hint-box { bottom:calc(64px + env(safe-area-inset-bottom, 0px)); font-size:12px; max-width:70vw; text-align:center; }
   .m-foot { display:none; }
 }
+
+/* phone held sideways: not enough height for a bottom strip — tuck it under bag · friends */
+@media (pointer: coarse) and (orientation: landscape) {
+  #worn {
+    top:calc(56px + env(safe-area-inset-top, 0px)); right:calc(16px + env(safe-area-inset-right, 0px));
+    bottom:auto; left:auto; transform:none;
+    flex-wrap:wrap; justify-content:flex-end; max-width:46vw;
+  }
+  #worn img { width:32px; height:32px; }
+  #hint-box { bottom:calc(14px + env(safe-area-inset-bottom, 0px)); }
+}
