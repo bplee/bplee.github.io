@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>wander</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital@0;1&display=swap" rel="stylesheet">
-html<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1GZP6P1RD"></script>
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-J1GZP6P1RD"></script>
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -65,7 +65,7 @@ canvas { display:block; }
 <div id="fade"></div>
 <canvas id="c"></canvas>
 <div id="hint-box">arrow keys or wasd to move · space to jump</div>
-<div id="score-box" id="scoreBox">0 — 0</div>
+<div id="score-box">0 — 0</div>
 
 <script>
 /* ══════════════════════════════════════════
@@ -74,6 +74,7 @@ canvas { display:block; }
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 let W, H;
+let tick = 0; // fixed-step counter (60 per second regardless of display refresh rate)
 function resize() {
   W = canvas.width  = window.innerWidth;
   H = canvas.height = window.innerHeight;
@@ -168,33 +169,35 @@ const CHAR_H         = 48;
    INPUT
 ══════════════════════════════════════════ */
 const keys = {};
+const SCROLL_KEYS = new Set(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight']);
 window.addEventListener('keydown', e => {
-  // if (keys[e.code]) return;
+  if (SCROLL_KEYS.has(e.code)) e.preventDefault();
   keys[e.code] = true;
+  if (e.repeat) return; // holding a key shouldn't auto-fire jumps/flips
   if (e.code === 'ArrowDown' || e.code === 'KeyS') player.isDucking = true;
-  if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') {
-    if (player.onGround) {
-      player.vy = JUMP_FORCE;
-      player.onGround = false;
-      player.jumpCount = 1;
-      player.flipActive = false;
-      player.flipRotation = 0;
-    } else if (player.jumpCount === 1) {
-      const baseDir = player.facingRight ? 1 : -1; // clockwise when facing right, counter-clockwise when left
-      player.flipDirection = (keys['ArrowDown'] || keys['KeyS']) ? baseDir : -baseDir;
-      // In volleyball mode, second jump in air = spike attempt
-      if (vball.active && vball.phase === 'player_spike') {
-        attemptSpike();
-      } else {
-        player.vy = JUMP_FORCE * 0.8;
-        player.jumpCount = 2;
-        player.flipActive = true;
-        player.flipRotation = 0;
-        // player.flipDirection = player.facingRight ? 1 : -1;
-      }
-    }
-  }
+  if (e.code === 'Space' || e.code === 'ArrowUp' || e.code === 'KeyW') tryJump();
 });
+
+function tryJump() {
+  if (player.onGround) {
+    player.vy = JUMP_FORCE;
+    player.onGround = false;
+    player.jumpCount = 1;
+    player.flipActive = false;
+    player.flipRotation = 0;
+    return;
+  }
+  // In volleyball mode, a mid-air press near the set ball = spike
+  if (vball.active && vball.phase === 'player_spike' && attemptSpike()) return;
+  if (player.jumpCount === 1) {
+    const baseDir = player.facingRight ? 1 : -1; // clockwise when facing right, counter-clockwise when left
+    player.flipDirection = (keys['ArrowDown'] || keys['KeyS']) ? baseDir : -baseDir;
+    player.vy = JUMP_FORCE * 0.8;
+    player.jumpCount = 2;
+    player.flipActive = true;
+    player.flipRotation = 0;
+  }
+}
 window.addEventListener('keyup', e => {
   keys[e.code] = false;
   if (e.code === 'ArrowDown' || e.code === 'KeyS') player.isDucking = false;
@@ -205,7 +208,10 @@ window.addEventListener('keyup', e => {
 ══════════════════════════════════════════ */
 let camX = 0;
 function updateCamera() {
-  const target = player.wx - W * 0.3;
+  // During volleyball keep the whole court framed, nudged by the player
+  const target = vball.active
+    ? NET_X - W * 0.5 + (player.wx - (NET_X - 150)) * 0.25
+    : player.wx - W * 0.3;
   camX += (target - camX) * 0.08;
   camX = Math.max(0, Math.min(WORLD_W - W, camX));
 }
@@ -227,9 +233,8 @@ const STARS = Array.from({length:60}, () => ({
   r: 0.5+Math.random()*1.2, a: 0.2+Math.random()*0.6,
   phase: Math.random()*Math.PI*2,
 }));
-let starT = 0;
 function drawStars() {
-  starT += 0.008;
+  const starT = tick * 0.008;
   STARS.forEach(s => {
     ctx.beginPath();
     ctx.arc(s.x*W, s.y*H, s.r, 0, Math.PI*2);
@@ -530,57 +535,75 @@ function drawObjects() {
 
 /* ══════════════════════════════════════════
    VOLLEYBALL GAME STATE
+   Phases:
+   'inactive'       — not in game, animals idle on the court
+   'player_serve'   — ball hovers at player back line, player walks/jumps into it
+   'enemy_serve'    — hedgehog walks up to the floating ball and serves
+   'player_receive' — ball coming to player side, player gets under it (auto-pass)
+   'player_pass'    — bunny partner runs under the pass and sets
+   'player_spike'   — ball set for the player; double-jump near it to spike
+   'enemy_receive'  — hedgehog digs the ball to the fox
+   'enemy_pass'     — fox sets the hedgehog
+   'enemy_spike'    — hedgehog attacks over the net
+   'dead'           — ball hit the net, nobody plays it
+   'point_scored'   — short pause, then next serve
+   'game_over'      — someone won, short celebration, then game ends
 ══════════════════════════════════════════ */
+const BALL_G        = 0.28;
+const POINTS_TO_WIN = 25;
+
 const vball = {
-  // States:
-  // 'inactive'        — not in game, animals visible waiting
-  // 'prompt'          — player is near court, prompt shown
-  // 'player_serve'    — ball hovering at player back line, player runs up to hit
-  // 'enemy_serve'     — enemy passer runs up to hit floating ball
-  // 'player_receive'  — ball flying toward player side
-  // 'player_pass'     — player passed, heading to setter
-  // 'player_set_wait' — setter about to set
-  // 'player_spike'    — ball set for player to spike
-  // 'enemy_receive'   — fox receives the ball on the enemy side
-  // 'enemy_pass'      — hedgehog receives the fox's pass
-  // 'enemy_spike'     — fox attacks the set ball over the net
-  // 'point_scored'    — brief pause after point, then next serve
-
-  active:  false,
+  active: false,
   phase:  'inactive',
-  timer:   0,
+  timer:  0,
 
-  // ball
   bx: 0, by: 0, bvx: 0, bvy: 0,
   bRadius: 12,
   trail: [],
+  floatBaseY: 0,
+  lastTouch: null,   // 'player' | 'enemy'
 
-  // who is currently running up for serve (animation)
-  serverRunning: false,
-  serverX: 0,   // current running x (world)
-  reactionTimer: 0,
-
-  // NPC world positions
-  setterX:       3060,  // friendly setter
-  enemySetterX:  3350,  // enemy setter
-  enemyPasserX:  3490,  // enemy passer (back line)
-
-  // scores
   playerScore: 0,
   enemyScore:  0,
-
-  // who serves next
-  nextServer: 'enemy',  // start with enemy
-
-  // spike set target
-  spikeSetX: 3080,
+  nextServer: 'enemy',
 };
+
+/* ── NPCs ── */
+function makeNPC(home, emoji, color, role) {
+  return { x: home, home, emoji, color, role, hopY: 0, hopV: 0, walk: 0, react: 0, seed: Math.random() * 10 };
+}
+const partner = makeNPC(3110, '🐰', '#e8d5c0', 'setter');
+const foxSet  = makeNPC(3290, '🦊', '#d4905a', 'setter');
+const hogHit  = makeNPC(3460, '🦔', '#c8b89a', 'hitter');
+const NPCS = [partner, foxSet, hogHit];
+
+function moveNPC(n, tx, speed) {
+  const dx   = tx - n.x;
+  const step = Math.sign(dx) * Math.min(speed, Math.abs(dx));
+  n.x += step;
+  n.walk += Math.abs(step);
+}
+// shuffle around home, like someone bouncing on their toes waiting for the ball
+function idleNPC(n, speed) {
+  const sway = Math.sin(tick * 0.025 + n.seed) * 10 + Math.sin(tick * 0.061 + n.seed * 2) * 4;
+  moveNPC(n, n.home + sway, speed || 0.6);
+}
+function hopNPC(n, v) { if (n.hopY === 0 && n.hopV === 0) n.hopV = v; }
+function stepNPC(n) {
+  if (n.hopV !== 0 || n.hopY < 0) {
+    n.hopY += n.hopV;
+    n.hopV += 0.5;
+    if (n.hopY >= 0) { n.hopY = 0; n.hopV = 0; }
+  }
+  n.react = Math.max(0, n.react - 1);
+}
 
 /* ── JOIN PROMPT ── */
 let joinPromptVisible = false;
+let joinCooldown = 0;
 
 function showJoinPrompt() {
-  if (joinPromptVisible || vball.active) return;
+  if (joinPromptVisible || vball.active || joinCooldown > 0) return;
   joinPromptVisible = true;
   showHint('press E to join the volleyball game', 99999);
 }
@@ -591,37 +614,35 @@ function hideJoinPrompt() {
 }
 
 window.addEventListener('keydown', e => {
-  if (e.code === 'KeyE') {
-    if (joinPromptVisible && !vball.active) {
-      hideJoinPrompt();
-      startVolleyball();
-    } else if (vball.active) {
-      vball.active = false;
-      vball.phase = 'inactive';
-      document.getElementById('score-box').style.display = 'none';
-      hideJoinPrompt();
-      showHint('left the volleyball game', 1800);
-    }
+  if (e.code !== 'KeyE' || e.repeat) return;
+  if (vball.active) {
+    endVolleyball();
+    showHint('left the volleyball game', 1800);
+  } else if (joinPromptVisible) {
+    hideJoinPrompt();
+    startVolleyball();
   }
 });
 
-/* ── START ── */
-function enterVolleyball() {
-  if (vball.active) return;
-  startVolleyball();
-}
-
+/* ── START / END ── */
 function startVolleyball() {
   vball.active = true;
-  vball.phase = 'player_serve';
   vball.playerScore = 0;
   vball.enemyScore  = 0;
-  vball.reactionTimer = 0;
+  vball.nextServer  = 'enemy';
   document.getElementById('score-box').style.display = 'block';
   updateScoreDisplay();
-  // Move player to their side
   player.wx = Math.min(player.wx, NET_X - 80);
   beginNextRally();
+}
+
+function endVolleyball() {
+  vball.active = false;
+  vball.phase  = 'inactive';
+  vball.trail  = [];
+  document.getElementById('score-box').style.display = 'none';
+  hideJoinPrompt();
+  joinCooldown = 180;
 }
 
 function updateScoreDisplay() {
@@ -631,307 +652,342 @@ function updateScoreDisplay() {
 
 /* ── RALLY CONTROL ── */
 function beginNextRally() {
+  const gY = COURT_GND();
   vball.trail = [];
+  vball.lastTouch = null;
+  vball.bvx = 0; vball.bvy = 0;
+  vball.floatBaseY = gY - 62;
+  vball.by = vball.floatBaseY;
   if (vball.nextServer === 'player') {
-    beginPlayerServe();
+    vball.phase = 'player_serve';
+    vball.timer = 30;
+    vball.bx = PLAYER_SERVE_X;
+    showHint('walk or jump into the ball to serve', 99999);
   } else {
-    beginEnemyServe();
+    vball.phase = 'enemy_serve';
+    vball.timer = 50;
+    vball.bx = ENEMY_SERVE_X;
+    showHint('incoming serve…', 1600);
   }
-}
-
-/* ── PLAYER SERVE ──
-   Ball hovers over player back line.
-   Player runs up (moves right) and walks into it to make contact.
-*/
-function beginPlayerServe() {
-  vball.phase = 'player_serve';
-  vball.timer = 0;
-  vball.reactionTimer = 0;
-  const gY = COURT_GND();
-  vball.bx  = PLAYER_SERVE_X;
-  vball.by  = gY - NET_H * 0.8;   // ball floats at striking height
-  vball.bvx = 0;
-  vball.bvy = 0;
-  showHint('run into the ball to serve!', 99999);
-}
-
-/* ── ENEMY SERVE ──
-   Enemy passer runs from back line toward ball and hits it.
-*/
-function beginEnemyServe() {
-  vball.phase = 'enemy_serve';
-  vball.timer = 0;
-  vball.reactionTimer = 0;
-  const gY = COURT_GND();
-  vball.bx  = ENEMY_SERVE_X;
-  vball.by  = gY - NET_H * 0.8;
-  vball.bvx = 0;
-  vball.bvy = 0;
-  vball.serverRunning = true;
-  vball.serverX = ENEMY_SERVE_X + 80; // start behind ball
-  showHint('incoming serve…', 2000);
 }
 
 /* ── SCORE POINT ── */
 function scorePoint(winner, msg) {
-  if (vball.phase === 'point_scored') return; // prevent double score
-  if (winner === 'player') {
-    vball.playerScore++;
-    vball.nextServer = 'player';
-  } else {
-    vball.enemyScore++;
-    vball.nextServer = 'enemy';
-  }
+  if (vball.phase === 'point_scored' || vball.phase === 'game_over') return;
+  if (winner === 'player') { vball.playerScore++; vball.nextServer = 'player'; }
+  else                     { vball.enemyScore++;  vball.nextServer = 'enemy';  }
   updateScoreDisplay();
+  vball.bvx = 0; vball.bvy = 0;
+
+  const top  = Math.max(vball.playerScore, vball.enemyScore);
+  const lead = Math.abs(vball.playerScore - vball.enemyScore);
+  if (top >= POINTS_TO_WIN && lead >= 2) {
+    const won = vball.playerScore > vball.enemyScore;
+    vball.phase = 'game_over';
+    vball.timer = 240;
+    showHint(won ? `you win ${vball.playerScore}–${vball.enemyScore}!`
+                 : `they win ${vball.enemyScore}–${vball.playerScore}. good game`, 4000);
+    return;
+  }
   vball.phase = 'point_scored';
   vball.timer = 100;
-  vball.bvx = 0; vball.bvy = -1;
-  showHint(msg + (winner === 'player' ? '  +1 you' : '  +1 them'), 2200);
+  showHint(msg + (winner === 'player' ? '  +1 you' : '  +1 them'), 2000);
+}
+
+/* ── BALL HELPERS ── */
+// Exact launch for the discrete integrator used in updateBall:
+// after T steps, y = y1 + T*vy + g*T*(T-1)/2
+function launchTo(x2, y2, T) {
+  vball.bvx = (x2 - vball.bx) / T;
+  vball.bvy = (y2 - vball.by - BALL_G * T * (T - 1) / 2) / T;
+}
+
+function pathClearsNet() {
+  const gY = COURT_GND(), netTop = gY - NET_H;
+  let x = vball.bx, y = vball.by, vx = vball.bvx, vy = vball.bvy;
+  for (let i = 0; i < 400; i++) {
+    const px = x;
+    x += vx; y += vy; vy += BALL_G;
+    if ((px < NET_X) !== (x < NET_X)) return y < netTop - vball.bRadius * 0.5;
+    if (y >= gY) return true;
+  }
+  return true;
+}
+
+// Aim at a target on the other side; adds arc until the ball clears the net.
+function launchOverNet(x2, y2, T) {
+  for (let t = T; t < T + 120; t += 2) {
+    launchTo(x2, y2, t);
+    if (pathClearsNet()) return;
+  }
+}
+
+// Where will the ball be (x) when it comes down through height targetY?
+function predictX(targetY) {
+  let x = vball.bx, y = vball.by, vx = vball.bvx, vy = vball.bvy;
+  for (let i = 0; i < 400; i++) {
+    if (vy > 0 && y >= targetY) return x;
+    x += vx; y += vy; vy += BALL_G;
+  }
+  return x;
 }
 
 /* ── BALL PHYSICS ── */
 function updateBall() {
-  if (!vball.active) return;
   if (vball.phase === 'player_serve' || vball.phase === 'enemy_serve') {
-    // ball hovers — gentle float
-    vball.by += Math.sin(Date.now() * 0.003) * 0.3;
+    vball.by = vball.floatBaseY + Math.sin(tick * 0.05) * 4;
     vball.trail = [];
     return;
   }
-  if (vball.phase === 'point_scored' || vball.phase === 'inactive') return;
+  if (vball.phase === 'point_scored' || vball.phase === 'game_over') return;
 
   vball.trail.push({ x: vball.bx, y: vball.by });
   if (vball.trail.length > 12) vball.trail.shift();
 
+  const prevX = vball.bx;
   vball.bx  += vball.bvx;
   vball.by  += vball.bvy;
-  vball.bvy += 0.28;
+  vball.bvy += BALL_G;
 
   const gY = COURT_GND();
+
+  // Net — detect the crossing so fast balls can't tunnel through
+  if ((prevX < NET_X) !== (vball.bx < NET_X) && vball.by > gY - NET_H) {
+    const fromLeft = prevX < NET_X;
+    vball.bx  = NET_X + (fromLeft ? -1 : 1) * vball.bRadius * 0.6;
+    vball.bvx = (fromLeft ? -1 : 1) * Math.max(0.5, Math.abs(vball.bvx) * 0.25);
+    vball.bvy *= 0.4;
+    vball.phase = 'dead';
+    showHint('into the net!', 1200);
+  }
 
   // Ground
   if (vball.by >= gY - vball.bRadius) {
     vball.by = gY - vball.bRadius;
-    if (vball.bx < NET_X) scorePoint('enemy', 'ball hit the ground!');
-    else                  scorePoint('player', 'ace!');
-    return;
+    const x = vball.bx;
+    if (x >= COURT_L && x < NET_X)       scorePoint('enemy',  vball.phase === 'dead' ? 'into the net' : 'it dropped on your side');
+    else if (x >= NET_X && x <= COURT_R) scorePoint('player', vball.phase === 'dead' ? 'they hit the net' : 'it landed on their side!');
+    else if (vball.lastTouch === 'player') scorePoint('enemy', 'out of bounds');
+    else                                   scorePoint('player', 'their ball went out!');
   }
-
-  // Net collision — ball below net height hits net
-  const onNet = Math.abs(vball.bx - NET_X) < 6;
-  if (onNet && vball.by > gY - NET_H + 2) {
-    vball.bvx *= -0.5;
-    vball.bvx += (vball.bx < NET_X ? -0.8 : 0.8);
-    vball.by = gY - NET_H - 1;
-    vball.bvy = Math.min(vball.bvy, -1);
-  }
-
-  // Out of bounds
-  if (vball.bx < COURT_L - 60) { scorePoint('enemy',  'ball out left!');       return; }
-  if (vball.bx > COURT_R + 60) { scorePoint('player', 'ball out on their side!'); return; }
-}
-
-/* ── HELPER: arc ball from current pos to target ── */
-function launchBallTo(x1, y1, x2, y2, peakVy) {
-  const frames = Math.abs(peakVy / 0.28) * 2;
-  vball.bvx = (x2 - x1) / frames;
-  vball.bvy = peakVy;
-  vball.bx  = x1;
-  vball.by  = y1;
 }
 
 /* ── PLAYER ACTIONS ── */
-
-// Called when player walks into hovering serve ball
 function playerContactServeBall() {
-  if (vball.phase !== 'player_serve') return;
-
-  const distX = Math.abs(vball.bx - player.wx);
-  const distY = Math.abs(vball.by - (player._py - 8));
-  if (distX > 24 || distY > 32) return;
+  if (vball.timer > 0) return;
+  const dx     = Math.abs(vball.bx - player.wx);
+  const top    = player._py - CHAR_H * 1.6;
+  const bottom = player._py + 4;
+  if (dx > 26 || vball.by < top || vball.by > bottom) return;
 
   const gY = COURT_GND();
-  // Launch over net — aim for enemy back half
-  const targetX = NET_X + 80 + Math.random() * 200;
-  launchBallTo(vball.bx, vball.by, targetX, gY - 10, -11);
+  vball.lastTouch = 'player';
+  launchOverNet(NET_X + 90 + Math.random() * 200, gY - vball.bRadius, 72);
   vball.phase = 'enemy_receive';
-  hintBox.classList.remove('visible');
-  showHint('nice serve!', 1500);
+  hogHit.react = 14;
+  showHint('nice serve!', 1200);
 }
 
-// Auto-receive when ball descends near player (forgiving)
+// Auto-pass when the ball comes down near the player (forgiving)
 function tryPlayerReceive() {
-  if (vball.phase !== 'player_receive') return;
-  const distX = vball.bx - player.wx;
-  const distY = vball.by - (player._py - 8);
-  const dist  = Math.sqrt(distX * distX + distY * distY);
-  if (dist > 90 || vball.bvy < 0) return; // ball still going up
+  if (vball.bvy < 0 || vball.bx >= NET_X) return;
+  const dx = vball.bx - player.wx;
+  const dy = vball.by - (player._py - CHAR_H * 0.5);
+  if (dx * dx + dy * dy > 75 * 75) return;
 
-  const gY    = COURT_GND();
-  const noise = (Math.random() - 0.5) * 35;
-  launchBallTo(vball.bx, vball.by, vball.setterX + noise, gY - 90, -7);
+  const gY = COURT_GND();
+  vball.lastTouch = 'player';
+  launchTo(partner.home + (Math.random() - 0.5) * 50, gY - 70, 50);
   vball.phase = 'player_pass';
-  showHint('good pass! setter has it…', 2000);
+  showHint('good pass! your setter has it…', 1600);
 }
 
-// Setter auto-sets
-function setterAutoSet() {
-  const gY    = COURT_GND();
-  const setX  = 3080 + (Math.random() - 0.5) * 28;
-  vball.spikeSetX = setX;
-  launchBallTo(vball.bx, vball.by, setX, gY - NET_H - 55, -9);
+function partnerSet() {
+  const gY   = COURT_GND();
+  // set toward wherever the player is standing (within reason)
+  const setX = Math.max(COURT_L + 60, Math.min(NET_X - 50, 3060 + (player.wx - 3060) * 0.5));
+  vball.lastTouch = 'player';
+  launchTo(setX, gY - NET_H - 50, 46);
+  hopNPC(partner, -4);
   vball.phase = 'player_spike';
-  showHint('jump + space to spike! →', 99999);
+  showHint('jump, then jump again at the ball to spike  (hold ↓ to tip)', 99999);
 }
 
-// Spike attempt — called on second jump press
+// Called on a mid-air jump press. Returns true if the ball was hit.
 function attemptSpike() {
-  if (vball.phase !== 'player_spike') return;
-  const distX = vball.bx - player.wx;
-  const distY = vball.by - (player._py - CHAR_H * 0.45);
-  const dist  = Math.sqrt(distX * distX + distY * distY);
-  if (dist > 80) {
-    showHint('not close enough…', 1200);
-    return;
-  }
-  const gY      = COURT_GND();
-  const targetX = NET_X + 100 + Math.random() * 180;
-  launchBallTo(vball.bx, vball.by, targetX, gY - 10, -13);
+  if (vball.phase !== 'player_spike') return false;
+  const dx = vball.bx - player.wx;
+  const dy = vball.by - (player._py - CHAR_H * 0.6);
+  if (dx * dx + dy * dy > 75 * 75) return false;
+
+  const gY  = COURT_GND();
+  const tip = keys['ArrowDown'] || keys['KeyS'];
+  vball.lastTouch = 'player';
+  if (tip) launchOverNet(NET_X + 35 + Math.random() * 45, gY - vball.bRadius, 34);
+  else     launchOverNet(NET_X + 110 + Math.random() * 190, gY - vball.bRadius, 22);
   player.flipActive    = true;
   player.flipRotation  = 0;
   player.flipDirection = 1;
   player.jumpCount     = 2;
   vball.phase = 'enemy_receive';
-  hintBox.classList.remove('visible');
-  showHint('spike!', 1000);
+  hogHit.react = tip ? 6 : 10;
+  showHint(tip ? 'tip!' : 'spike!', 900);
+  return true;
 }
 
-/* ── ENEMY AI ── */
-function clampEnemyX(x) {
-  return Math.max(NET_X + 40, Math.min(COURT_R - 40, x));
-}
+/* ── PARTNER (bunny) ── */
+function updatePartner() {
+  const gY   = COURT_GND();
+  const minX = COURT_L + 30, maxX = NET_X - 22;
+  const clampP = x => Math.max(minX, Math.min(maxX, x));
 
-function updateEnemyAI() {
-  if (!vball.active) return;
-  const gY = COURT_GND();
-  vball.timer = Math.max(0, vball.timer - 1);
-  vball.reactionTimer = Math.max(0, vball.reactionTimer - 1);
-
-  // Keep the CPU moving toward the ball when it is heading toward their side.
-  if ((vball.phase === 'enemy_receive' || vball.phase === 'player_serve' || vball.phase === 'player_receive') &&
-      vball.bx > COURT_L + 80 && vball.bx < COURT_R - 80 && vball.reactionTimer === 0) {
-    const targetX = clampEnemyX(vball.bx + (player.wx < NET_X ? 18 : -10));
-    const dx = targetX - vball.enemyPasserX;
-    vball.enemyPasserX += Math.sign(dx) * Math.min(2.4, Math.abs(dx));
-
-    if (vball.bvy > 0 && Math.abs(vball.bx - vball.enemyPasserX) < 56 && vball.by > gY - 130) {
-      const targetX = clampEnemyX(vball.enemySetterX + (Math.random() - 0.5) * 70);
-      launchBallTo(vball.bx, vball.by, targetX, gY - 84, -7.2);
-      vball.phase = 'enemy_pass';
-      vball.reactionTimer = 16;
-      showHint('cpu gets the ball!', 1200);
-      return;
+  switch (vball.phase) {
+    case 'player_pass': {
+      // run under the pass
+      moveNPC(partner, clampP(predictX(gY - 60)), 2.6);
+      if (vball.bvy > 0 && vball.by >= gY - 75 && Math.abs(vball.bx - partner.x) < 28) partnerSet();
+      break;
     }
+    case 'player_spike':
+      // step toward the net, out of the hitter's way
+      moveNPC(partner, clampP(partner.home + 12), 1.4);
+      break;
+    case 'player_receive': {
+      // lean toward where the ball is coming down, ready to chase the pass
+      const land = predictX(gY);
+      const tx = partner.home + Math.max(-30, Math.min(30, (land - partner.home) * 0.2));
+      moveNPC(partner, clampP(tx), 1.2);
+      break;
+    }
+    case 'enemy_receive':
+    case 'enemy_pass':
+    case 'enemy_spike':
+      // track the ball on the far side a little
+      moveNPC(partner, clampP(partner.home + Math.max(-20, Math.min(10, (vball.bx - NET_X) * -0.1))), 0.9);
+      break;
+    case 'game_over':
+      idleNPC(partner);
+      if (vball.playerScore > vball.enemyScore && tick % 40 === 0) hopNPC(partner, -5);
+      break;
+    default:
+      idleNPC(partner, 1.2);
   }
+}
 
-  // point reset
-  if (vball.phase === 'point_scored' && vball.timer <= 0) {
-    beginNextRally();
-    return;
-  }
+/* ── ENEMIES (fox setter + hedgehog hitter) ── */
+function updateEnemies() {
+  const gY   = COURT_GND();
+  const minX = NET_X + 22, maxX = COURT_R + 30;
+  const clampE = x => Math.max(minX, Math.min(maxX, x));
 
-  // Enemy serve: server NPC runs toward ball
-  if (vball.phase === 'enemy_serve') {
-    if (vball.serverRunning) {
-      vball.serverX -= 2.5; // run left toward ball
-      if (vball.serverX <= ENEMY_SERVE_X + 5) {
-        // contact!
-        vball.serverRunning = false;
-        const targetX = NET_X - 80 - Math.random() * 200;
-        launchBallTo(vball.bx, vball.by, targetX, gY - 10, -11);
+  switch (vball.phase) {
+    case 'enemy_serve': {
+      idleNPC(foxSet);
+      if (vball.timer > 0) { moveNPC(hogHit, ENEMY_SERVE_X + 60, 1.5); break; }
+      moveNPC(hogHit, vball.bx + 8, 2.2);
+      if (hogHit.x <= vball.bx + 12) {
+        vball.lastTouch = 'enemy';
+        hopNPC(hogHit, -4);
+        launchOverNet(NET_X - 80 - Math.random() * 200, gY - vball.bRadius, 72);
         vball.phase = 'player_receive';
-        showHint('incoming! get under the ball!', 99999);
+        showHint('incoming! get under the ball', 2000);
       }
+      break;
     }
-    return;
-  }
-
-  // Enemy receive: fox tracks the ball and passes to the hedgehog.
-  if (vball.phase === 'enemy_receive') {
-    const targetX = clampEnemyX(vball.bx + (player.wx < NET_X ? 24 : -8));
-    const dx = targetX - vball.enemyPasserX;
-    vball.enemyPasserX += Math.sign(dx) * Math.min(2.4, Math.abs(dx));
-
-    const distX = vball.bx - vball.enemyPasserX;
-    const distY = vball.by - gY;
-    const dist  = Math.sqrt(distX * distX + distY * distY);
-    if (dist < 90 && vball.bvy > 0 && vball.reactionTimer === 0) {
-      const passTarget = clampEnemyX(vball.enemySetterX + (Math.random() - 0.5) * 38);
-      launchBallTo(vball.bx, vball.by, passTarget, gY - 84, -6.4);
-      vball.phase = 'enemy_pass';
-      vball.reactionTimer = 16;
-      showHint('fox passes to the hedgehog', 1200);
+    case 'enemy_receive': {
+      idleNPC(foxSet, 1.0);
+      if (hogHit.react > 0) break;
+      // smart enough to let a ball sail out
+      if (predictX(gY) > COURT_R + 8) { moveNPC(hogHit, hogHit.home, 1.5); break; }
+      moveNPC(hogHit, clampE(predictX(gY - 40)), 2.7);
+      if (vball.bx > NET_X && vball.bvy > 0 && vball.by >= gY - 60 && Math.abs(vball.bx - hogHit.x) < 32) {
+        vball.lastTouch = 'enemy';
+        launchTo(foxSet.home + (Math.random() - 0.5) * 40, gY - 70, 50);
+        hopNPC(hogHit, -3);
+        vball.phase = 'enemy_pass';
+        showHint('hedgehog digs it…', 1000);
+      }
+      break;
     }
-    return;
-  }
-
-  // Enemy pass: hedgehog sets to the fox for the attack.
-  if (vball.phase === 'enemy_pass') {
-    const targetX = clampEnemyX(vball.bx + (Math.random() - 0.5) * 24);
-    const dx = targetX - vball.enemySetterX;
-    vball.enemySetterX += Math.sign(dx) * Math.min(1.8, Math.abs(dx));
-
-    const dist = Math.abs(vball.bx - vball.enemySetterX);
-    if (dist < 50 && vball.bvy > 0 && vball.reactionTimer === 0) {
-      const spikeTarget = clampEnemyX(vball.enemyPasserX + 40 + Math.random() * 40);
-      launchBallTo(vball.bx, vball.by, spikeTarget, gY - 84, -8.2);
-      vball.phase = 'enemy_spike';
-      vball.reactionTimer = 12;
-      showHint('hedgehog sets, fox attacks', 1400);
+    case 'enemy_pass': {
+      moveNPC(foxSet, clampE(predictX(gY - 60)), 2.6);
+      moveNPC(hogHit, hogHit.home - 30, 1.4); // hitter backs off to approach
+      if (vball.bvy > 0 && vball.by >= gY - 75 && Math.abs(vball.bx - foxSet.x) < 28) {
+        vball.lastTouch = 'enemy';
+        launchTo(NET_X + 55 + Math.random() * 35, gY - NET_H - 45, 46);
+        hopNPC(foxSet, -4);
+        vball.phase = 'enemy_spike';
+        showHint('fox sets…', 900);
+      }
+      break;
     }
-    return;
-  }
-
-  // Enemy spike: fox finishes the rally over the net.
-  if (vball.phase === 'enemy_spike') {
-    const targetX = clampEnemyX(vball.enemyPasserX + 24);
-    const dx = targetX - vball.enemyPasserX;
-    vball.enemyPasserX += Math.sign(dx) * Math.min(2.1, Math.abs(dx));
-
-    const distX = vball.bx - vball.enemyPasserX;
-    const distY = vball.by - (gY - 90);
-    const dist  = Math.sqrt(distX * distX + distY * distY);
-    if (dist < 54 && vball.bvy > 0 && vball.reactionTimer === 0) {
-      const spikeTarget = NET_X - 90 - Math.random() * 180;
-      launchBallTo(vball.bx, vball.by, spikeTarget, gY - 10, -13);
-      vball.phase = 'player_receive';
-      showHint('fox spikes it over!', 1400);
+    case 'enemy_spike': {
+      idleNPC(foxSet, 1.0);
+      const hitY = gY - NET_H - 30;
+      moveNPC(hogHit, clampE(predictX(hitY) + 6), 3.0);
+      if (vball.bvy > 0 && vball.by >= hitY && Math.abs(vball.bx - hogHit.x) < 34) {
+        vball.lastTouch = 'enemy';
+        hopNPC(hogHit, -6);
+        if (Math.random() < 0.08) launchTo(NET_X - 10, gY - NET_H * 0.5, 14); // whoops
+        else launchOverNet(NET_X - 60 - Math.random() * 230, gY - vball.bRadius, 26);
+        vball.phase = 'player_receive';
+        showHint('hedgehog spikes it!', 1200);
+      }
+      break;
     }
-    return;
+    case 'point_scored':
+      idleNPC(foxSet, 1.2);
+      if (vball.nextServer === 'enemy') moveNPC(hogHit, ENEMY_SERVE_X + 60, 1.2);
+      else idleNPC(hogHit, 1.2);
+      break;
+    case 'game_over':
+      idleNPC(foxSet); idleNPC(hogHit);
+      if (vball.enemyScore > vball.playerScore && tick % 40 === 0) { hopNPC(foxSet, -5); hopNPC(hogHit, -5); }
+      break;
+    default:
+      idleNPC(foxSet, 1.2);
+      idleNPC(hogHit, 1.4);
   }
+}
 
-  // Auto-receive on player side
-  if (vball.phase === 'player_receive') {
-    tryPlayerReceive();
+/* ── PER-STEP VOLLEYBALL UPDATE ── */
+function updateVolleyball() {
+  joinCooldown = Math.max(0, joinCooldown - 1);
+  if (!vball.active) {
+    NPCS.forEach(n => { idleNPC(n, 1.0); stepNPC(n); });
     return;
   }
+  vball.timer = Math.max(0, vball.timer - 1);
 
-  // After player pass, setter auto-sets
-  if (vball.phase === 'player_pass') {
-    const dist = Math.abs(vball.bx - vball.setterX);
-    if (dist < 90 && vball.bvy > 0) {
-      setTimeout(() => {
-        if (vball.phase !== 'player_pass') return;
-        setterAutoSet();
-      }, 280 + Math.random() * 100);
-    }
-    return;
-  }
+  if (vball.phase === 'game_over' && vball.timer === 0) { endVolleyball(); return; }
+  if (vball.phase === 'point_scored' && vball.timer === 0) beginNextRally();
+  if (vball.phase === 'player_serve')   playerContactServeBall();
+  if (vball.phase === 'player_receive') tryPlayerReceive();
+
+  updateBall();
+  updatePartner();
+  updateEnemies();
+  NPCS.forEach(stepNPC);
 }
 
 /* ══════════════════════════════════════════
    DRAW VOLLEYBALL ELEMENTS
 ══════════════════════════════════════════ */
+function drawLandingMarker() {
+  if (!vball.active || vball.phase !== 'player_receive') return;
+  const gY = COURT_GND();
+  const x  = predictX(gY - vball.bRadius);
+  if (x >= NET_X) return;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(220,210,170,0.35)';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([3, 4]);
+  ctx.beginPath();
+  ctx.ellipse(x - camX, gY, 16, 4, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawBall() {
   if (!vball.active) return;
   const bsx = vball.bx - camX;
@@ -975,17 +1031,13 @@ function drawBall() {
 }
 
 function drawNPCs() {
-  if (!vball.active) return;
   const gY = COURT_GND();
-
-  // Player setter (friendly)
-  drawSimpleAnimal(vball.setterX - camX, gY, '🐰', '#e8d5c0', 'setter');
-
-  // Enemy setter
-  drawSimpleAnimal(vball.enemySetterX - camX, gY, '🦊', '#d4905a', 'setter');
-
-  // Enemy passer
-  drawSimpleAnimal(vball.enemyPasserX - camX, gY, '🦔', '#c8b89a', 'passer');
+  NPCS.forEach(n => {
+    const sx = n.x - camX;
+    if (sx < -60 || sx > W + 60) return;
+    const bob = Math.abs(Math.sin(n.walk * 0.18)) * 2.5;
+    drawSimpleAnimal(sx, gY + n.hopY - bob, n.emoji, n.color, n.role);
+  });
 }
 
 function drawSimpleAnimal(sx, sy, emoji, color, role) {
@@ -1014,12 +1066,6 @@ function drawPlayer() {
   const BODY_W = 11*s, BODY_H = 17*s;
   const SHOULDER_X = BODY_W*0.92, SHOULDER_Y = -28*s;
   const HIP_X = BODY_W*0.3, HIP_Y = -4*s;
-
-  const moving = player.onGround && (keys['ArrowLeft']||keys['KeyA']||keys['ArrowRight']||keys['KeyD']);
-  if (moving) {
-    player.walkTimer++;
-    if (player.walkTimer >= (player.hasBlades ? 4 : 8)) { player.walkFrame=(player.walkFrame+1)%4; player.walkTimer=0; }
-  } else { player.walkFrame=0; player.walkTimer=0; }
 
   const frame    = player.onGround ? player.walkFrame : 2;
   const legSwing = [0,18,0,-18][frame]*(Math.PI/180);
@@ -1144,8 +1190,9 @@ function update() {
   const accel = player.hasBlades ? 0.7 : 0.5;
   const friction = player.isDucking ? 0.98 : (player.hasBlades ? BLADE_FRICTION : 0.9);
 
-  // In volleyball mode, restrict player to left side
-  const maxX = vball.active ? NET_X - 40 : WORLD_W - 20;
+  // In volleyball mode, keep the player on their side of the court
+  const minX = vball.active ? COURT_L - 120 : 20;
+  const maxX = vball.active ? NET_X - 30 : WORLD_W - 20;
 
   if (goRight)     { _vx=Math.min(_vx+accel,spd);  player.facingRight=true; }
   else if (goLeft) { _vx=Math.max(_vx-accel,-spd); player.facingRight=false; }
@@ -1174,7 +1221,7 @@ function update() {
     }
   });
 
-  player.wx = Math.max(20, Math.min(maxX, player.wx+_vx));
+  player.wx = Math.max(minX, Math.min(maxX, player.wx+_vx));
   player._py += player.vy;
   player.vy  += GRAVITY;
 
@@ -1200,6 +1247,12 @@ function update() {
     }
   });
 
+  // walk animation
+  if (player.onGround && Math.abs(_vx) > 0.3) {
+    player.walkTimer++;
+    if (player.walkTimer >= (player.hasBlades ? 4 : 8)) { player.walkFrame=(player.walkFrame+1)%4; player.walkTimer=0; }
+  } else { player.walkFrame=0; player.walkTimer=0; }
+
   if (player.flipActive) {
     player.flipRotation+=0.12;
     if (player.flipRotation>=Math.PI*2) player.flipRotation-=Math.PI*2;
@@ -1224,12 +1277,7 @@ function update() {
     hideJoinPrompt();
   }
 
-  if (vball.phase === 'player_serve') {
-    playerContactServeBall();
-  }
-
-  updateBall();
-  updateEnemyAI();
+  updateVolleyball();
   checkProximity();
   updateCamera();
 }
@@ -1248,9 +1296,19 @@ function showHint(text,ms) {
 /* ══════════════════════════════════════════
    MAIN LOOP
 ══════════════════════════════════════════ */
+// Fixed 60Hz simulation step so the game runs the same speed on 60/120/144Hz displays
 let started = false;
-function loop() {
-  if (started) update();
+const STEP_MS = 1000 / 60;
+let lastTime = null, acc = 0;
+function loop(now) {
+  if (lastTime === null) lastTime = now;
+  acc += Math.min(100, now - lastTime); // cap so a backgrounded tab doesn't fast-forward
+  lastTime = now;
+  while (acc >= STEP_MS) {
+    if (started) update();
+    tick++;
+    acc -= STEP_MS;
+  }
   ctx.clearRect(0,0,W,H);
   drawSky();
   drawStars();
@@ -1259,7 +1317,9 @@ function loop() {
   drawTerrain();
   drawNet();
   drawObjects();
-  if (vball.active) { drawNPCs(); drawBall(); }
+  drawNPCs();
+  drawLandingMarker();
+  drawBall();
   drawPlayer();
   drawPopup();
   requestAnimationFrame(loop);
@@ -1271,7 +1331,7 @@ function loop() {
 const fadeEl = document.getElementById('fade');
 window.addEventListener('load', () => {
   player._py = groundY(player.wx);
-  loop();
+  requestAnimationFrame(loop);
   setTimeout(() => {
     fadeEl.style.opacity='0';
     setTimeout(() => {
