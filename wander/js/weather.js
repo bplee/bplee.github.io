@@ -99,7 +99,7 @@ function cloudiness() {
 }
 
 /* ── UPDATE ── */
-function spawnCount(rate) { return Math.floor(rate) + (Math.random() < rate % 1 ? 1 : 0); }
+function spawnCount(rate) { rate *= QUALITY; return Math.floor(rate) + (Math.random() < rate % 1 ? 1 : 0); }
 
 function makeBolt() {
   const pts = [];

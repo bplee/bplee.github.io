@@ -2,7 +2,10 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0a0c0f">
+<link rel="manifest" href="manifest.webmanifest">
 <title>Owl & Mouse</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital@0;1&display=swap" rel="stylesheet">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1GZP6P1RD"></script>
@@ -26,7 +29,12 @@ html, body {
 #scene {
   width: 100vw;
   height: 100vh;
+  height: 100dvh; /* phones: don't hide the dialogue behind the browser toolbar */
   position: relative;
+}
+@media (pointer: coarse) {
+  html, body { touch-action: manipulation; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
+  #dialogue-feed { bottom: calc(64px + env(safe-area-inset-bottom, 0px)); }
 }
 #bg-canvas {
   position: absolute;
@@ -419,6 +427,12 @@ function advance() {
   } else {
     showLine(current);
   }
+}
+
+// touch screens: "tap" instead of "click"
+if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) {
+  document.getElementById('hint').textContent = 'tap to continue';
+  document.addEventListener('gesturestart', e => e.preventDefault());
 }
 
 function finishDialogue() {

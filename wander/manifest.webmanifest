@@ -1,0 +1,9 @@
+{
+  "name": "wander",
+  "short_name": "wander",
+  "start_url": "index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#0a0c0f",
+  "theme_color": "#0a0c0f"
+}

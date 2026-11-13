@@ -2,7 +2,12 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a0c0f">
+<link rel="manifest" href="manifest.webmanifest">
 <title>wander</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital@0;1&display=swap" rel="stylesheet">
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-J1GZP6P1RD"></script>
@@ -31,6 +36,12 @@
 </div>
 <div id="weather-box"><div class="w-label"></div><div class="d-label"></div></div>
 <div id="worn" hidden></div>
+<!-- touch controls (only shown after the first touch; see js/touch.js) -->
+<div id="touch" hidden></div>
+<div id="joy" hidden><div id="joy-knob"></div></div>
+<button id="act" hidden tabindex="-1"></button>
+<button id="scope-close" hidden tabindex="-1" aria-label="step back from the telescope">×</button>
+<div id="rotate" hidden><div class="rot-card"><div class="rot-phone"></div><p>wander is best with your phone turned sideways</p><button id="rotate-ok" tabindex="-1">play anyway</button></div></div>
 
 <script src="js/core.js"></script>
 <script src="js/scenery.js"></script>
@@ -44,6 +55,7 @@
 <script src="js/tavern_balcony.js"></script>
 <script src="js/observatory.js"></script>
 <script src="js/cavern.js"></script>
+<script src="js/touch.js"></script>
 <script src="js/main.js"></script>
 </body>
 </html>

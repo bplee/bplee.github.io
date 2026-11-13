@@ -5,11 +5,45 @@ const canvas = document.getElementById('c');
 let ctx = canvas.getContext('2d'); // `let` so icons/portraits can be drawn offscreen with the same code (renderToURL)
 let W, H;
 let tick = 0; // fixed-step counter (60 per second regardless of display refresh rate)
+
+/* Phones / tablets (a finger is the main pointer). Everything phone-specific is gated on this,
+   so on a computer the game behaves exactly as before: ZOOM = 1, DPR = 1, W/H = window size. */
+const MOBILE = !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+const MOBILE_LAYOUT_H = 560;   // on a phone, lay the world out as if the screen were at least this tall
+let ZOOM = 1, DPR = 1;
+let QUALITY = MOBILE ? 0.55 : 1; // fewer particles/glows on phones (touch.js may lower it further)
+
 function resize() {
-  W = canvas.width  = window.innerWidth;
-  H = canvas.height = window.innerHeight;
+  const vw = window.innerWidth, vh = window.innerHeight;
+  if (!MOBILE) {
+    W = canvas.width  = vw;
+    H = canvas.height = vh;
+    return;
+  }
+  // phone: W/H are "game pixels"; the canvas is scaled to fit and drawn at device resolution
+  ZOOM = Math.min(1, vh / MOBILE_LAYOUT_H);
+  DPR  = Math.min(2, window.devicePixelRatio || 1) * (QUALITY < 0.45 ? 0.75 : 1);
+  W = Math.round(vw / ZOOM); H = Math.round(vh / ZOOM);
+  canvas.width  = Math.round(vw * DPR); canvas.height = Math.round(vh * DPR);
+  canvas.style.width = vw + 'px'; canvas.style.height = vh + 'px';
+  ctx.setTransform(DPR * ZOOM, 0, 0, DPR * ZOOM, 0, 0);
 }
 resize();
+
+// phone only: canvas text is drawn in game pixels, which shrink on a small screen — scale fonts back up
+if (MOBILE) {
+  const proto = CanvasRenderingContext2D.prototype;
+  const fontDesc = Object.getOwnPropertyDescriptor(proto, 'font');
+  if (fontDesc && fontDesc.set) {
+    Object.defineProperty(proto, 'font', {
+      get() { return fontDesc.get.call(this); },
+      set(v) {
+        const k = Math.min(1.7, 0.95 / ZOOM);
+        fontDesc.set.call(this, k > 1 ? String(v).replace(/(\d+(?:\.\d+)?)px/, (m, n) => (n * k).toFixed(1) + 'px') : v);
+      },
+    });
+  }
+}
 window.addEventListener('resize', resize);
 
 /* ══════════════════════════════════════════
@@ -148,7 +182,21 @@ function updateCamera() {
 ══════════════════════════════════════════ */
 const hintBox = document.getElementById('hint-box');
 let hintTimer = null;
+// on a touch screen, keyboard instructions become touch instructions
+function touchify(text) {
+  if (!touchMode) return text;
+  return String(text)
+    .replace('arrow keys or wasd to move · space to jump', 'right thumb to move · tap the left side to jump')
+    .replace(/press E to /g, 'tap the button to ')
+    .replace(/press I to see your bag/g, 'tap bag to see it')
+    .replace(/press J to see who you've met/g, 'tap friends to see them')
+    .replace(/press J/g, 'tap friends')
+    .replace('jump into the set to spike it  ·  hold ↓ to tip', 'jump into the set to spike it  ·  pull down to tip');
+}
+let touchMode = false;   // becomes true on the first real touch (touch.js)
+
 function showHint(text,ms) {
+  text = touchify(text);
   hintBox.textContent=text; hintBox.classList.add('visible');
   clearTimeout(hintTimer);
   hintTimer=setTimeout(()=>hintBox.classList.remove('visible'),ms||3000);

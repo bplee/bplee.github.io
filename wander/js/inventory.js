@@ -216,9 +216,14 @@ function updateCarryHud() {
   const el = document.getElementById('worn');
   if (!el) return;
   ensureArt();
-  const on = ITEM_ORDER.filter(id => wearing(id) || (id === 'button' && hasItem(id)));
-  el.hidden = !on.length;
-  el.innerHTML = on.map(id => `<img src="${ART.items[id]}" alt="${esc(ITEMS[id].name)}" title="${esc(ITEMS[id].name)}" data-id="${id}">`).join('');
+  // every wearable you own: bright + outlined when it's on, faded when it's off. Click/tap toggles.
+  const owned = ITEM_ORDER.filter(id => hasItem(id));
+  el.hidden = !owned.length;
+  el.innerHTML = owned.map(id => {
+    const it = ITEMS[id], on = it.wearable ? wearing(id) : true;
+    const tip = it.wearable ? `${it.name} — ${on ? 'on' : 'off'}` : `${it.name} (carried)`;
+    return `<img src="${ART.items[id]}" class="${on ? 'on' : 'off'}${it.wearable ? '' : ' carried'}" alt="${esc(tip)}" title="${esc(tip)}" data-id="${id}">`;
+  }).join('');
 }
 
 /* ══════════════════════════════════════════
@@ -352,7 +357,7 @@ window.addEventListener('load', () => {
     const f = e.target.closest('.m-face');
     if (f && menu.hover !== f.dataset.name) { menu.hover = f.dataset.name; renderMenu(); }
   });
-  // click a worn item in the strip to take it off
+  // click/tap an item in the strip to put it on / take it off
   document.getElementById('worn').addEventListener('click', e => {
     const img = e.target.closest('img'); if (img && ITEMS[img.dataset.id].wearable) toggleItem(img.dataset.id);
   });

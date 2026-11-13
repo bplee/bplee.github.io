@@ -378,11 +378,13 @@ function checkProximity() {
 
 function drawPopup() {
   if (!activePopup) return;
+  // on touch screens the action button does what E does, so the popup just names the thing
+  const text = touchMode ? activePopup.replace(/(^|· )press E to /, '$1').replace(/^(.)/, c => c) : activePopup;
   const sx = player.wx - camX;
   const sy = player._py - 76 * playerScale();
   const PAD=10, FONT=13;
   ctx.font=`${FONT}px Space Mono,monospace`;
-  const tw=ctx.measureText(activePopup).width;
+  const tw=ctx.measureText(text).width;
   const bw=tw+PAD*2, bh=FONT+PAD*2;
   let bx=Math.max(10,Math.min(W-bw-10,sx-bw/2));
   const by=sy-bh-8;
@@ -390,6 +392,6 @@ function drawPopup() {
   ctx.fillStyle='rgba(20,24,32,0.78)'; ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=0.5;
   manualRoundRect(bx,by,bw,bh,6); ctx.fill(); ctx.stroke();
   ctx.fillStyle='rgba(200,195,185,0.9)'; ctx.textAlign='left';
-  ctx.fillText(activePopup,bx+PAD,by+PAD+FONT*0.85);
+  ctx.fillText(text,bx+PAD,by+PAD+FONT*0.85);
   ctx.restore();
 }

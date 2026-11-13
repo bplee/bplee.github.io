@@ -377,7 +377,7 @@ function drawTelescopeView() {
   ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(cx, cy, R + 5, 0, 7); ctx.stroke();
   ctx.strokeStyle = '#d8b068'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, R + 10, 0, 7); ctx.stroke();
   ctx.fillStyle = 'rgba(220,210,190,0.7)'; ctx.font = '12px Space Mono, monospace'; ctx.textAlign = 'center';
-  ctx.fillText(`arrow keys to look around · E to step back · charted ${foundCount()}/4`, cx, Math.min(H - 16, cy + R + 34));
+  ctx.fillText(touchMode ? `drag to look around · charted ${foundCount()}/4` : `arrow keys to look around · E to step back · charted ${foundCount()}/4`, cx, Math.min(H - 16, cy + R + 34));
   if (c > 0.6) ctx.fillText('too cloudy to see much tonight…', cx, Math.max(20, cy - R - 22));
   ctx.restore();
 }

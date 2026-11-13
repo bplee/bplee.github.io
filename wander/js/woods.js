@@ -431,7 +431,8 @@ function drawFireflies() {
   const vis = Math.max(0, 1 - (a.rain * 0.9 + a.storm + a.snow * 0.8 + a.wind * 0.5 + a.fog * 0.3));
   if (vis < 0.02) return;
   ctx.save();
-  FIREFLIES.forEach(f => {
+  FIREFLIES.forEach((f, i) => {
+    if (QUALITY < 1 && i % 2) return;   // phones: half as many
     const sx = f.x - camX;
     if (sx < -20 || sx > W + 20) return;
     const p = Math.pow(0.5 + 0.5 * Math.sin(tick * 0.06 * f.sp + f.ph * 4), 2);
