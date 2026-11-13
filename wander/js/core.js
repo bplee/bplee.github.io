@@ -152,9 +152,10 @@ window.addEventListener('keyup', e => {
 ══════════════════════════════════════════ */
 let camX = 0;
 let camY = 0;   // vertical camera: negative = looking up (the hill), positive = looking down (the cavern)
-// phone held upright: there's spare height, so sit the world higher (ground ~62% down instead of 78%)
+// phones: sit the world higher so the bottom of the screen is free for hints + controls
+// (upright: ground ~62% down instead of 78%; sideways: ~71% down). Computers: unchanged.
 function isPortrait() { return MOBILE && window.innerHeight > window.innerWidth; }
-function viewBias() { return isPortrait() ? H * 0.16 : 0; }
+function viewBias() { return !MOBILE ? 0 : isPortrait() ? H * 0.16 : H * 0.07; }
 function updateCamera() {
   if (scene === 'tavern') {
     // room fits on screen → center it; otherwise follow the player

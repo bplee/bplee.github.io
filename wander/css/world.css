@@ -214,5 +214,11 @@ kbd {
     flex-wrap:wrap; justify-content:flex-end; max-width:46vw;
   }
   #worn img { width:32px; height:32px; }
-  #hint-box { bottom:calc(14px + env(safe-area-inset-bottom, 0px)); }
+  /* hints hug the bottom edge on one line so they don't cover the action */
+  #hint-box {
+    bottom:calc(4px + env(safe-area-inset-bottom, 0px));
+    font-size:11px; letter-spacing:0.05em; padding:4px 14px;
+    max-width:88vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+  }
+  #act { bottom:calc(36px + env(safe-area-inset-bottom, 0px)); padding:9px 16px; font-size:12px; }
 }
