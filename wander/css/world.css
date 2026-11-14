@@ -329,3 +329,13 @@ kbd {
   .m-slot { aspect-ratio:auto; min-height:58px; padding:3px 3px 4px; }
   .m-slot img, .m-slot-plus { width:38px; height:38px; }
 }
+
+/* chapter title cards (chapters.js) */
+#chapter {
+  position:fixed; left:50%; top:30%; transform:translate(-50%, -50%); z-index:60; pointer-events:none;
+  text-align:center; font-family:'Space Mono',monospace; color:rgba(245,236,214,0.95);
+  text-shadow:0 2px 14px rgba(0,0,0,0.7); opacity:0; transition:opacity 1.2s ease;
+}
+#chapter.show { opacity:1; }
+#chapter .ch-n { font-size:11px; letter-spacing:0.3em; text-transform:uppercase; color:rgba(230,205,160,0.75); }
+#chapter .ch-name { font-size:clamp(24px, 5vw, 38px); letter-spacing:0.08em; margin-top:6px; }
