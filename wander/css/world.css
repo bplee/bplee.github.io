@@ -194,6 +194,15 @@ kbd {
 
 .m-qcount { color:#ffd890; }
 
+/* start over (save.js): quiet, at the very bottom of the panel, with a confirm step */
+.m-reset { margin:22px 0 8px; padding-top:12px; border-top:0.5px solid rgba(255,255,255,0.06); }
+.m-reset button { font:inherit; font-size:10px; letter-spacing:0.05em; color:rgba(220,212,196,0.4); background:none; border:0.5px solid rgba(255,255,255,0.1); border-radius:999px; padding:5px 12px; cursor:pointer; }
+.m-reset button:hover { color:rgba(250,240,220,0.85); border-color:rgba(255,255,255,0.25); }
+.m-reset.ask .m-desc { margin:0 0 8px; }
+.m-reset-btns { display:flex; gap:6px; flex-wrap:wrap; }
+.m-reset .m-reset-yes { color:#f0b8a0; border-color:rgba(240,150,120,0.45); }
+.m-reset .m-reset-yes:hover { color:#ffd0bc; background:rgba(240,150,120,0.12); }
+
 /* ══════════ touch controls (body.touch is set on the first touch) ══════════ */
 #touch { position:fixed; inset:0; z-index:30; touch-action:none; }
 #touch[hidden], #joy[hidden], #act[hidden], #scope-close[hidden] { display:none; }

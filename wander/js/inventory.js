@@ -485,7 +485,7 @@ function updateCarryHud() {
 ══════════════════════════════════════════ */
 function openMenu(tab) {
   ensureArt();
-  menu.open = true; menu.tab = tab; menu.sel = 0; menu.hover = null;
+  menu.open = true; menu.tab = tab; menu.sel = 0; menu.hover = null; menu.reset = false;
   document.getElementById('menu').hidden = false;
   document.getElementById('menu-pill').hidden = true;
   Object.keys(keys).forEach(k => keys[k] = false); // don't keep walking when it closes
@@ -543,7 +543,7 @@ function renderMenu() {
 
   if (menu.tab === 'bag') {
     const list = ownedList();
-    if (!list.length) { body.innerHTML = '<p class="m-empty">your bag is empty. go wander.</p>'; return; }
+    if (!list.length) { body.innerHTML = '<p class="m-empty">your bag is empty. go wander.</p>' + startOverRow(); return; }
     menu.sel = Math.max(0, Math.min(list.length - 1, menu.sel));
     const id = list[menu.sel], it = ITEMS[id], from = giverOf(id);
     body.innerHTML = `<div class="m-grid">${list.map((iid, i) => `
@@ -554,7 +554,7 @@ function renderMenu() {
           ${it.wearable ? `<div class="m-state ${wearing(id) ? 'on' : ''}">${wearing(id) ? 'wearing · E to take off' : 'in your bag · E to put on'}</div>` : '<div class="m-state">carried</div>'}</div></div>
         <div class="m-desc">${esc(it.desc)}</div>
         ${from ? `<div class="m-from"><img src="${ART.faces[from]}" alt="">from ${esc(from)}</div>` : ''}
-      </div>${achievementList()}`;
+      </div>${achievementList()}${startOverRow()}`;
   } else {
     const names = friendList();
     const oq = openQuests(), doneN = Object.keys(questState).filter(q => questState[q] === 'done').length;
@@ -569,8 +569,17 @@ function renderMenu() {
       }).join('')}</div>
       ${friendCard(shown)}
       ${oq.length || doneN ? `<div class="m-sub">open quests</div>${oq.map(q => `<div class="m-qrow"><img src="${ART.faces[QUESTS[q].giver]}" alt=""><div><div class="m-name">${esc(QUESTS[q].title)}</div><div class="m-desc">${esc(QUESTS[q].desc)}</div></div></div>`).join('') || '<p class="m-empty">none right now.</p>'}
-        ${doneN ? `<p class="m-empty">${doneN} done.</p>` : ''}` : ''}`;
+        ${doneN ? `<p class="m-empty">${doneN} done.</p>` : ''}` : ''}${startOverRow()}`;
   }
+}
+
+// start over (save.js): wipes the progress saved on this device, with a confirm step
+function startOverRow() {
+  if (typeof startOver !== 'function') return '';
+  return menu.reset
+    ? `<div class="m-reset ask"><div class="m-desc">forget everything — your bag, your friends, every quest — and start again from the beginning?</div>
+         <div class="m-reset-btns"><button class="m-reset-yes" tabindex="-1">yes, start over</button><button class="m-reset-no" tabindex="-1">keep playing</button></div></div>`
+    : '<div class="m-reset"><button class="m-reset-ask" tabindex="-1">start over…</button></div>';
 }
 
 function gridMove(dx, dy, n) {
@@ -613,7 +622,10 @@ window.addEventListener('load', () => {
   const body = document.getElementById('menu-body');
   body.addEventListener('click', e => {
     const t = e.target.closest('.m-tile'); if (t) { menu.sel = +t.dataset.i; toggleItem(t.dataset.id); return; }
-    const f = e.target.closest('.m-face'); if (f) { menu.sel = +f.dataset.i; menu.hover = null; renderMenu(); }
+    const f = e.target.closest('.m-face'); if (f) { menu.sel = +f.dataset.i; menu.hover = null; renderMenu(); return; }
+    if (e.target.closest('.m-reset-ask')) { menu.reset = true; renderMenu(); return; }
+    if (e.target.closest('.m-reset-no')) { menu.reset = false; renderMenu(); return; }
+    if (e.target.closest('.m-reset-yes') && typeof startOver === 'function') startOver();
   });
   // hovering a face shows their card
   body.addEventListener('mouseover', e => {

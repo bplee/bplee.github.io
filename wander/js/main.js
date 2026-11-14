@@ -33,6 +33,7 @@ function update() {
   tickTalk();          // speech bubbles: count down, close when you walk off (talk.js)
   checkProximity();
   updateCamera();
+  if (typeof saveTick === 'function') saveTick();   // remember a safe spot, autosave now and then (save.js)
 }
 
 /* ══════════════════════════════════════════
@@ -159,6 +160,7 @@ function loop(now) {
 const fadeEl = document.getElementById('fade');
 window.addEventListener('load', () => {
   player._py = groundY(player.wx);
+  if (typeof loadSave === 'function') loadSave();    // pick up where you left off (save.js)
   initWeather();
   requestAnimationFrame(loop);
   setTimeout(() => {
