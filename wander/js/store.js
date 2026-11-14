@@ -216,12 +216,12 @@ function openShop() {
   Object.keys(keys).forEach(k => keys[k] = false);
   menu.open = true;                       // pauses update() (main.js) and the E-key spots
   renderShop();
-  shopElement().hidden = false;
+  shopElement().style.display = 'flex';   // (not .hidden: the inline display:flex would override it)
 }
 function closeShop() {
   if (!shop.open) return;
   shop.open = false; menu.open = false;
-  if (shop.el) shop.el.hidden = true;
+  if (shop.el) shop.el.style.display = 'none';
 }
 // anything that closes "the menu" (a tap outside, esc) closes the shop
 const _closeMenu = closeMenu;
