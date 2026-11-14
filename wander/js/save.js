@@ -13,7 +13,7 @@
      runs without saving.
 ══════════════════════════════════════════ */
 const SAVE_KEY = 'wander.save';
-const SAVE_VERSION = 1;
+const SAVE_VERSION = 2;   // 2: body slots (inv.slots). v1 saves are migrated (svMigrate)
 const SAVE = { ready: false, off: false, last: null, frames: 0, safe: null, resumed: false };
 
 /* ── storage, wrapped (private mode, blocked site data, quota) ── */
@@ -142,13 +142,15 @@ const SV_SKY_STEPS = [null, 'ask', 'carry', 'set', 'done'];
 
 const SAVE_REG = [
   { key: 'inv',
-    get: () => { const o = { owned: { ...inv.owned }, on: { ...inv.on }, stacks: {} };
+    get: () => { const o = { owned: { ...inv.owned }, on: { ...inv.on }, slots: { ...slots }, stacks: {} };
                  for (const k in inv) if (svNum(inv[k])) o.stacks[k] = inv[k]; return o; },
     set: v => {
       if (!svObj(v)) return;
       if (svObj(v.owned)) for (const id in v.owned) if (ITEMS[id] && v.owned[id] === true) inv.owned[id] = true;
       if (svObj(v.on)) for (const id in v.on) if (inv.owned[id] && typeof v.on[id] === 'boolean') inv.on[id] = v.on[id] && !!ITEMS[id].wearable;
       if (svObj(v.stacks)) for (const id in v.stacks) if (ITEMS[id] && svNum(v.stacks[id]) && v.stacks[id] >= 0) inv[id] = Math.floor(v.stacks[id]);
+      // body slots (inventory.js): saved ones where still valid, then anything else that's on, without pushing out
+      if (typeof slotLoad === 'function') slotLoad(svObj(v.slots) ? v.slots : null);
       // stack names ("gold nuggets ×3")
       for (const id in STACK_NAMES) if (inv[id]) ITEMS[id].name = inv[id] === 1 ? STACK_NAMES[id][0] : STACK_NAMES[id][1](inv[id]);
     } },
@@ -233,6 +235,16 @@ const SAVE_REG = [
   // and last: where you are
   { key: 'pos', get: () => svSpot(), set: v => svApplySpot(v) },
 ];
+// other files can save their own state without touching this list: { key, get(), set(v) }, same rules as above.
+// · a script loaded BEFORE save.js: (window.SAVE_EXTRA = window.SAVE_EXTRA || []).push(entry)
+// · a script loaded AFTER save.js:  saveRegister(entry)
+// either way the entry goes in before 'pos' (so where you are is applied last). keys must be unique.
+function saveRegister(e) {
+  if (!e || typeof e.key !== 'string' || typeof e.get !== 'function' || typeof e.set !== 'function' || SAVE_REG.some(r => r.key === e.key)) return false;
+  SAVE_REG.splice(SAVE_REG.findIndex(r => r.key === 'pos'), 0, e);
+  return true;
+}
+(window.SAVE_EXTRA || []).forEach(saveRegister);
 
 /* ── after loading: put people where their progress says they'd be ── */
 function svSettle() {
@@ -299,7 +311,22 @@ function svReadSave() {
   if (s.v !== SAVE_VERSION) return svMigrate(s);
   return s.data;
 }
-function svMigrate(s) { return null; }   // (no older versions yet: a mismatched save is ignored)
+// an older save → today's shape (or null: ignored). newer / unknown versions are ignored.
+function svMigrate(s) {
+  if (s.v === 1) {
+    // v1 → v2: body slots. v1 let any number of things be on at once; now each slot holds one.
+    // the most useful ones get a slot (slotsFromOn: helmet, chart, lantern… first), the rest go back in the bag.
+    const d = s.data;
+    try {
+      if (svObj(d.inv) && svObj(d.inv.on) && typeof slotsFromOn === 'function') {
+        const r = slotsFromOn(d.inv.on, svObj(d.inv.owned) ? d.inv.owned : {});
+        d.inv.on = r.on; d.inv.slots = r.slots;
+      }
+    } catch (e) {}
+    return d;
+  }
+  return null;
+}
 
 // called once from main.js's load handler, before the game starts
 function loadSave() {

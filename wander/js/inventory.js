@@ -5,8 +5,11 @@
    · meet(name, line)          — remember someone you talked to (E)
    · startQuest(id) / completeQuest(id)
    Side panel: I = bag, J = friends, tab switches, arrows choose,
-   E / enter toggles, esc closes. The game pauses while it's open.
-   A strip at the bottom-left shows what you're wearing.
+   E / enter opens a body slot (or puts on / picks), X takes off,
+   esc backs out / closes. The game pauses while it's open.
+   The bag is a body (head, neck, two hands, chest, feet: one thing each,
+   see BODY SLOTS) plus the spare gear and carried things below it.
+   A strip at the bottom shows what you're wearing.
    Item + character pictures are drawn with the game's own canvas art
    (renderToURL) so everything matches.
 ══════════════════════════════════════════ */
@@ -98,7 +101,149 @@ const questState = {}; // id → 'open' | 'done'
 
 const inv = { owned: {}, on: {} };
 const met = {};   // name → { gifts: [itemId], last: '' }
-const menu = { open: false, tab: 'bag', sel: 0, hover: null };
+const menu = { open: false, tab: 'bag', sel: 0, hover: null, pick: null, pickSel: 0 };
+let drag = null;   // a slot / spare tile being dragged (see BAG PANEL)
+
+/* ══════════════════════════════════════════
+   BODY SLOTS — six boxes: head, left hand, right hand, neck, chest, feet. One thing in each.
+   · every wearable has a KIND (ITEM_KIND, or ITEMS[id].slot from another file):
+       head · neck · chest · feet → that box · hand → either hand box
+       pocket → no box at all: tucked away, simply toggled on/off (the star chart, the compass…)
+     things that aren't wearable (gold, logs, quest things) are just carried.
+   · putting something on: a free box of its kind, else it REPLACES what's in that box
+     (only that one, which goes back in the bag). nothing ever gets shuffled around by age.
+   · give(): a new thing goes on only if its box is free (the helmet always does: you need it
+     to dive); otherwise it waits in the bag, with a hint.
+   · inv.on stays the truth for "being worn": wearing(), the rest of the game and the tests read
+     (and write) it. slotSync() squares slots{} up with it (e.g. after inv.on.x = true).
+══════════════════════════════════════════ */
+const SLOT_KEYS = ['head', 'neck', 'lhand', 'rhand', 'chest', 'feet'];
+const DOLL_ORDER = ['head', 'lhand', 'neck', 'rhand', 'chest', 'feet'];   // the order the panel walks them in
+const SLOT_NAME = { head: 'head', neck: 'neck', lhand: 'left hand', rhand: 'right hand', chest: 'chest', feet: 'feet' };
+const SLOT_GROUP = { head: ['head'], neck: ['neck'], chest: ['chest'], hand: ['rhand', 'lhand'], feet: ['feet'] };
+const KIND_FULL = { head: 'your head is', neck: 'your neck is', chest: 'your back is', hand: 'both hands are', feet: 'your feet are' };
+const ITEM_KIND = {
+  helmet: 'head', feather: 'head', snorkel: 'head',
+  scarf: 'neck', shells: 'neck',
+  surfboard: 'chest',                                                     // the board rides on your back
+  lantern: 'hand', umbrella: 'hand', glowstone: 'hand', shovel: 'hand', pickaxe: 'hand', axe: 'hand',
+  blades: 'feet', boots: 'feet', fins: 'feet',
+  chart: 'pocket', compass: 'pocket', peanut: 'pocket', bracelet: 'pocket', charm: 'pocket',
+};
+// an old save with more on than fits: these get a box first, then bag order
+const SLOT_PRIO = ['helmet', 'lantern', 'blades', 'scarf', 'shells', 'surfboard'];
+const slots = { head: null, neck: null, lhand: null, rhand: null, chest: null, feet: null };
+let slotNotes = [];
+
+// what kind of thing it is: a box kind, 'pocket', or null (just carried)
+function itemKind(id) { const it = ITEMS[id]; return !it || !it.wearable ? null : it.slot || ITEM_KIND[id] || 'pocket'; }
+const isPocket = id => itemKind(id) === 'pocket';
+const itemGroups = id => { const k = itemKind(id); return k && k !== 'pocket' ? [k] : []; };
+function slotsFor(id) { const k = itemKind(id); return SLOT_GROUP[k] || []; }
+const fitsSlot = (id, k) => slotsFor(id).includes(k);
+const slotOf = id => SLOT_KEYS.find(k => slots[k] === id) || null;
+const slotGroupOf = k => Object.keys(SLOT_GROUP).find(g => SLOT_GROUP[g].includes(k));
+// never replaced by something switched on automatically (you'd drown / lose the wave)
+function slotKeep(id) { return id === 'helmet' || (id === 'surfboard' && !!(player.surfing || player.inWater)); }
+const slotFree = id => slotsFor(id).find(k => !slots[k]) || null;
+// the box id would replace when its kind is full: always the first one (hands: the right)
+function slotBump(id, auto) { const k = slotsFor(id).find(k => slots[k] && !(auto && slotKeep(slots[k]))); return k || null; }
+function slotPut(id, k) {
+  const was = slotOf(id); if (was) slots[was] = null;
+  slots[k] = id; inv.on[id] = true;
+}
+function slotFlush() {
+  if (!slotNotes.length) return;
+  const msg = slotNotes.slice(-2).join('  ·  '); slotNotes = [];
+  if (typeof showHint === 'function') showHint(msg, 3600);
+}
+
+// square slots up with inv.on: drop stale entries; anything switched on directly (inv.on.x = true)
+// takes a free box of its kind, else replaces what's there (never a slotKeep thing).
+// opt.displace === false: never replace (it's just switched off). opt.quiet: no hints. → changed?
+function slotSync(opt) {
+  opt = opt || {};
+  let changed = false;
+  const seen = {};
+  SLOT_KEYS.forEach(k => {
+    const id = slots[k];
+    if (!id) return;
+    if (seen[id] || !wearing(id) || !fitsSlot(id, k)) { slots[k] = null; changed = true; } else seen[id] = true;
+  });
+  Object.keys(inv.on).filter(id => inv.on[id] && inv.owned[id] && slotsFor(id).length && !seen[id]).forEach(id => {
+    changed = true;
+    let k = slotFree(id);
+    if (!k && opt.displace !== false) {
+      k = slotBump(id, true);
+      if (k) { inv.on[slots[k]] = false; slotNotes.push(`${ITEMS[slots[k]].name} → back in your bag`); }
+    }
+    if (k) slotPut(id, k);
+    else inv.on[id] = false;
+  });
+  if (opt.quiet) slotNotes = []; else slotFlush();
+  return changed;
+}
+
+// put id in box k on purpose. what was there goes back in the bag —
+// or, when id came from the other hand, the two hands swap.
+function equipAt(id, k) {
+  if (!hasItem(id) || !fitsSlot(id, k)) return false;
+  slotSync({ quiet: true });
+  const from = slotOf(id), old = slots[k];
+  if (from !== k) {
+    slotPut(id, k);
+    if (old) {
+      if (from && fitsSlot(old, from)) slotPut(old, from);
+      else { inv.on[old] = false; slotNotes.push(`${ITEMS[old].name} → back in your bag`); }
+    }
+  }
+  slotFlush(); renderMenu(); updateCarryHud();
+  return true;
+}
+function unequip(k) {
+  const id = slots[k];
+  if (id) { slots[k] = null; inv.on[id] = false; }
+  renderMenu(); updateCarryHud();
+}
+// put on (from the bag / the strip): pockets just switch on; else a free box, else replace that box
+function wearAuto(id) {
+  if (!hasItem(id) || !itemKind(id)) return false;
+  if (isPocket(id)) { inv.on[id] = true; renderMenu(); updateCarryHud(); return true; }
+  if (slotOf(id)) return true;
+  const k = slotFree(id) || slotBump(id, false);
+  return k ? equipAt(id, k) : false;
+}
+// what could go in box k (bag order), then null = "take it off" when something's there
+function pickerOptions(k) {
+  const opts = ITEM_ORDER.filter(id => hasItem(id) && fitsSlot(id, k));
+  return slots[k] ? opts.concat([null]) : opts;
+}
+
+// pure: a plain { id: bool } "on" map (e.g. a v1 save, where anything could be on at once) → slots,
+// without pushing anything out: most useful things first (SLOT_PRIO), then bag order; whatever
+// doesn't fit is switched off. start: slots already taken. → { slots, on }
+function slotsFromOn(on, owned, start) {
+  const out = {}, newOn = Object.assign({}, on);
+  SLOT_KEYS.forEach(k => { out[k] = start && typeof start[k] === 'string' ? start[k] : null; });
+  const placed = new Set(SLOT_KEYS.map(k => out[k]).filter(Boolean));
+  const rank = id => { const p = SLOT_PRIO.indexOf(id); if (p >= 0) return p; const o = ITEM_ORDER.indexOf(id); return 100 + (o < 0 ? 999 : o); };
+  Object.keys(on || {}).filter(id => on[id] === true && owned && owned[id] === true && slotsFor(id).length && !placed.has(id))
+    .sort((a, b) => rank(a) - rank(b))
+    .forEach(id => { const k = slotsFor(id).find(s => !out[s]); if (k) out[k] = id; else newOn[id] = false; });
+  return { slots: out, on: newOn };
+}
+// after loading (save.js): saved slots where they're still valid, then fit in anything else that's on
+function slotLoad(saved) {
+  const start = {};
+  SLOT_KEYS.forEach(k => {
+    slots[k] = null;
+    const id = saved && typeof saved === 'object' ? saved[k] : null;
+    if (typeof id === 'string' && wearing(id) && fitsSlot(id, k) && !Object.values(start).includes(id)) start[k] = id;
+  });
+  const r = slotsFromOn(inv.on, inv.owned, start);
+  Object.assign(slots, r.slots);
+  Object.keys(r.on).forEach(id => { if (r.on[id] === false && inv.on[id]) inv.on[id] = false; });
+}
 
 /* ══════════════════════════════════════════
    NOTIFICATIONS — small toasts at the top of the screen for items, friends,
@@ -153,6 +298,12 @@ function give(id, from) {
   if (inv.owned[id]) return;
   inv.owned[id] = true;
   inv.on[id] = ITEMS[id].wearable;
+  // it goes on if its box is free (pockets always; the helmet always: you need it to dive). else it waits in the bag
+  if (slotsFor(id).length && !slotFree(id) && id !== 'helmet') {
+    inv.on[id] = false;
+    setTimeout(() => showHint(`${ITEMS[id].name} is in your bag: ${KIND_FULL[itemKind(id)]} full. swap it in from the bag (I)`, 4200), 1200);
+  }
+  if (ITEMS[id].wearable) slotSync();
   if (from) { meet(from); met[from].gifts.push(id); }
   ensureArt();
   const firstItem = Object.keys(inv.owned).length === 1;
@@ -170,7 +321,7 @@ function stack(id, d, from) {
   if (d > 0) notify('item', ITEMS[id].name, ART.items[id]);
   renderMenu(); updateCarryHud();
 }
-function takeItem(id) { delete inv.owned[id]; delete inv.on[id]; renderMenu(); updateCarryHud(); }
+function takeItem(id) { delete inv.owned[id]; delete inv.on[id]; slotSync({ quiet: true }); renderMenu(); updateCarryHud(); }
 
 function meet(name, line) {
   if (!FRIENDS[name]) return;
@@ -470,12 +621,14 @@ function updateCarryHud() {
   const el = document.getElementById('worn');
   if (!el) return;
   ensureArt();
-  // every wearable you own: bright + outlined when it's on, faded when it's off. Click/tap toggles.
-  const owned = ITEM_ORDER.filter(id => hasItem(id));
+  slotSync();
+  // what you're wearing first (head to feet, bright + outlined), then everything else you own, faded. Click/tap toggles.
+  const worn = SLOT_KEYS.map(k => slots[k]).filter(Boolean);
+  const owned = worn.concat(ITEM_ORDER.filter(id => hasItem(id) && !worn.includes(id)));
   el.hidden = !owned.length;
   el.innerHTML = owned.map(id => {
-    const it = ITEMS[id], on = it.wearable ? wearing(id) : true;
-    const tip = it.wearable ? `${it.name} — ${on ? 'on' : 'off'}` : `${it.name} (carried)`;
+    const it = ITEMS[id], on = it.wearable ? wearing(id) : true, k = slotOf(id);
+    const tip = it.wearable ? `${it.name} — ${on && k ? SLOT_NAME[k] : 'off'}` : `${it.name} (carried)`;
     return `<img src="${ART.items[id]}" class="${on ? 'on' : 'off'}${it.wearable ? '' : ' carried'}" alt="${esc(tip)}" title="${esc(tip)}" data-id="${id}">`;
   }).join('');
 }
@@ -485,14 +638,14 @@ function updateCarryHud() {
 ══════════════════════════════════════════ */
 function openMenu(tab) {
   ensureArt();
-  menu.open = true; menu.tab = tab; menu.sel = 0; menu.hover = null; menu.reset = false;
+  menu.open = true; menu.tab = tab; menu.sel = 0; menu.hover = null; menu.reset = false; menu.pick = null;
   document.getElementById('menu').hidden = false;
   document.getElementById('menu-pill').hidden = true;
   Object.keys(keys).forEach(k => keys[k] = false); // don't keep walking when it closes
   renderMenu();
 }
 function closeMenu() {
-  menu.open = false;
+  menu.open = false; menu.pick = null; dragCancel();
   document.getElementById('menu').hidden = true;
   document.getElementById('menu-pill').hidden = false;
 }
@@ -506,10 +659,13 @@ function pingPill() {
 function ownedList() { return ITEM_ORDER.filter(id => inv.owned[id]); }
 function friendList() { return Object.keys(FRIENDS); }
 
+// on ↔ off (the strip at the bottom; old callers). putting on finds it a slot (see wearAuto)
 function toggleItem(id) {
   if (!ITEMS[id].wearable) { showHint(`${ITEMS[id].name} — ${ITEMS[id].desc}`, 2500); return; }
-  inv.on[id] = !inv.on[id];
-  renderMenu(); updateCarryHud();
+  if (isPocket(id)) { inv.on[id] = !inv.on[id]; renderMenu(); updateCarryHud(); return; }
+  slotSync({ quiet: true });
+  const k = slotOf(id);
+  if (k) unequip(k); else if (!wearAuto(id)) { inv.on[id] = false; renderMenu(); updateCarryHud(); }
 }
 
 function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
@@ -537,24 +693,16 @@ function achievementList() {
 function renderMenu() {
   const body = document.getElementById('menu-body');
   if (!body) return;
+  if (drag && drag.live) { drag.dirty = true; return; }   // (re-rendering mid-drag would pull the tile out from under your finger)
+  slotSync();
   document.querySelectorAll('#menu-tabs button[data-tab]').forEach(b => b.classList.toggle('active', b.dataset.tab === menu.tab));
   if (!menu.open) return;
   ensureArt();
 
+  setFoot();
   if (menu.tab === 'bag') {
-    const list = ownedList();
-    if (!list.length) { body.innerHTML = '<p class="m-empty">your bag is empty. go wander.</p>' + startOverRow(); return; }
-    menu.sel = Math.max(0, Math.min(list.length - 1, menu.sel));
-    const id = list[menu.sel], it = ITEMS[id], from = giverOf(id);
-    body.innerHTML = `<div class="m-grid">${list.map((iid, i) => `
-        <button class="m-tile${i === menu.sel ? ' sel' : ''}${wearing(iid) ? ' on' : ''}" data-id="${iid}" data-i="${i}" tabindex="-1">
-          <img src="${ART.items[iid]}" alt=""><span>${esc(ITEMS[iid].name)}</span></button>`).join('')}</div>
-      <div class="m-card">
-        <div class="m-card-head"><img src="${ART.items[id]}" alt=""><div><div class="m-name">${esc(it.name)}</div>
-          ${it.wearable ? `<div class="m-state ${wearing(id) ? 'on' : ''}">${wearing(id) ? 'wearing · E to take off' : 'in your bag · E to put on'}</div>` : '<div class="m-state">carried</div>'}</div></div>
-        <div class="m-desc">${esc(it.desc)}</div>
-        ${from ? `<div class="m-from"><img src="${ART.faces[from]}" alt="">from ${esc(from)}</div>` : ''}
-      </div>${achievementList()}${startOverRow()}`;
+    if (!ownedList().length) { body.innerHTML = '<p class="m-empty">your bag is empty. go wander.</p>' + startOverRow(); return; }
+    body.innerHTML = bagHTML() + achievementList() + startOverRow();
   } else {
     const names = friendList();
     const oq = openQuests(), doneN = Object.keys(questState).filter(q => questState[q] === 'done').length;
@@ -589,6 +737,239 @@ function gridMove(dx, dy, n) {
   menu.sel = i; menu.hover = null;
 }
 
+/* ══════════════════════════════════════════
+   BAG PANEL — the body (six slots), then spare gear, then carried things.
+   menu.sel walks bagCells(): the six slots (DOLL_ORDER), the spare gear, the carried things.
+   Picking a slot (click / tap / E) opens its picker right under the body:
+   everything you own that fits there, plus "take off". Or drag: a spare
+   thing onto a slot, a slot onto another slot (swap), a slot off the body
+   (take off). Touch: hold a moment, then drag.
+══════════════════════════════════════════ */
+const BAG_COLS = 4;
+function bagLists() {
+  const own = ownedList();
+  return { pockets: own.filter(isPocket), spare: own.filter(id => slotsFor(id).length && !wearing(id)), carried: own.filter(id => !ITEMS[id].wearable) };
+}
+function bagCells() {
+  const { pockets, spare, carried } = bagLists();
+  return DOLL_ORDER.map(k => ({ slot: k })).concat(pockets.map(id => ({ id, pocket: true })), spare.map(id => ({ id, spare: true })), carried.map(id => ({ id })));
+}
+const kb = (key, tap) => touchMode ? tap : key;
+
+function slotHTML(k, i) {
+  const id = slots[k], n = pickerOptions(k).filter(Boolean).length;
+  const cls = ['m-slot', 's-' + k, id ? 'filled' : 'empty', i === menu.sel && !menu.pick ? 'sel' : '', menu.pick === k ? 'open' : '', n ? '' : 'none'].filter(Boolean).join(' ');
+  const tip = id ? `${SLOT_NAME[k]}: ${ITEMS[id].name}` : `${SLOT_NAME[k]}: empty`;
+  return `<button class="${cls}" data-slot="${k}" data-i="${i}"${id ? ` data-drag="${id}"` : ''} title="${esc(tip)}" tabindex="-1">`
+    + (id ? `<img src="${ART.items[id]}" alt="">` : `<span class="m-slot-plus">${n ? '+' : ''}</span>`)
+    + `<span class="m-slot-lbl">${SLOT_NAME[k]}</span></button>`;
+}
+function pickHTML(k) {
+  const opts = pickerOptions(k);
+  menu.pickSel = Math.max(0, Math.min(opts.length - 1, menu.pickSel));
+  return `<div class="m-pick"><div class="m-pick-head"><span>${esc(SLOT_NAME[k])} · ${opts.length ? 'pick one' : 'nothing fits here yet'}</span>`
+    + `<button class="m-pick-x" tabindex="-1" aria-label="close">×</button></div>`
+    + (opts.length ? `<div class="m-grid">${opts.map((id, j) => {
+      if (!id) return `<button class="m-tile m-opt m-opt-none${j === menu.pickSel ? ' sel' : ''}" data-opt="" data-j="${j}" tabindex="-1"><span class="m-none-ic"></span><span>take off</span></button>`;
+      const where = slotOf(id);
+      return `<button class="m-tile m-opt${j === menu.pickSel ? ' sel' : ''}${where === k ? ' cur on' : ''}" data-opt="${id}" data-j="${j}" tabindex="-1">`
+        + `<img src="${ART.items[id]}" alt=""><span>${esc(ITEMS[id].name)}</span>${where && where !== k ? `<i>${esc(SLOT_NAME[where])}</i>` : ''}</button>`;
+    }).join('')}</div>` : `<p class="m-empty">nothing you own goes on your ${esc(SLOT_NAME[k])}. keep wandering.</p>`)
+    + '</div>';
+}
+function tilesHTML(ids, start, spare, pocket) {
+  return `<div class="m-grid">${ids.map((id, j) => `
+        <button class="m-tile${start + j === menu.sel && !menu.pick ? ' sel' : ''}${pocket && wearing(id) ? ' on' : ''}" data-id="${id}" data-i="${start + j}"${spare ? ` data-drag="${id}"` : ''} tabindex="-1">
+          <img src="${ART.items[id]}" alt=""><span>${esc(ITEMS[id].name)}</span></button>`).join('')}</div>`;
+}
+// the card under it all: whatever's highlighted
+function bagCard(cell) {
+  let id = null, state = '', note = '';
+  const group = k => SLOT_GROUP[slotGroupOf(k)] || [k];
+  if (menu.pick) {
+    const k = menu.pick, opt = pickerOptions(k)[menu.pickSel];
+    if (opt === null) return `<div class="m-card"><div class="m-name">take it off</div><div class="m-desc">${esc(ITEMS[slots[k]].name)} goes back in your bag. your ${esc(SLOT_NAME[k])} is free.</div></div>`;
+    if (!opt) return '';
+    id = opt;
+    const where = slotOf(id);
+    state = where === k ? `<div class="m-state on">on your ${esc(SLOT_NAME[k])}</div>`
+      : where ? `<div class="m-state">on your ${esc(SLOT_NAME[where])} · ${kb('E', 'tap')} to move it here</div>`
+      : `<div class="m-state">in your bag · ${kb('E', 'tap')} to put it here</div>`;
+  } else if (cell && cell.slot) {
+    const k = cell.slot;
+    id = slots[k];
+    if (!id) {
+      const n = pickerOptions(k).length;
+      return `<div class="m-card"><div class="m-name">${esc(SLOT_NAME[k])} · empty</div><div class="m-desc">${n
+        ? `${n} thing${n > 1 ? 's' : ''} you own could go here. ${kb('E', 'tap')} to choose.`
+        : `nothing you own goes here yet.`}</div></div>`;
+    }
+    state = `<div class="m-state on">on your ${esc(SLOT_NAME[k])} · ${kb('E to swap · X to take off', 'tap to swap or take off')}</div>`;
+  } else if (cell) {
+    id = cell.id;
+    const it = ITEMS[id];
+    if (cell.pocket) {
+      state = wearing(id) ? `<div class="m-state on">on · ${kb('E', 'tap')} to put it away</div>` : `<div class="m-state">put away · ${kb('E', 'tap')} to use it</div>`;
+      note = '<div class="m-fits">a pocket thing: needs no hand or slot</div>';
+    } else if (it.wearable) {
+      const where = slotsFor(id), groups = itemGroups(id).map(g => g === 'hand' ? 'either hand' : g === 'chest' ? 'your back' : g).join(' or ');
+      const out = where.every(k => slots[k]) && slots[slotBump(id, false)];
+      state = `<div class="m-state">in your bag · ${kb('E', 'tap')} to put on</div>`;
+      note = `<div class="m-fits">goes on: ${esc(groups)}${out ? ` · swaps out ${esc(ITEMS[out].name)}` : ''}</div>`;
+    } else state = '<div class="m-state">carried</div>';
+  }
+  if (!id) return '';
+  const it = ITEMS[id], from = giverOf(id);
+  return `<div class="m-card">
+        <div class="m-card-head"><img src="${ART.items[id]}" alt=""><div><div class="m-name">${esc(it.name)}</div>${state}</div></div>
+        <div class="m-desc">${esc(it.desc)}</div>${note}
+        ${from ? `<div class="m-from"><img src="${ART.faces[from]}" alt="">from ${esc(from)}</div>` : ''}
+      </div>`;
+}
+function bagHTML() {
+  const { pockets, spare, carried } = bagLists(), cells = bagCells(), D = DOLL_ORDER.length;
+  menu.sel = Math.max(0, Math.min(cells.length - 1, menu.sel));
+  if (menu.pick && !SLOT_KEYS.includes(menu.pick)) menu.pick = null;
+  const worn = SLOT_KEYS.filter(k => slots[k]).length;
+  return `<div class="m-sub">wearing · ${worn} of ${SLOT_KEYS.length}</div>
+    <div class="m-doll">${DOLL_ORDER.map((k, i) => slotHTML(k, i)).join('')}</div>
+    ${menu.pick ? pickHTML(menu.pick) : ''}
+    ${bagCard(cells[menu.sel])}
+    ${pockets.length ? `<div class="m-sub">pockets · ${kb('E', 'tap')} to switch on / off</div>${tilesHTML(pockets, D, false, true)}` : ''}
+    ${spare.length ? `<div class="m-sub">spare gear</div>${tilesHTML(spare, D + pockets.length, true)}` : ''}
+    ${carried.length ? `<div class="m-sub">carried</div>${tilesHTML(carried, D + pockets.length + spare.length, false)}` : ''}`;
+}
+function setFoot() {
+  const f = document.querySelector && document.querySelector('#menu .m-foot');
+  if (!f) return;
+  f.textContent = menu.tab !== 'bag' ? 'arrows choose · tab switches · esc closes'
+    : menu.pick ? 'arrows choose · E put it here · X take off · esc back'
+    : 'arrows choose · E open / put on · X take off · esc closes';
+}
+
+// arrows in the bag: around the body, then down into the grids (4 across), and back up
+const DOLL_NAV = {   // [left, right, up, down]
+  head:  ['lhand', 'rhand', null,    'neck'],
+  lhand: [null,    'neck',  'head',  'feet'],
+  neck:  ['lhand', 'rhand', 'head',  'chest'],
+  rhand: ['neck',  null,    'head',  'feet'],
+  chest: ['lhand', 'rhand', 'neck',  'feet'],
+  feet:  ['lhand', 'rhand', 'chest', '+grid'],
+};
+function bagMove(dir) {
+  const { pockets, spare, carried } = bagLists(), D = DOLL_ORDER.length;
+  const cells = bagCells(), cur = cells[menu.sel];
+  const d = ['left', 'right', 'up', 'down'].indexOf(dir);
+  if (cur && cur.slot) {
+    const to = DOLL_NAV[cur.slot][d];
+    if (to === '+grid') { if (cells.length > D) menu.sel = D; }
+    else if (to) menu.sel = DOLL_ORDER.indexOf(to);
+    return;
+  }
+  // in the grids: pockets (from D), spare, then carried, each its own rows
+  const secs = [[D, pockets.length], [D + pockets.length, spare.length], [D + pockets.length + spare.length, carried.length]].filter(s => s[1]);
+  const si = secs.findIndex(([s0, n]) => menu.sel >= s0 && menu.sel < s0 + n);
+  if (si < 0) { menu.sel = 0; return; }
+  const [s0, n] = secs[si], i = menu.sel - s0, col = i % BAG_COLS, row = Math.floor(i / BAG_COLS), lastRow = Math.floor((n - 1) / BAG_COLS);
+  if (dir === 'left') menu.sel = Math.max(D, menu.sel - 1);
+  else if (dir === 'right') menu.sel = Math.min(cells.length - 1, menu.sel + 1);
+  else if (dir === 'up') {
+    if (row > 0) menu.sel -= BAG_COLS;
+    else if (si > 0) { const [p0, pn] = secs[si - 1]; menu.sel = p0 + Math.min(pn - 1, Math.floor((pn - 1) / BAG_COLS) * BAG_COLS + col); }
+    else menu.sel = DOLL_ORDER.indexOf('feet');
+  } else {
+    if (row < lastRow) menu.sel = s0 + Math.min(n - 1, i + BAG_COLS);
+    else if (si < secs.length - 1) { const [q0, qn] = secs[si + 1]; menu.sel = q0 + Math.min(qn - 1, col); }
+  }
+}
+function pickMove(dir) {
+  const n = pickerOptions(menu.pick).length;
+  const d = { left: -1, right: 1, up: -BAG_COLS, down: BAG_COLS }[dir];
+  menu.pickSel = Math.max(0, Math.min(n - 1, menu.pickSel + d));
+}
+function openPick(k) {
+  menu.pick = k; menu.sel = DOLL_ORDER.indexOf(k);
+  const opts = pickerOptions(k);
+  menu.pickSel = Math.max(0, opts.indexOf(slots[k]));
+}
+// choose in the open picker: an item → it goes here; null → empty the slot
+function pickChoose(opt) {
+  const k = menu.pick;
+  if (!k) return;
+  menu.pick = null;
+  if (opt) equipAt(opt, k); else unequip(k);
+}
+// E on whatever's highlighted
+function bagActivate() {
+  const cell = bagCells()[menu.sel];
+  if (!cell) return;
+  if (cell.slot) { if (menu.pick === cell.slot) menu.pick = null; else openPick(cell.slot); return; }
+  if (cell.pocket) { toggleItem(cell.id); return; }
+  if (cell.spare) { wearAuto(cell.id); return; }
+  showHint(`${ITEMS[cell.id].name} — ${ITEMS[cell.id].desc}`, 2500);
+}
+function bagKey(c, e) {
+  const dir = { ArrowLeft: 'left', KeyA: 'left', ArrowRight: 'right', KeyD: 'right', ArrowUp: 'up', KeyW: 'up', ArrowDown: 'down', KeyS: 'down' }[c];
+  const act = !e.repeat && (c === 'KeyE' || c === 'Enter' || c === 'Space');
+  const off = !e.repeat && (c === 'KeyX' || c === 'Backspace' || c === 'Delete');
+  if (menu.pick) {
+    if (dir) pickMove(dir);
+    else if (act) pickChoose(pickerOptions(menu.pick)[menu.pickSel]);
+    else if (off) { const k = menu.pick; menu.pick = null; unequip(k); }
+    return;
+  }
+  if (dir) bagMove(dir);
+  else if (act) bagActivate();
+  else if (off) { const cell = bagCells()[menu.sel]; if (cell && cell.slot && slots[cell.slot]) unequip(cell.slot); }
+}
+
+/* ── dragging (mouse: press + move · touch: hold a moment, then move) ── */
+function dragGhost() { let g = document.getElementById('drag-ghost'); if (!g) { g = document.createElement('img'); g.id = 'drag-ghost'; g.alt = ''; document.body.appendChild(g); } return g; }
+function dragMarks(over) {
+  document.querySelectorAll('#menu-body .m-slot').forEach(el => {
+    const k = el.dataset.slot, can = !!(drag && drag.live && fitsSlot(drag.id, k));
+    el.classList.toggle('can-drop', can);
+    el.classList.toggle('drop-over', can && k === over);
+  });
+  const m = document.getElementById('menu');
+  if (m) m.classList.toggle('dragging', !!(drag && drag.live));
+}
+function dragGo() {
+  if (!drag || drag.live) return;
+  drag.live = true; clearTimeout(drag.timer);
+  const g = dragGhost(); g.src = ART.items[drag.id]; g.hidden = false;
+  g.style.left = drag.x + 'px'; g.style.top = drag.y + 'px';
+  if (drag.touch && navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+  dragMarks(null);
+}
+const slotUnder = (x, y) => { const el = document.elementFromPoint && document.elementFromPoint(x, y); return el && el.closest ? el : null; };
+function dragMove(x, y) {
+  drag.x = x; drag.y = y;
+  const g = dragGhost(); g.style.left = x + 'px'; g.style.top = y + 'px';
+  const el = slotUnder(x, y), s = el && el.closest('.m-slot');
+  dragMarks(s ? s.dataset.slot : null);
+}
+function dragCancel() {
+  if (!drag) return;
+  clearTimeout(drag.timer);
+  const was = drag; drag = null;
+  const g = document.getElementById('drag-ghost'); if (g) g.hidden = true;
+  dragMarks(null);
+  if (was.dirty) renderMenu();
+}
+// let go: on a slot it fits → there · a slot let go off the body → back in the bag · else nothing
+function dragDrop(x, y) {
+  const d = drag;
+  if (!d || !d.live) { dragCancel(); return; }
+  menu.noClick = Date.now() + 400;   // the click that follows the drop isn't a click
+  const el = slotUnder(x, y), s = el && el.closest('.m-slot'), onBody = el && el.closest('.m-doll');
+  dragCancel();
+  if (s && s.dataset.slot === d.from) { openPick(d.from); renderMenu(); }   // let go where it started: show what else could go there
+  else if (s && fitsSlot(d.id, s.dataset.slot)) { menu.pick = null; menu.sel = DOLL_ORDER.indexOf(s.dataset.slot); equipAt(d.id, s.dataset.slot); }
+  else if (d.from && !onBody) { menu.pick = null; unequip(d.from); }
+  else renderMenu();
+}
+
 // capture phase so nothing else (jumping, talking) sees keys while the panel is open
 window.addEventListener('keydown', e => {
   if (!started) return;
@@ -602,31 +983,71 @@ window.addEventListener('keydown', e => {
     return;
   }
   e.preventDefault(); e.stopImmediatePropagation();
+  if (c === 'Escape' && drag) { dragCancel(); return; }
+  if (c === 'Escape' && menu.pick) { if (!e.repeat) { menu.pick = null; renderMenu(); } return; }   // esc: out of the picker first
   if (c === 'Escape' || (c === 'KeyI' && menu.tab === 'bag') || (c === 'KeyJ' && menu.tab === 'friends')) { if (!e.repeat) closeMenu(); return; }
-  if (c === 'KeyI' || c === 'KeyJ' || c === 'Tab') { if (e.repeat) return; menu.tab = c === 'KeyI' ? 'bag' : c === 'KeyJ' ? 'friends' : (menu.tab === 'bag' ? 'friends' : 'bag'); menu.sel = 0; menu.hover = null; renderMenu(); return; }
-  const n = menu.tab === 'bag' ? ownedList().length : friendList().length;
+  if (c === 'KeyI' || c === 'KeyJ' || c === 'Tab') { if (e.repeat) return; menu.tab = c === 'KeyI' ? 'bag' : c === 'KeyJ' ? 'friends' : (menu.tab === 'bag' ? 'friends' : 'bag'); menu.sel = 0; menu.hover = null; menu.pick = null; renderMenu(); return; }
+  if (menu.tab === 'bag') { bagKey(c, e); renderMenu(); return; }
+  const n = friendList().length;
   if (c === 'ArrowLeft'  || c === 'KeyA') gridMove(-1, 0, n);
   if (c === 'ArrowRight' || c === 'KeyD') gridMove(1, 0, n);
   if (c === 'ArrowUp'    || c === 'KeyW') gridMove(0, -1, n);
   if (c === 'ArrowDown'  || c === 'KeyS') gridMove(0, 1, n);
-  if (menu.tab === 'bag' && !e.repeat && (c === 'KeyE' || c === 'Enter' || c === 'Space')) { const id = ownedList()[menu.sel]; if (id) toggleItem(id); }
   renderMenu();
 }, true);
 
 window.addEventListener('load', () => {
   // clicking a button shouldn't leave it focused (space would "click" it again)
   document.addEventListener('mouseup', () => { if (document.activeElement && document.activeElement.blur) document.activeElement.blur(); });
-  document.querySelectorAll('#menu-tabs button[data-tab]').forEach(b => b.addEventListener('click', () => { menu.tab = b.dataset.tab; menu.sel = 0; menu.hover = null; renderMenu(); }));
+  document.querySelectorAll('#menu-tabs button[data-tab]').forEach(b => b.addEventListener('click', () => { menu.tab = b.dataset.tab; menu.sel = 0; menu.hover = null; menu.pick = null; renderMenu(); }));
   document.getElementById('menu-close').addEventListener('click', closeMenu);
-  document.getElementById('menu-pill').addEventListener('click', () => menu.open ? closeMenu() : openMenu('bag'));
+  // the pill is two halves: "bag" opens the bag, "friends" opens friends
+  document.getElementById('menu-pill').addEventListener('click', e => {
+    const half = e.target && e.target.closest && e.target.closest('[data-tab]');
+    const tab = half ? half.dataset.tab : 'bag';
+    if (menu.open && menu.tab === tab) closeMenu(); else openMenu(tab);
+  });
   const body = document.getElementById('menu-body');
   body.addEventListener('click', e => {
-    const t = e.target.closest('.m-tile'); if (t) { menu.sel = +t.dataset.i; toggleItem(t.dataset.id); return; }
+    if (menu.noClick && Date.now() < menu.noClick) return;   // (the end of a drag)
+    const s = e.target.closest('.m-slot');
+    if (s) { if (menu.pick === s.dataset.slot) menu.pick = null; else openPick(s.dataset.slot); renderMenu(); return; }
+    if (e.target.closest('.m-pick-x')) { menu.pick = null; renderMenu(); return; }
+    const o = e.target.closest('.m-opt'); if (o) { pickChoose(o.dataset.opt || null); renderMenu(); return; }
+    const t = e.target.closest('.m-tile');
+    if (t) {
+      menu.sel = +t.dataset.i; menu.pick = null;
+      if (isPocket(t.dataset.id)) toggleItem(t.dataset.id); else if (ITEMS[t.dataset.id].wearable) wearAuto(t.dataset.id); else showHint(`${ITEMS[t.dataset.id].name} — ${ITEMS[t.dataset.id].desc}`, 2500);
+      renderMenu(); return;
+    }
     const f = e.target.closest('.m-face'); if (f) { menu.sel = +f.dataset.i; menu.hover = null; renderMenu(); return; }
     if (e.target.closest('.m-reset-ask')) { menu.reset = true; renderMenu(); return; }
     if (e.target.closest('.m-reset-no')) { menu.reset = false; renderMenu(); return; }
     if (e.target.closest('.m-reset-yes') && typeof startOver === 'function') startOver();
   });
+  // drag a slot's thing (or a spare one) onto a slot; touch waits for a short hold so the panel still scrolls
+  body.addEventListener('pointerdown', e => {
+    if (e.button > 0 || drag) return;
+    const src = e.target.closest && e.target.closest('[data-drag]');
+    if (!src || !ITEMS[src.dataset.drag]) return;
+    drag = { id: src.dataset.drag, from: src.dataset.slot || null, x0: e.clientX, y0: e.clientY, x: e.clientX, y: e.clientY,
+             pid: e.pointerId, touch: e.pointerType !== 'mouse', live: false };
+    if (drag.touch) drag.timer = setTimeout(dragGo, 280);
+  });
+  window.addEventListener('pointermove', e => {
+    if (!drag || e.pointerId !== drag.pid) return;
+    if (!drag.live) {
+      const far = Math.hypot(e.clientX - drag.x0, e.clientY - drag.y0);
+      if (drag.touch) { if (far > 10) dragCancel(); return; }   // moved before the hold: it's a scroll
+      if (far < 6) return;
+      drag.x = e.clientX; drag.y = e.clientY; dragGo();
+    }
+    dragMove(e.clientX, e.clientY);
+  });
+  window.addEventListener('pointerup', e => { if (drag && e.pointerId === drag.pid) dragDrop(e.clientX, e.clientY); });
+  window.addEventListener('pointercancel', e => { if (drag && e.pointerId === drag.pid) dragCancel(); });
+  // while a touch drag is live, the panel mustn't scroll under it
+  document.addEventListener('touchmove', e => { if (drag && drag.live && e.cancelable) e.preventDefault(); }, { passive: false });
   // hovering a face shows their card
   body.addEventListener('mouseover', e => {
     const f = e.target.closest('.m-face');
@@ -638,3 +1059,5 @@ window.addEventListener('load', () => {
   });
   pingPill(); updateCarryHud();
 });
+// inv.on can be switched by anything, any time (inv.on.x = true): square the boxes up a few times a second
+setInterval(() => { if (slotSync()) { renderMenu(); updateCarryHud(); } }, 250);

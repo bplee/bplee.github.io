@@ -381,6 +381,7 @@ function drawStorm() {
   const k = stormK(camX + W / 2);
   if (k <= 0.01 && storm.flash < 0.02) return;
   ctx.save();
+  clipAboveSea();   // the storm's up top: under the water it's calm (weather.js)
   const g = ctx.createLinearGradient(0, 0, 0, H);
   g.addColorStop(0, `rgba(8,10,16,${0.75 * k})`); g.addColorStop(0.5, `rgba(14,18,28,${0.4 * k})`); g.addColorStop(1, `rgba(8,12,20,${0.3 * k})`);
   ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);

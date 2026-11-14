@@ -35,7 +35,7 @@ canvas { display:block; }
   z-index:60; pointer-events:none;
 }
 .toast {
-  display:flex; align-items:center; gap:10px; max-width:min(440px, 90vw);
+  display:flex; align-items:center; gap:10px; box-sizing:border-box; width:min(380px, 90vw);   /* all one width; longer text wraps taller */
   font-family:'Space Mono',monospace; color:rgba(240,234,222,0.92);
   background:rgba(18,22,30,0.86); border:1px solid rgba(255,255,255,0.12); border-left:3px solid var(--accent, #e6cfa0);
   border-radius:12px; padding:6px 14px 6px 6px; backdrop-filter:blur(6px);
@@ -45,6 +45,7 @@ canvas { display:block; }
 .toast.in { opacity:1; transform:none; }
 .toast img { width:36px; height:36px; flex:none; border-radius:8px; background:rgba(255,255,255,0.05); object-fit:contain; }
 .toast .t-dot { width:10px; height:10px; margin:0 6px 0 8px; flex:none; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); }
+.toast > div { flex:1; min-width:0; overflow-wrap:anywhere; }
 .t-kind  { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--accent, #e6cfa0); }
 .t-title { font-size:13px; line-height:1.3; }
 .t-sub   { font-size:10px; color:rgba(240,234,222,0.5); line-height:1.3; }
@@ -111,8 +112,15 @@ kbd {
   position:fixed; top:18px; right:20px; z-index:50;
   font-family:'Space Mono',monospace; font-size:11px; letter-spacing:0.06em;
   color:rgba(255,255,255,0.55); background:rgba(20,24,32,0.55);
-  border:0.5px solid rgba(255,255,255,0.1); border-radius:14px; padding:5px 12px; cursor:pointer;
+  border:0.5px solid rgba(255,255,255,0.1); border-radius:14px; padding:0; cursor:pointer;
+  display:flex; align-items:stretch;
 }
+#menu-pill[hidden] { display:none; }   /* (display:flex would otherwise beat the hidden attribute) */
+/* two halves: bag opens the bag, friends opens friends (each half is its own big hit area) */
+#menu-pill .pill-half { padding:5px 8px 5px 12px; border-radius:14px; }
+#menu-pill .pill-half[data-tab=friends] { padding:5px 12px 5px 8px; }
+#menu-pill .pill-half:hover { color:rgba(255,255,255,0.85); }
+#menu-pill .pill-dot { padding:5px 0; pointer-events:none; }
 #menu-pill.ping { animation: ping 1.4s ease; }
 @keyframes ping { 0%,60% { color:#ffd890; border-color:rgba(255,216,144,0.6); } 100% { color:rgba(255,255,255,0.55); } }
 #menu {
@@ -189,6 +197,64 @@ kbd {
 #worn img.off { opacity:0.32; }
 #worn img.carried { cursor:default; border-style:dashed; border-color:rgba(255,255,255,0.18); }
 #worn img:hover { background:rgba(255,255,255,0.1); }
+/* the bag's body: six slots, one thing each (inventory.js BODY SLOTS) */
+.m-doll {
+  position:relative; display:grid; gap:6px; padding:2px 4px;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  grid-template-areas:". head ." "lhand neck rhand" "lhand chest rhand" ". feet .";
+}
+/* a soft figure behind the middle column, so it reads as a body */
+.m-doll::before {
+  content:''; position:absolute; left:50%; top:26px; bottom:26px; width:30%; transform:translateX(-50%);
+  border-radius:40px; background:linear-gradient(rgba(255,255,255,0.035), rgba(255,255,255,0.015));
+  border:0.5px solid rgba(255,255,255,0.05); pointer-events:none;
+}
+.m-slot {
+  position:relative; font:inherit; color:inherit; cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
+  min-height:64px; padding:5px 3px 5px; border-radius:12px;
+  background:rgba(22,25,32,0.9); border:0.5px solid rgba(255,255,255,0.1);
+  transition:border-color 0.15s ease, background 0.15s ease;
+}
+.s-head { grid-area:head; } .s-neck { grid-area:neck; } .s-chest { grid-area:chest; } .s-feet { grid-area:feet; }
+.s-lhand { grid-area:lhand; } .s-rhand { grid-area:rhand; }
+.m-slot img { width:42px; height:42px; }
+.m-slot.filled { border-color:rgba(160,210,170,0.3); }
+.m-slot.empty { border-style:dashed; border-color:rgba(255,255,255,0.16); background:rgba(18,21,27,0.9); }
+.m-slot.none { cursor:default; opacity:0.5; }
+.m-slot-plus { width:42px; height:42px; display:flex; align-items:center; justify-content:center; font-size:18px; color:rgba(220,212,196,0.32); }
+.m-slot-lbl { font-size:8.5px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(230,205,160,0.5); white-space:nowrap; }
+.m-slot:hover { background:rgba(40,44,54,0.95); }
+.m-slot.sel { background:rgba(44,46,52,0.95); border-color:rgba(255,216,144,0.55); border-style:solid; opacity:1; }
+.m-slot.open { border:1px solid #ffd890; background:rgba(60,52,38,0.9); opacity:1; }
+.m-slot.open .m-slot-lbl { color:#ffd890; }
+/* while dragging: where it can go */
+#menu.dragging .m-slot { opacity:0.35; }
+#menu.dragging .m-slot.can-drop { opacity:1; border:1px dashed rgba(160,210,170,0.8); }
+#menu.dragging .m-slot.drop-over { border-style:solid; background:rgba(160,210,170,0.16); }
+#drag-ghost {
+  position:fixed; z-index:120; width:52px; height:52px; margin:-34px 0 0 -26px; pointer-events:none;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));
+}
+#drag-ghost[hidden] { display:none; }
+/* a slot's picker: everything that fits it, plus "take off" */
+.m-pick {
+  margin-top:8px; padding:8px; border-radius:12px;
+  background:rgba(255,216,144,0.05); border:0.5px solid rgba(255,216,144,0.4);
+  animation: pickin 0.18s ease;
+}
+@keyframes pickin { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+.m-pick-head { display:flex; justify-content:space-between; align-items:center; margin:0 2px 6px;
+  font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:#ffd890; }
+.m-pick-x { font:inherit; font-size:15px; line-height:1; color:rgba(235,228,214,0.55); background:none; border:none; padding:2px 6px; cursor:pointer; }
+.m-pick-x:hover { color:rgba(250,240,220,0.95); }
+.m-pick .m-empty { padding:2px 4px 4px; }
+.m-opt i { font-style:normal; font-size:8px; letter-spacing:0.06em; color:rgba(160,210,170,0.85); }
+.m-opt-none span:last-child { color:rgba(240,184,160,0.75); }
+.m-none-ic { position:relative; width:44px; height:44px; display:block; }
+.m-none-ic::before { content:''; position:absolute; left:11px; top:11px; width:20px; height:20px; border-radius:50%; border:1.5px solid rgba(240,184,160,0.55); }
+.m-none-ic::after { content:''; position:absolute; left:21px; top:7px; width:1.5px; height:30px; background:rgba(240,184,160,0.55); transform:rotate(45deg); }
+.m-fits { font-size:10px; color:rgba(230,205,160,0.6); margin-top:6px; line-height:1.5; }
 .m-foot { font-size:10px; letter-spacing:0.05em; color:rgba(220,212,196,0.4); padding:10px 16px 16px; border-top:0.5px solid rgba(255,255,255,0.08); }
 #menu[hidden] { display:none; }
 
@@ -232,7 +298,10 @@ kbd {
   html, body { touch-action:none; overscroll-behavior:none; -webkit-user-select:none; user-select:none; -webkit-touch-callout:none; }
   #menu-body { touch-action:pan-y; }
   #weather-box { top:calc(14px + env(safe-area-inset-top, 0px)); left:calc(16px + env(safe-area-inset-left, 0px)); }
-  #menu-pill { top:calc(12px + env(safe-area-inset-top, 0px)); right:calc(16px + env(safe-area-inset-right, 0px)); padding:9px 14px; font-size:12px; }
+  #menu-pill { top:calc(12px + env(safe-area-inset-top, 0px)); right:calc(16px + env(safe-area-inset-right, 0px)); padding:0; font-size:12px; }
+  #menu-pill .pill-half { padding:9px 10px 9px 14px; }
+  #menu-pill .pill-half[data-tab=friends] { padding:9px 14px 9px 10px; }
+  #menu-pill .pill-dot { padding:9px 0; }
   #menu-pill kbd { display:none; }
   #menu-tabs kbd { display:none; }
   #menu { width:min(360px, 70vw); padding-right:env(safe-area-inset-right, 0px); }
@@ -240,6 +309,10 @@ kbd {
   #worn img { width:36px; height:36px; }
   #hint-box { bottom:calc(64px + env(safe-area-inset-bottom, 0px)); font-size:12px; max-width:70vw; text-align:center; }
   .m-foot { display:none; }
+  .m-slot { min-height:70px; }
+  .m-slot img, .m-slot-plus { width:44px; height:44px; }
+  .m-pick-x { font-size:20px; padding:4px 8px; }
+  .m-slot, .m-tile { -webkit-tap-highlight-color:transparent; }
   #toasts { top:calc(52px + env(safe-area-inset-top, 0px)); }
   .toast img { width:30px; height:30px; }
   .t-title { font-size:12px; }
@@ -261,7 +334,11 @@ kbd {
   }
   #act { bottom:calc(36px + env(safe-area-inset-bottom, 0px)); padding:9px 16px; font-size:12px; }
   #toasts { top:calc(10px + env(safe-area-inset-top, 0px)); }
-  .toast { max-width:44vw; padding:4px 10px 4px 4px; }
+  .toast { width:44vw; padding:4px 10px 4px 4px; }
   .toast img { width:26px; height:26px; }
   .t-sub { display:none; }
+  /* a shorter body so the picker + card fit without much scrolling */
+  .m-doll { gap:5px; }
+  .m-slot { min-height:58px; padding:3px 3px 4px; }
+  .m-slot img, .m-slot-plus { width:38px; height:38px; }
 }

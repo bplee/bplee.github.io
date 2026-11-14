@@ -3,7 +3,7 @@
    · after the telescope quest, rae admits she's always wanted to grow something.
      quest "something to grow": marigold sells a packet of rain-pea seeds and a
      sack of real soil (the island is all sand). spread the soil on the strip
-     past her hut (15660–15920, between the palms), plant a seed in each bed,
+     past her hut (15705–15940, between the two palms), plant a seed in each bed,
      and wait. there's nothing to water by hand: every distinct SHOWER (rain or
      thunderstorm) advances every planted bed one stage:
          0 seed → 1 sprout → 2 leafy → 3 ripe (harvest it)
@@ -19,10 +19,11 @@
    Hooks: OUT_SPOTS (unshift), shopRows, talkToRae, talkToMarigold, talkToBirch,
    updateWeather (the rain latch), updateSkyCharts (visuals), drawIslandBack.
 ══════════════════════════════════════════ */
-const FARM_PLOTS = [15695, 15735, 15840, 15872];   // the palm at 15800 sits between the two pairs
+const FARM_PLOTS = [15744, 15784, 15826, 15866];   // raised beds, between the palms at 15690 and 15960
 const FARM_WET_ON = 0.45, FARM_WET_OFF = 0.08;
 const FARM_DRY_HINT = 60 * 240;                    // frames of no rain (with something growing) before a nudge
-const FARM_SHED_X = 15906, FARM_BARREL_X = 15931, FARM_SIGN_X = 15770;
+const FARM_SHED_X = 15903, FARM_BARREL_X = 15930, FARM_SIGN_X = 15712;
+const FARM_X0 = 15705, FARM_X1 = 15940;             // the strip the soil goes on
 
 const farm = {
   rae: 0,                      // 0 unasked · 1 first line said · 2 quest given
@@ -177,11 +178,11 @@ function stageLabel(s) {
   return ['a seed, tucked in. waiting on rain.', 'a sprout. very small, very green. waiting on rain.', 'leafy, and getting bossy about it. one more shower.'][s];
 }
 OUT_SPOTS.unshift(() => {
-  if (scene !== 'outside' || player.wx < 15560 || player.wx > 15990) return null;
+  if (scene !== 'outside' || player.wx < 15500 || player.wx > 15990) return null;
   if (rae.ashore && Math.abs(player.wx - rae.x) < 45) return null;   // (rae's E comes first when she's standing right here)
-  if (farm.porch >= 1 && Math.abs(player.wx - HUT_X) < 50) return { text: "rae's hut. there's a porch now, with a chair and a lantern and a great many feelings." };
+  if (farm.porch >= 1 && Math.abs(player.wx - HUT_X) < 55) return { text: "rae's hut. there's a porch now, with a chair and a lantern and a great many feelings." };
   if (!farm.beds) {
-    if (player.wx > 15660 && player.wx < 15920) {
+    if (player.wx > FARM_X0 && player.wx < FARM_X1) {
       if (hasItem('soil')) return { text: 'press E to spread the soil', act: spreadSoil };
       if (questState.farm === 'open') return { text: "rae's saving this strip. it wants soil, and seeds. marigold's has both." };
     }
@@ -381,7 +382,8 @@ function drawPeaPlant(x, gy, s, i) {
 
 function drawFarmPorch(hx, hg, k) {
   const e = 1 - Math.pow(1 - k, 3);   // eased reveal
-  const W2 = 66 * e, post = 56 * e, night = 1;
+  const W2 = (HUT_HW + 16) * e, post = (HUT_H - 22) * e, pe = HUT_HW + 14;   // (sized to the hut: island.js HUT_HW / HUT_H)
+  const ey = hg - HUT_H + 8;                                                   // the hut's thatch eave; the awning tucks in just below
   ctx.save();
   // the deck
   ctx.fillStyle = '#7a5a3a'; ctx.fillRect(hx - W2, hg - 7, W2 * 2, 7);
@@ -390,30 +392,30 @@ function drawFarmPorch(hx, hg, k) {
   for (let x = -W2 + 11; x < W2; x += 11) { ctx.beginPath(); ctx.moveTo(hx + x, hg - 7); ctx.lineTo(hx + x, hg - 2); ctx.stroke(); }
   ctx.strokeStyle = 'rgba(210,180,130,0.35)'; ctx.beginPath(); ctx.moveTo(hx - W2, hg - 6.5); ctx.lineTo(hx + W2, hg - 6.5); ctx.stroke();
   // a step down on the right
-  if (e > 0.6) { ctx.fillStyle = '#6a4c2c'; ctx.fillRect(hx + 66, hg - 3.5, 9, 3.5); }
+  if (e > 0.6) { ctx.fillStyle = '#6a4c2c'; ctx.fillRect(hx + pe + 2, hg - 3.5, 9, 3.5); }
   if (e > 0.25) {
     // posts and a thatch lean-to awning below the roof edge
-    ctx.fillStyle = '#5a4026'; ctx.fillRect(hx - 64, hg - 7 - post, 4, post); ctx.fillRect(hx + 60, hg - 7 - post, 4, post);
+    ctx.fillStyle = '#5a4026'; ctx.fillRect(hx - pe - 2, hg - 7 - post, 4, post); ctx.fillRect(hx + pe - 2, hg - 7 - post, 4, post);
     if (e > 0.7) {
       ctx.fillStyle = '#4a5a30';
-      ctx.beginPath(); ctx.moveTo(hx - 74, hg - 61); ctx.lineTo(hx + 74, hg - 61); ctx.lineTo(hx + 68, hg - 50); ctx.lineTo(hx - 68, hg - 50); ctx.closePath(); ctx.fill();
+      ctx.beginPath(); ctx.moveTo(hx - pe - 10, ey); ctx.lineTo(hx + pe + 10, ey); ctx.lineTo(hx + pe + 4, ey + 12); ctx.lineTo(hx - pe - 4, ey + 12); ctx.closePath(); ctx.fill();
       ctx.strokeStyle = 'rgba(30,40,20,0.6)'; ctx.lineWidth = 1;
-      for (let i = -6; i <= 6; i++) { ctx.beginPath(); ctx.moveTo(hx + i * 11, hg - 61); ctx.lineTo(hx + i * 11 + i * 0.4, hg - 50); ctx.stroke(); }
-      ctx.fillStyle = '#5a4026'; ctx.fillRect(hx - 66, hg - 50, 132, 3);
+      for (let i = -7; i <= 7; i++) { ctx.beginPath(); ctx.moveTo(hx + i * 11, ey); ctx.lineTo(hx + i * 11 + i * 0.4, ey + 12); ctx.stroke(); }
+      ctx.fillStyle = '#5a4026'; ctx.fillRect(hx - pe - 2, ey + 12, pe * 2 + 4, 3);
       // low rails, open at the door
       ctx.strokeStyle = '#6a4c2c'; ctx.lineWidth = 2;
-      [[-62, -24], [26, 62]].forEach(([a, b]) => { ctx.beginPath(); ctx.moveTo(hx + a, hg - 22); ctx.lineTo(hx + b, hg - 22); ctx.stroke(); });
-      ctx.lineWidth = 1.2; for (let x = -56; x <= 56; x += 8) { if (x > -24 && x < 26) continue; ctx.beginPath(); ctx.moveTo(hx + x, hg - 22); ctx.lineTo(hx + x, hg - 7); ctx.stroke(); }
+      [[-pe + 2, -24], [26, pe - 2]].forEach(([a, b]) => { ctx.beginPath(); ctx.moveTo(hx + a, hg - 22); ctx.lineTo(hx + b, hg - 22); ctx.stroke(); });
+      ctx.lineWidth = 1.2; for (let x = -pe + 8; x <= pe - 8; x += 8) { if (x > -24 && x < 26) continue; ctx.beginPath(); ctx.moveTo(hx + x, hg - 22); ctx.lineTo(hx + x, hg - 7); ctx.stroke(); }
       // a lantern, a doormat, and a chair that's been sat in
-      ctx.strokeStyle = 'rgba(160,130,90,0.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx - 40, hg - 47); ctx.lineTo(hx - 40, hg - 40); ctx.stroke();
-      ctx.fillStyle = '#4a3420'; ctx.fillRect(hx - 43, hg - 40, 6, 2); ctx.fillRect(hx - 43, hg - 30, 6, 2);
+      ctx.strokeStyle = 'rgba(160,130,90,0.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(hx - 42, ey + 14); ctx.lineTo(hx - 42, hg - 47); ctx.stroke();
+      ctx.fillStyle = '#4a3420'; ctx.fillRect(hx - 45, hg - 47, 6, 2); ctx.fillRect(hx - 45, hg - 37, 6, 2);
       const fl = 0.85 + Math.sin(tick * 0.11) * 0.08;
-      ctx.fillStyle = `rgba(255,205,130,${0.9 * fl})`; ctx.fillRect(hx - 42, hg - 38, 4, 8);
-      drawGlow(hx - 40, hg - 34, 52, 0.2 * fl, [255, 190, 110]);
-      ctx.fillStyle = '#9a6a4a'; ctx.fillRect(hx - 12, hg - 9, 24, 2);
+      ctx.fillStyle = `rgba(255,205,130,${0.9 * fl})`; ctx.fillRect(hx - 44, hg - 45, 4, 8);
+      drawGlow(hx - 42, hg - 41, 52, 0.2 * fl, [255, 190, 110]);
+      ctx.fillStyle = '#9a6a4a'; ctx.fillRect(hx - 14, hg - 9, 28, 2);
       ctx.strokeStyle = '#6a4c2c'; ctx.lineWidth = 2.2;
-      ctx.beginPath(); ctx.moveTo(hx + 34, hg - 7); ctx.lineTo(hx + 34, hg - 16); ctx.lineTo(hx + 46, hg - 16); ctx.lineTo(hx + 46, hg - 7); ctx.moveTo(hx + 34, hg - 16); ctx.lineTo(hx + 33, hg - 31); ctx.stroke();
-      ctx.fillStyle = 'rgba(210,90,70,0.8)'; ctx.fillRect(hx + 34, hg - 18, 12, 2.5);   // a cushion
+      ctx.beginPath(); ctx.moveTo(hx + 52, hg - 7); ctx.lineTo(hx + 52, hg - 16); ctx.lineTo(hx + 64, hg - 16); ctx.lineTo(hx + 64, hg - 7); ctx.moveTo(hx + 52, hg - 16); ctx.lineTo(hx + 51, hg - 31); ctx.stroke();
+      ctx.fillStyle = 'rgba(210,90,70,0.8)'; ctx.fillRect(hx + 52, hg - 18, 12, 2.5);   // a cushion
     }
   }
   ctx.restore();
@@ -455,34 +457,38 @@ function drawFarm() {
   }
   if (farm.beds) {
     const wet = farmFx.wet;
-    // a low driftwood fence along the back of each pair of beds, and the sign
-    ctx.strokeStyle = '#6a4c2c'; ctx.lineWidth = 2;
-    [[15680, 15750], [15826, 15888]].forEach(([a, b]) => {
-      const gy = groundY(a);
-      ctx.beginPath(); ctx.moveTo(ox + a, gy - 11); ctx.lineTo(ox + b, groundY(b) - 11); ctx.stroke();
-      ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(ox + a, gy - 5); ctx.lineTo(ox + b, groundY(b) - 5); ctx.stroke(); ctx.lineWidth = 2;
-      for (let x = a; x <= b; x += 14) { const g = groundY(x); ctx.beginPath(); ctx.moveTo(ox + x, g); ctx.lineTo(ox + x + (x % 3 - 1) * 0.5, g - 15 - (x % 5)); ctx.stroke(); }
-    });
     const sg = groundY(FARM_SIGN_X);
     ctx.strokeStyle = '#5a4026'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ox + FARM_SIGN_X, sg); ctx.lineTo(ox + FARM_SIGN_X, sg - 24); ctx.stroke();
     ctx.fillStyle = '#9a7a52'; ctx.fillRect(ox + FARM_SIGN_X - 11, sg - 30, 22, 11);
     ctx.fillStyle = '#3a2a1c'; ctx.font = '7px Space Mono, monospace'; ctx.textAlign = 'center'; ctx.fillText('peas', ox + FARM_SIGN_X, sg - 22);
     drawFarmShed(ox + FARM_SHED_X, groundY(FARM_SHED_X));
     drawFarmBarrel(ox + FARM_BARREL_X, groundY(FARM_BARREL_X));
-    // the beds: a mound of dark soil (darker when it's wet), then whatever's growing
+    // the beds: raised boxes of driftwood planks, tilled dark soil heaped inside (darker when wet), then whatever's growing
     FARM_PLOTS.forEach((px, i) => {
-      const gy = groundY(px), x = ox + px, s = farm.plots[i];
-      ctx.fillStyle = wet > 0.3 ? '#3a2a1c' : '#4a3420'; ctx.beginPath(); ctx.ellipse(x, gy - 1, 15, 4.5, 0, 0, 7); ctx.fill();
-      ctx.fillStyle = wet > 0.3 ? '#2e2016' : '#5a4228'; ctx.beginPath(); ctx.ellipse(x, gy - 3, 11, 3, 0, 0, 7); ctx.fill();
-      ctx.strokeStyle = 'rgba(30,20,10,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.ellipse(x, gy - 1, 15, 4.5, 0, 0, 7); ctx.stroke();
+      const gy = groundY(px), x = ox + px, s = farm.plots[i], BW = 18, top = gy - 9;
+      const soil = wet > 0.3 ? '#2e2016' : '#4a3420', soil2 = wet > 0.3 ? '#241810' : '#3a2814', soil3 = wet > 0.3 ? '#3a2a1c' : '#5e4630';
+      // the far plank, behind the soil
+      ctx.fillStyle = '#6a4c2c'; ctx.fillRect(x - BW, gy - 13, BW * 2, 4);
+      // the soil: a low mound above the rim, with furrows running along it and some crumbs
+      ctx.fillStyle = soil; ctx.beginPath(); ctx.moveTo(x - BW + 1, top + 1); ctx.quadraticCurveTo(x, top - 7, x + BW - 1, top + 1); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = soil2; ctx.lineWidth = 1.2;
+      for (let r = 0; r < 3; r++) { const yy = top - r * 1.8; ctx.beginPath(); ctx.moveTo(x - BW + 3 + r * 2, yy); ctx.quadraticCurveTo(x, yy - 1.5, x + BW - 3 - r * 2, yy); ctx.stroke(); }
+      ctx.fillStyle = soil3; for (let c = 0; c < 9; c++) { const cx = x - BW + 4 + hash(px + c * 1.7) * (BW * 2 - 8), cy = top - 1 - hash(px * 0.3 + c * 3.1) * 3.4; ctx.fillRect(cx, cy, 1.4, 1); }
+      // the front plank, with grain and a nail at each end, and a corner post at each side
+      ctx.fillStyle = '#7a5a36'; ctx.fillRect(x - BW, top + 1, BW * 2, 8);
+      ctx.fillStyle = '#6a4c2c'; ctx.fillRect(x - BW, top + 5, BW * 2, 4);
+      ctx.strokeStyle = 'rgba(40,26,14,0.55)'; ctx.lineWidth = 0.8;
+      ctx.beginPath(); ctx.moveTo(x - BW, top + 5); ctx.lineTo(x + BW, top + 5); ctx.moveTo(x - BW + 6, top + 3); ctx.lineTo(x - 2, top + 3.4); ctx.moveTo(x + 4, top + 7.5); ctx.lineTo(x + BW - 5, top + 7); ctx.stroke();
+      ctx.fillStyle = '#4a3420'; ctx.fillRect(x - BW - 2, gy - 15, 3.5, 15); ctx.fillRect(x + BW - 1.5, gy - 15, 3.5, 15);
+      ctx.fillStyle = 'rgba(210,190,150,0.7)'; ctx.fillRect(x - BW + 3, top + 3, 1.2, 1.2); ctx.fillRect(x + BW - 4, top + 3, 1.2, 1.2);
       if (wet > 0.2) {   // raindrops ringing on the soil
         for (let r = 0; r < 2; r++) {
           const ph = (tick * 0.04 + i * 0.37 + r * 0.5) % 1;
           ctx.strokeStyle = `rgba(190,215,230,${(1 - ph) * 0.55 * wet})`; ctx.lineWidth = 0.8;
-          ctx.beginPath(); ctx.ellipse(x + (r ? 6 : -5), gy - 2, 1 + ph * 4, 0.5 + ph * 1.2, 0, 0, 7); ctx.stroke();
+          ctx.beginPath(); ctx.ellipse(x + (r ? 7 : -6), top - 1, 1 + ph * 4, 0.5 + ph * 1.2, 0, 0, 7); ctx.stroke();
         }
       }
-      if (s >= 0) drawPeaPlant(x, gy - 2, s, i);
+      if (s >= 0) drawPeaPlant(x, top - 2, s, i);
     });
   }
   farmFx.puffs.forEach(p => { ctx.fillStyle = p.dark ? `rgba(70,50,32,${p.life * 0.8})` : `rgba(225,210,175,${p.life * 0.6})`; ctx.beginPath(); ctx.arc(ox + p.x, p.y, 1.6 + (1 - p.life) * 2.6, 0, 7); ctx.fill(); });

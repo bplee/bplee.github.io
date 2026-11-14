@@ -5,10 +5,12 @@
      jump when a wave reaches you. you ride it in to the beach.
    · quests: "catch a wave" (ride three), then "something to toast"
      (marshmallows from marigold's, back on the mainland).
-   · palms, rae's driftwood hut, and the bonfire she lights every night.
+   · palms, rae's driftwood hut (hammock to its left), and the bonfire she lights every night.
 ══════════════════════════════════════════ */
-const SURF_X1 = 14935, SURF_X0 = REEF_X - 210, SURF_TAKEOFF = REEF_X - 110, RAE_BEACH_X = 15240, BONFIRE_X = 15340, HUT_X = 15600;
-const PALMS = [{ x: 15160, s: 1 }, { x: 15470, s: 1.2 }, { x: 15800, s: 0.95 }, { x: 15960, s: 1.1 }];
+const SURF_X1 = 14935, SURF_X0 = REEF_X - 210, SURF_TAKEOFF = REEF_X - 110, RAE_BEACH_X = 15240, BONFIRE_X = 15340, HUT_X = 15580;
+const HUT_HW = 62, HUT_H = 80;   // the hut's half-width and wall height (farm.js hangs the porch on it)
+const HAMMOCK_L = 15407, HAMMOCK_R = 15490;   // the hammock: slung from the palm at 15405 to a driftwood post
+const PALMS = [{ x: 15160, s: 1 }, { x: 15405, s: 1.2 }, { x: 15690, s: 0.95 }, { x: 15960, s: 1.1 }];   // the farm sits between the last two
 
 const surf = { waves: [], next: 60, rides: 0, sparks: [], toast: 0, spray: [], swash: [], set: 0 };
 const rae = makeRegular({ name: 'rae', kind: RAE_KIND, color: '#e09a5c', x: SURF_TAKEOFF, stage: 0, mode: 'wait', wave: null, ashore: false });
@@ -72,7 +74,7 @@ function talkToRae() {
     } else line = "a marshmallow. golden brown. i think about it a lot now. marigold's store, birch says. by a tavern? what's a tavern?";
   } else {
     line = raeSkyLine() || RAE_FLAVOR[rae.li++ % RAE_FLAVOR.length];   // stars + her telescope: skycharts.js
-    more = sky.rae === 2 || (sky.rae === 1 && hasItem('chart'));   // the stars → the chart → the ask
+    more = sky.rae === 2 || (sky.rae === 1 && (hasItem('chart') || !questState.skychart));   // the stars → (no chart: where to get one) / the chart → the ask
   }
   say(rae, line, true, { next: more && talkToRae });
 }
@@ -86,7 +88,8 @@ OUT_SPOTS.push(() => {
   if (player.wx < 14400) return null;
   if (rae.ashore && Math.abs(player.wx - rae.x) < 50 && player.onGround) return { text: 'press E to talk to rae', act: talkToRae };
   if (Math.abs(player.wx - BONFIRE_X) < 40) return { text: surf.toast ? 'toasting…' : "rae's bonfire. she lights it every night, just in case." };
-  if (Math.abs(player.wx - HUT_X) < 50) return { text: "rae's hut. there's a hammock, and a shelf of very good shells." };
+  if (Math.abs(player.wx - HUT_X) < 55) return { text: "rae's hut. there's a shelf of very good shells." };
+  if (player.wx > HAMMOCK_L && player.wx < HAMMOCK_R) return { text: "rae's hammock, slung between a palm and a post. it's slept in. it's very proud of that." };
   if (player.inWater && player.wx < SURF_X1 && !wearing('surfboard')) return { text: hasItem('surfboard') ? 'put the surfboard on (I) to catch a wave' : 'long, gentle waves. perfect for surfing, if you had a board.' };
   if (player.inWater && player.wx < SURF_X1 && surfWaveAt(player.wx)) return { text: 'a wave! jump to catch it' };
   return null;
@@ -263,27 +266,58 @@ function drawSurfboardAt(x, y, k) {
   ctx.strokeStyle = 'rgba(80,150,180,0.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 20 * k, y); ctx.lineTo(x + 20 * k, y); ctx.stroke();
 }
 
+// a real hammock: slung from the palm to a driftwood post, a striped fabric bed that sags in the middle
+function drawHammock() {
+  const lx = HAMMOCK_L - camX, rx = HAMMOCK_R - camX;
+  if (rx < -40 || lx > W + 40) return;
+  const lg = groundY(HAMMOCK_L), rg = groundY(HAMMOCK_R), ly = lg - 46, ry = rg - 50;
+  const sw = Math.sin(tick * 0.03) * 1.5 + weather.wind * 2, sag = 22 + sw;
+  // the post: a leaning driftwood pole with a knot of rope at the top
+  ctx.strokeStyle = '#5a4026'; ctx.lineWidth = 5; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(rx + 2, rg + 2); ctx.lineTo(rx, ry - 6); ctx.stroke();
+  ctx.strokeStyle = 'rgba(30,20,10,0.5)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(rx - 1, rg - 6); ctx.lineTo(rx - 1, ry - 4); ctx.stroke();
+  ctx.fillStyle = '#6a4c2c'; ctx.beginPath(); ctx.arc(rx, ry - 6, 2.6, 0, 7); ctx.fill();
+  // the fabric: two curves (top edge, a little lower underside) with stripes between them
+  const ex = 9, ax = lx + ex, bx = rx - ex, ay = ly + 3, by = ry + 3;   // the fabric's ends, a hand short of the supports
+  const topAt = t => ({ x: ax + (bx - ax) * t, y: ay + (by - ay) * t + sag * 4 * t * (1 - t) });
+  ctx.beginPath(); ctx.moveTo(ax, ay);
+  for (let i = 1; i <= 16; i++) { const q = topAt(i / 16); ctx.lineTo(q.x, q.y); }
+  for (let i = 16; i >= 0; i--) { const q = topAt(i / 16); ctx.lineTo(q.x, q.y + 5 + 3 * Math.sin(Math.PI * i / 16)); }
+  ctx.closePath(); ctx.fillStyle = '#c9a86a'; ctx.fill();
+  ctx.strokeStyle = 'rgba(176,86,64,0.75)'; ctx.lineWidth = 2;
+  for (let i = 2; i < 16; i += 3) { const q = topAt(i / 16); ctx.beginPath(); ctx.moveTo(q.x, q.y); ctx.lineTo(q.x, q.y + 5 + 3 * Math.sin(Math.PI * i / 16)); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(90,64,38,0.7)'; ctx.lineWidth = 1;
+  ctx.beginPath(); for (let i = 0; i <= 16; i++) { const q = topAt(i / 16); ctx.lineTo(q.x, q.y + 5 + 3 * Math.sin(Math.PI * i / 16)); } ctx.stroke();
+  // a pillow at the post end
+  const pq = topAt(0.78); ctx.fillStyle = '#e8dcc0'; ctx.beginPath(); ctx.ellipse(pq.x, pq.y - 1, 6, 2.6, 0.25, 0, 7); ctx.fill();
+  // ropes fanning from each end of the fabric to its support
+  ctx.strokeStyle = 'rgba(225,205,165,0.85)'; ctx.lineWidth = 1;
+  [[-3, 0], [0, 3], [3, 6]].forEach(([d, e]) => {
+    ctx.beginPath(); ctx.moveTo(ax, ay + e); ctx.lineTo(lx + 2, ly - 2 + d * 0.8); ctx.moveTo(bx, by + e); ctx.lineTo(rx, ry - 6 + d * 0.5); ctx.stroke();
+  });
+  ctx.strokeStyle = '#5a4026'; ctx.lineWidth = 2.2; ctx.beginPath(); ctx.arc(lx + 3, ly, 5, -1.2, 1.2); ctx.stroke();   // the rope wrapped round the trunk
+}
+
 // behind the player
 function drawIslandBack() {
   if (camX + W < SURF_X0 - 180) return;
   const ox = -camX;
   ctx.save();
-  // rae's hut: driftwood walls, a thatch of palm leaves, a hammock
-  const hx = ox + HUT_X, hg = groundY(HUT_X);
-  ctx.fillStyle = '#4a3c2c'; ctx.fillRect(hx - 50, hg - 70, 100, 70);
+  // rae's hut: driftwood walls, a thatch of palm leaves
+  const hx = ox + HUT_X, hg = groundY(HUT_X), HW = HUT_HW, HH = HUT_H;
+  ctx.fillStyle = '#4a3c2c'; ctx.fillRect(hx - HW, hg - HH, HW * 2, HH);
   ctx.strokeStyle = 'rgba(150,130,100,0.4)'; ctx.lineWidth = 1;
-  for (let y = hg - 64; y < hg; y += 9) { ctx.beginPath(); ctx.moveTo(hx - 50, y); ctx.lineTo(hx + 50, y + (y % 2)); ctx.stroke(); }
-  ctx.fillStyle = '#2a2014'; ctx.fillRect(hx - 14, hg - 46, 28, 46);
-  ctx.fillStyle = 'rgba(255,200,130,0.4)'; ctx.fillRect(hx + 22, hg - 50, 16, 14);
+  for (let y = hg - HH + 6; y < hg; y += 9) { ctx.beginPath(); ctx.moveTo(hx - HW, y); ctx.lineTo(hx + HW, y + (y % 2)); ctx.stroke(); }
+  ctx.fillStyle = '#2a2014'; ctx.fillRect(hx - 17, hg - 54, 34, 54);
+  ctx.fillStyle = 'rgba(255,200,130,0.4)'; ctx.fillRect(hx + 28, hg - 58, 20, 17);
+  ctx.strokeStyle = 'rgba(40,26,14,0.7)'; ctx.beginPath(); ctx.moveTo(hx + 38, hg - 58); ctx.lineTo(hx + 38, hg - 41); ctx.moveTo(hx + 28, hg - 49.5); ctx.lineTo(hx + 48, hg - 49.5); ctx.stroke();
   ctx.fillStyle = '#4a5a30';
-  ctx.beginPath(); ctx.moveTo(hx - 70, hg - 64); ctx.lineTo(hx, hg - 112); ctx.lineTo(hx + 70, hg - 64); ctx.closePath(); ctx.fill();
+  ctx.beginPath(); ctx.moveTo(hx - HW - 22, hg - HH + 6); ctx.lineTo(hx, hg - HH - 54); ctx.lineTo(hx + HW + 22, hg - HH + 6); ctx.closePath(); ctx.fill();
   ctx.strokeStyle = 'rgba(30,40,20,0.6)';
-  for (let i = -6; i <= 6; i++) { ctx.beginPath(); ctx.moveTo(hx, hg - 110); ctx.lineTo(hx + i * 11, hg - 62); ctx.stroke(); }
-  // a hammock strung to the palm
-  ctx.strokeStyle = 'rgba(220,200,160,0.75)'; ctx.lineWidth = 1.5;
-  ctx.beginPath(); ctx.moveTo(hx + 50, hg - 44); ctx.quadraticCurveTo(hx + 110, hg - 6 + Math.sin(tick * 0.03) * 3, ox + 15800 - 2, groundY(15800) - 46); ctx.stroke();
+  for (let i = -7; i <= 7; i++) { ctx.beginPath(); ctx.moveTo(hx, hg - HH - 52); ctx.lineTo(hx + i * 12, hg - HH + 8); ctx.stroke(); }
   // palms
   PALMS.forEach(p => { if (p.x - camX > -150 && p.x - camX < W + 150) drawPalm(p.x, p.s); });
+  drawHammock();
   // rae's board stuck in the sand when she's ashore
   if (rae.ashore) {
     ctx.save(); ctx.translate(ox + RAE_BEACH_X - 30, groundY(RAE_BEACH_X - 30)); ctx.rotate(-0.15);
@@ -303,7 +337,7 @@ function drawIslandBack() {
   // dune grass
   ctx.strokeStyle = 'rgba(120,140,80,0.7)'; ctx.lineWidth = 1;
   for (let x = 15060; x < 16080; x += 37) {
-    if (x - camX < -20 || x - camX > W + 20 || Math.abs(x - BONFIRE_X) < 40 || Math.abs(x - HUT_X) < 60) continue;
+    if (x - camX < -20 || x - camX > W + 20 || Math.abs(x - BONFIRE_X) < 40 || Math.abs(x - HUT_X) < 80 || (x > HAMMOCK_L - 20 && x < HAMMOCK_R + 10)) continue;
     const g = groundY(x), sw = Math.sin(tick * 0.03 + x) * 2 + weather.wind * 3;
     for (let k = -1; k <= 1; k++) { ctx.beginPath(); ctx.moveTo(ox + x + k * 3, g); ctx.quadraticCurveTo(ox + x + k * 4, g - 8, ox + x + k * 6 + sw, g - 14 - hash(x + k) * 6); ctx.stroke(); }
   }
@@ -311,7 +345,7 @@ function drawIslandBack() {
   surf.waves.forEach(drawWave);
   drawSurfSpray();
   const ry = raeY();
-  if (rae.x - camX > -60 && rae.x - camX < W + 60) {
+  if (!rae.away && rae.x - camX > -60 && rae.x - camX < W + 60) {   // (away: down in the reef, drawn by reefcare.js)
     const inSurf = rae.mode !== 'ashore' && rae.mode !== 'walk' && rae.x < SURF_X1;
     if (inSurf) drawSurfboardAt(ox + rae.x, ry + 1, 0.9);
     if (rae.mode === 'paddle' || rae.mode === 'wait') {       // lying on her front on the board, bobbing

@@ -125,7 +125,11 @@ const SWARM = { x: 13740, d: 95, fish: Array.from({ length: 92 }, (_, i) => {
 /* ── who's nearby ── */
 const underSea = () => scene === 'outside' && player.inWater;
 function nearOllie() { return underSea() && Math.abs(player.wx - ollie.x) < 60 && player._py > seaY() + 100; }
-function nearGuard() { return underSea() && player._py > seaY() + 40 ? GUARDS.find(g => g.side < 0 ? player.wx > g.netX - 90 && player.wx < g.netX : player.wx < g.netX + 90 && player.wx > g.netX) : null; }
+// how far you are from a guard's body (from the middle of you, not your feet): guards only notice you up close
+const guardDist = g => Math.hypot(player.wx - g.n.x, player._py - 28 * playerScale() - guardCY(g));
+const onGuardSide = g => g.side < 0 ? player.wx < g.netX + 2 : player.wx > g.netX - 2;   // the side of the net you're allowed on
+const GUARD_TALK_R = 95, GUARD_STARTLE_R = 70, GUARD_SHOUT_R = 120;
+function nearGuard(r) { return underSea() ? GUARDS.find(g => onGuardSide(g) && guardDist(g) < (r || GUARD_TALK_R)) || null : null; }
 
 const OLLIE_LINES = [
   "welcome to the reef! wipe your feet. well — you can't really wipe anything down here. welcome anyway!",
@@ -315,7 +319,8 @@ function seaClamp() {
     if (!past) return;
     player.wx = g.side < 0 ? g.netX - 12 : g.netX + 12;
     _vx = g.side < 0 ? Math.min(0, _vx) - 0.5 : Math.max(0, _vx) + 0.5;
-    if (sea.warnT <= 0) { sea.warnT = 300; sea.puff[g.n.name] = 120; achieve('puffed'); say(g.n, GUARD_SHOUTS[Math.floor(Math.random() * 3)]); }
+    // the net's a wall all the way down; the guard only shouts (and puffs) if you hit it right by them
+    if (sea.warnT <= 0 && guardDist(g) < GUARD_SHOUT_R) { sea.warnT = 300; sea.puff[g.n.name] = 120; achieve('puffed'); say(g.n, GUARD_SHOUTS[Math.floor(Math.random() * 3)]); }
   });
 }
 
@@ -363,8 +368,8 @@ function updateSea() {
   if (sea.warnT > 0) sea.warnT--;
   for (const k in sea.puff) if (sea.puff[k] > 0) sea.puff[k]--;
   if (lake.deepHintT > 0 && scene === 'outside') lake.deepHintT--;
-  const g = nearGuard();
-  if (g && sea.puff[g.n.name] < 40 && Math.abs(_vx) > 1.5 && Math.abs(player.wx - g.netX) < 60) { sea.puff[g.n.name] = 120; achieve('puffed'); }
+  const g = nearGuard(GUARD_STARTLE_R);   // zooming right up to a guard startles them
+  if (g && sea.puff[g.n.name] < 40 && Math.hypot(_vx, player.vy) > 1.5) { sea.puff[g.n.name] = 120; achieve('puffed'); }
   ollie.x = 10980 + Math.sin(tick * 0.008) * 24;
   GUARDS.forEach(q => q.n.x = q.netX + 7 + Math.sin(tick * 0.02 + q.side) * 2);   // right in the hole (the net is 14 wide)
   const wy = seaY(), s = playerScale();
@@ -403,7 +408,8 @@ function updateSea() {
   // the bait ball: turns slowly in a figure-eight over the city; the fish make room around you
   if (nearCity) {
     const t = tick * 0.0035, pd = player._py - 30 * s - wy, px = player.wx;
-    SWARM.x = 13740 + Math.sin(t) * 120; SWARM.d = 95 + Math.sin(t * 2) * 28;
+    if (SWARM.steer) { SWARM.x = SWARM.steer.x; SWARM.d = SWARM.steer.d; }   // led somewhere (reefcare.js: shade for old ruffle)
+    else { SWARM.x = 13740 + Math.sin(t) * 120; SWARM.d = 95 + Math.sin(t * 2) * 28; }
     SWARM.fish.forEach(f => {
       f.a += f.r < 30 ? 0.016 : 0.011;
       let tx = SWARM.x + Math.cos(f.a) * f.r * 1.5, td = SWARM.d + Math.sin(f.a) * f.r * 0.75 + Math.sin(tick * 0.05 + f.ph) * 2;

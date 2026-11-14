@@ -18,10 +18,13 @@
    Everything new (items, quest, achievements) is registered here at load
    time; item art is rendered lazily by ensureArt(), which runs after load.
 
-   ISLAND LAYOUT, east of rae's hut (keep organized for later phases):
-     15600        rae's hut (island.js)
-     15660–15920  free: saved for rae's farm (phase 2)
-     15800, 15960 palms (island.js)
+   ISLAND LAYOUT, left to right (island.js, farm.js; keep organized):
+     15160        palm · 15340 bonfire · 15405 palm (hammock's left end)
+     15488        the hammock's post (a driftwood post, hammock sags between it and the palm)
+     15580        rae's hut (island.js; ~124 wide) and, once built, birch's porch (farm.js)
+     15690        palm (left of the farm)
+     15712–15935  rae's farm (farm.js): sign 15712, raised beds 15744–15866, shed 15903, barrel 15930
+     15960        palm (right of the farm)
      16000        rae's telescope, on the flat sand at the foot of the point
      16030–16300  the rocky point (core.js COAST)
 ══════════════════════════════════════════ */
@@ -40,6 +43,7 @@ Object.assign(ITEM_ART, {
   },
 });
 Object.assign(QUESTS, {
+  skychart: { giver: 'rae', title: 'a map of the sky', desc: "rae wants to see how the stars look from the mainland. nova, at the observatory on the hill, has a star chart: chart her four constellations through her telescope (that's her quest 'chart the stars'), and she'll give you the chart. then show it to rae." },
   skyscope: { giver: 'rae', title: 'a telescope for rae', desc: "rae has never seen a constellation. ask nova for a spare telescope, bring it over on the boat, put it up on the island's point, and chart rae's sky with her." },
 });
 Object.assign(ACHIEVEMENTS, {
@@ -51,6 +55,13 @@ Object.assign(ACHIEVEMENTS, {
 const LONG_WAVE = { name: 'the long wave', cx: 1490, cy: 1135, progress: 0, found: false,
   stars: [[1370, 1200], [1420, 1188], [1465, 1165], [1505, 1132], [1530, 1098], [1560, 1076], [1592, 1084], [1604, 1108], [1588, 1126]],
   lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 8]] };
+
+/* ── and a second one, further east: rae's dinged old board, with its fin. found from the island telescope only ── */
+const RAE_BOARD = { name: "rae's board", cx: 2085, cy: 815, progress: 0, found: false,
+  stars: [[2200, 800], [2150, 782], [2090, 774], [2030, 780], [1975, 800], [2030, 826], [2095, 830], [2152, 822], [1985, 858]],
+  lines: [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 6], [6, 7], [7, 0], [4, 8], [8, 5]] };
+const ISLAND_CONS = [LONG_WAVE, RAE_BOARD];
+const ISLAND_AIM = [1900, 700];   // where the island telescope starts out: east, toward where the island is
 
 /* ── the telescopes. star = its home star (sky coords): the one sitting right overhead ── */
 const TELESCOPES = [
@@ -70,16 +81,17 @@ const sky = {
   caption: null, captionT: 0, waitT: 0,
   road: null,          // { t, to } while stepping along the starlight
   sparks: [], beam: 0, sparkScene: null, puff: [],
-  hinted: false, trips: 0,
+  hinted: false, trips: 0, boardHint: false,
 };
 
 /* ── where are you looking from, and where could you go? ── */
 function hereScope() { return TELESCOPES.find(t => t.built && t.scene === scene && Math.abs(player.wx - t.x) < 60) || null; }
-function skyRoads() {
+function skyRoadsPossible() {   // the roads that would exist if you had the chart
   const here = hereScope();
-  if (!here || !here.charted || !hasItem('chart')) return [];
+  if (!here || !here.charted) return [];
   return TELESCOPES.filter(t => t !== here && t.built && t.charted);
 }
+function skyRoads() { return hasItem('chart') ? skyRoadsPossible() : []; }
 const skyClear = () => skyHidden() <= 0.02 && SKY_CLEAR[weather.type];
 function aimedRoad() {
   if (!skyClear()) return null;
@@ -100,8 +112,9 @@ function raeSkyLine() {
   if (questState.bonfire !== 'done' || surf.toast) return null;
   if (sky.rae === 0) { sky.rae = 1; return "do the stars look the same where you're from? here they look like freckles. nobody ever told me their names. maybe they don't have any."; }
   if (sky.rae === 1) {
-    if (!hasItem('chart')) return sky.nudge++ % 2 ? null : "birch says on the mainland someone draws lines between the stars. i'd draw lines between waves, but they won't hold still.";
+    if (!hasItem('chart')) return raeChartAsk();
     sky.rae = 2; showHint("you unroll nova's star chart for rae", 3000);
+    if (questState.skychart === 'open') completeQuest('skychart');
     return "wait — is that a map? of the SKY? …that's a ladle. there's a LADLE up there? and a mug, and a toad, asleep? i've looked up every night of my life and never saw any of it. i only ever look at waves.";
   }
   if (sky.rae === 2) {
@@ -117,6 +130,17 @@ function raeSkyLine() {
   return null;
 }
 
+// no chart yet: rae points you at nova (a small quest), then keeps track of how far you've got
+function raeChartAsk() {
+  if (!questState.skychart) {
+    startQuest('skychart');
+    return "birch says on the mainland someone draws lines between the stars. her name's nova, and she lives in an observatory up on the hill, with a telescope. she has a star chart. maybe she'd show you? i'd draw lines between waves, but they won't hold still.";
+  }
+  const n = foundCount();
+  if (!met.nova && !questState.stars) return "nova. the observatory, on the hill. she's the one who charts the stars. tell her a fox on an island sent you. she'll think it's a joke. it's not a joke.";
+  if (questState.stars === 'done') return "she gave you the chart, didn't she? i can tell, you've got a chart sort of face. show me! hold it up, i won't touch it. i might touch it.";
+  return `that's ${n} of nova's four constellations so far, you said? that's ${n} more than i've ever seen. the chart's the prize. find the rest through her telescope, then come show me.`;
+}
 function novaSkyLine() {
   if (questState.skyscope === 'open' && sky.step === 'ask') {
     if (!sky.nova) { sky.nova = 1; return "someone lives on the ISLAND? past the storm? and she wants to see the stars? …that's the best thing i've heard all year. i have a spare. somewhere."; }
@@ -143,9 +167,12 @@ function setUpScope() {
 function lookIsland() {
   if (obs.viewing || transitioning) return;
   if (!LONG_WAVE.found) {
-    obs.vx = 1220; obs.vy = 880;   // rae's pointed it a little high
+    obs.vx = ISLAND_AIM[0]; obs.vy = ISLAND_AIM[1];   // rae's pointed it out east, a little high
     skyCaption("rae, right beside you: 'can you see anything? don't tell me. tell me.'", 280);
-  } else { obs.vx = LONG_WAVE.stars[5][0]; obs.vy = LONG_WAVE.stars[5][1]; }   // straight up: the island's own star
+  } else {
+    obs.vx = LONG_WAVE.stars[5][0]; obs.vy = LONG_WAVE.stars[5][1];   // straight up: the island's own star
+    if (!RAE_BOARD.found && !sky.boardHint) { sky.boardHint = true; skyCaption("rae: 'there's more out east, i can feel it. i'm very good at feeling things i can't see yet.'", 340); }
+  }
   sky.waitT = 0;
   openTelescope();
 }
@@ -214,22 +241,30 @@ function updateSkyExtras(seeing) {
   syncTelescopes();
   if (sky.captionT > 0) sky.captionT--;
   const here = hereScope();
-  // the long wave can only be charted from the island (from the mainland it sits low, down behind the storm)
-  if (here && here.id === 'island' && !LONG_WAVE.found) {
-    const d = Math.hypot(LONG_WAVE.cx - obs.vx, LONG_WAVE.cy - obs.vy);
-    if (d < 110) LONG_WAVE.progress += seeing / 50; else LONG_WAVE.progress = Math.max(0, LONG_WAVE.progress - 0.02);
-    if (seeing && ++sky.waitT === 420 && d > 110) skyCaption("rae: 'try down low, toward the water. that's where i'd hide, if i were stars.'", 320);
-    if (LONG_WAVE.progress >= 1) {
-      LONG_WAVE.found = true; sky.step = 'done'; sky.linger = 60 * 25;
-      syncTelescopes();
-      notify('found', LONG_WAVE.name, null, "the sky over rae's island");
-      skyCaption("rae: 'a WAVE! i KNEW it. it's breaking, look — and the bright one on the crest? that's right over my hut. every night.'", 520);
-      completeQuest('skyscope'); achieve('twoskies');
-      ITEMS.chart.name = 'star chart (two skies)';
-      ITEMS.chart.desc = "nova's chart, plus a page for rae's island sky. hold it to see your constellations up above.";
-      setTimeout(() => { ensureArt(); notify('item', "a new page for your star chart", ART.items.chart, 'from rae'); renderMenu(); updateCarryHud(); }, 1600);
+  // the island's own constellations can only be charted from the island (from the mainland the long wave sits
+  // low, down behind the storm, and the board is out past the edge of the view)
+  if (here && here.id === 'island') ISLAND_CONS.forEach(C => {
+    if (C.found) return;
+    const d = Math.hypot(C.cx - obs.vx, C.cy - obs.vy);
+    if (d < 110) C.progress += seeing / 50; else C.progress = Math.max(0, C.progress - 0.02);
+    if (C === LONG_WAVE && seeing && ++sky.waitT === 420 && d > 110) skyCaption("rae: 'try down low, toward the water. that's where i'd hide, if i were stars.'", 320);
+    if (C.progress >= 1) {
+      C.found = true; syncTelescopes();
+      notify('found', C.name, null, "the sky over rae's island");
+      if (C === LONG_WAVE) {
+        sky.step = 'done'; sky.linger = 60 * 25;
+        skyCaption("rae: 'a WAVE! i KNEW it. it's breaking, look — and the bright one on the crest? that's right over my hut. every night.'", 520);
+        completeQuest('skyscope'); achieve('twoskies');
+        ITEMS.chart.name = 'star chart (two skies)';
+        ITEMS.chart.desc = "nova's chart, plus a page for rae's island sky. hold it to see your constellations up above.";
+        setTimeout(() => { ensureArt(); notify('item', "a new page for your star chart", ART.items.chart, 'from rae'); renderMenu(); updateCarryHud(); }, 1600);
+      } else {
+        sky.linger = Math.max(sky.linger, 60 * 20);
+        skyCaption("rae: 'that's my BOARD. the dinged one, with the fin. the sky has a dinged board. i feel so seen. i feel seen by a SKY.'", 520);
+        if (rae.ashore) setTimeout(() => say(rae, "i'm going to tell the waves. they'll be so jealous. they don't have a constellation. they have me.", false), 2400);
+      }
     }
-  }
+  });
   // first look through a telescope on the sky road: say how it works
   if (!sky.hinted && skyRoads().length && skyClear() && LONG_WAVE.found && sky.captionT < 200) {
     sky.hinted = true;
@@ -350,21 +385,21 @@ function drawHomeStar(x, y, s, a) {
 // inside the telescope lens (clipped, faded with the stars): the long wave + home stars
 function drawSkyExtras(ox, oy, t) {
   const here = hereScope();
-  const W8 = LONG_WAVE;
-  if (W8.found || (here && here.id === 'island')) {
-    const la = W8.found ? 0.65 : W8.progress * 0.5;
+  ISLAND_CONS.forEach(C => {
+    if (!(C.found || (here && here.id === 'island'))) return;
+    const la = C.found ? 0.65 : C.progress * 0.5;
     if (la > 0.01) {
       ctx.strokeStyle = `rgba(180,225,255,${la})`; ctx.lineWidth = 1;
-      ctx.beginPath(); W8.lines.forEach(([i, j]) => { ctx.moveTo(ox + W8.stars[i][0], oy + W8.stars[i][1]); ctx.lineTo(ox + W8.stars[j][0], oy + W8.stars[j][1]); }); ctx.stroke();
+      ctx.beginPath(); C.lines.forEach(([i, j]) => { ctx.moveTo(ox + C.stars[i][0], oy + C.stars[i][1]); ctx.lineTo(ox + C.stars[j][0], oy + C.stars[j][1]); }); ctx.stroke();
     }
-    W8.stars.forEach(([x, y], i) => {
-      if (i === 5 && W8.found && skyRoads().length) return;   // drawn gold below
+    C.stars.forEach(([x, y], i) => {
+      if (C === LONG_WAVE && i === 5 && C.found && skyRoads().length) return;   // drawn gold below
       const tw = 0.75 + 0.25 * Math.sin(t * 1.3 + i * 1.7);
       drawGlow(ox + x, oy + y, 9, 0.35 * tw, [220, 235, 255]);
       ctx.fillStyle = `rgba(245,250,255,${tw})`; ctx.beginPath(); ctx.arc(ox + x, oy + y, 2, 0, 7); ctx.fill();
     });
-    if (W8.found) { ctx.fillStyle = 'rgba(200,225,255,0.75)'; ctx.font = '11px Space Mono, monospace'; ctx.textAlign = 'center'; ctx.fillText(W8.name, ox + W8.cx, oy + W8.cy + 80); }
-  }
+    if (C.found) { ctx.fillStyle = 'rgba(200,225,255,0.75)'; ctx.font = '11px Space Mono, monospace'; ctx.textAlign = 'center'; ctx.fillText(C.name, ox + C.cx, oy + C.cy + (C === LONG_WAVE ? 80 : 62)); }
+  });
   // the sky road: every charted telescope's home star, in gold
   const roads = skyRoads();
   if (!roads.length) return;
@@ -381,6 +416,12 @@ function drawSkyExtrasHud(cx, cy, R, ox, oy) {
   ctx.save();
   ctx.textAlign = 'center'; ctx.font = '12px Space Mono, monospace';
   const roads = skyRoads();
+  if (!roads.length && skyRoadsPossible().length && !sky.road) {   // a sky road is here, but there's no chart to read it by
+    ctx.fillStyle = 'rgba(236,224,190,0.85)';
+    ctx.fillText("there's a sky road here, but you need nova's star chart to find it.", cx, cy + R * 0.62);
+    ctx.font = '10px Space Mono, monospace'; ctx.fillStyle = 'rgba(236,224,190,0.6)';
+    ctx.fillText('nova, at the observatory on the hill, gives it for charting her four constellations.', cx, cy + R * 0.62 + 16);
+  }
   if (roads.length && !sky.road) {
     if (!skyClear()) {
       ctx.fillStyle = 'rgba(236,224,190,0.85)';
@@ -434,19 +475,35 @@ function drawSkyExtrasHud(cx, cy, R, ox, oy) {
 function skyScopeHud() {
   const here = hereScope();
   if (!here || here.id !== 'island') return null;
-  return (touchMode ? 'drag to look around' : 'arrow keys to look around · E to step back') + (LONG_WAVE.found ? ' · charted: the long wave' : ' · rae is watching');
+  return (touchMode ? 'drag to look around' : 'arrow keys to look around · E to step back') + (ISLAND_CONS.some(c => c.found) ? ' · charted: ' + ISLAND_CONS.filter(c => c.found).map(c => c.name).join(', ') : ' · rae is watching');
 }
 
 // outside, holding the chart: the island's page shows up in the real sky too
 function drawChartSkyExtras() {
-  if (!wearing('chart') || !LONG_WAVE.found) return;
-  const ox = W * 0.92, oy = H * 0.26, k = 0.45, C = LONG_WAVE;
-  const p = ([x, y]) => [ox + (x - C.cx) * k, oy + (y - C.cy) * k];
+  if (!wearing('chart')) return;
+  const found = ISLAND_CONS.filter(c => c.found);
+  if (!found.length) return;
   ctx.save();
-  ctx.strokeStyle = 'rgba(180,225,255,0.22)'; ctx.lineWidth = 0.8;
-  ctx.beginPath(); C.lines.forEach(([i, j]) => { ctx.moveTo(...p(C.stars[i])); ctx.lineTo(...p(C.stars[j])); }); ctx.stroke();
-  C.stars.forEach((st, i) => { const [x, y] = p(st); ctx.fillStyle = i === 5 ? 'rgba(255,230,160,0.9)' : 'rgba(240,245,255,0.8)'; ctx.beginPath(); ctx.arc(x, y, i === 5 ? 2 : 1.4, 0, 7); ctx.fill(); });
-  ctx.fillStyle = 'rgba(200,220,255,0.35)'; ctx.font = '9px Space Mono, monospace'; ctx.textAlign = 'center';
-  ctx.fillText(C.name, ox, oy + 46);
+  found.forEach(C => {
+    const ox = W * 0.92 - (C === RAE_BOARD ? 70 : 0), oy = H * 0.26 + (C === RAE_BOARD ? 100 : 0), k = 0.45;
+    const p = ([x, y]) => [ox + (x - C.cx) * k, oy + (y - C.cy) * k];
+    ctx.strokeStyle = 'rgba(180,225,255,0.22)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); C.lines.forEach(([i, j]) => { ctx.moveTo(...p(C.stars[i])); ctx.lineTo(...p(C.stars[j])); }); ctx.stroke();
+    C.stars.forEach((st, i) => { const [x, y] = p(st), top = C === LONG_WAVE && i === 5; ctx.fillStyle = top ? 'rgba(255,230,160,0.9)' : 'rgba(240,245,255,0.8)'; ctx.beginPath(); ctx.arc(x, y, top ? 2 : 1.4, 0, 7); ctx.fill(); });
+    ctx.fillStyle = 'rgba(200,220,255,0.35)'; ctx.font = '9px Space Mono, monospace'; ctx.textAlign = 'center';
+    ctx.fillText(C.name, ox, oy + (C === LONG_WAVE ? 46 : 36));
+  });
   ctx.restore();
 }
+
+/* ── saving: the board's progress (save.js has no idea; see SAVE_EXTRA there). old saves just don't have the key ── */
+(window.SAVE_EXTRA = window.SAVE_EXTRA || []).push({
+  key: 'board',
+  get: () => ({ found: RAE_BOARD.found, progress: Math.round(RAE_BOARD.progress * 1000) / 1000, hint: !!sky.boardHint }),
+  set: v => {
+    if (!v || typeof v !== 'object' || Array.isArray(v)) return;
+    if (typeof v.found === 'boolean') RAE_BOARD.found = v.found;
+    if (typeof v.progress === 'number' && isFinite(v.progress)) RAE_BOARD.progress = Math.max(0, Math.min(1, v.progress));
+    if (typeof v.hint === 'boolean') sky.boardHint = v.hint;
+  },
+});

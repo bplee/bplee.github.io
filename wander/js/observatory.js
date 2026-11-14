@@ -73,9 +73,9 @@ const obs = {
   viewing: false, vx: 1200, vy: 700, comet: 0, smoke: [],
 };
 
-// only a clear night (or a falling-star night, which is clear too) lets you see anything;
-// rain, storms, snow, fog, wind, petals and frogs all bring a deck of cloud over the sky
-const SKY_CLEAR = { clear: true, stars: true };
+// only cloud-type weather hides the sky: rain, storms, snow, fog and frogs bring a deck of cloud over it.
+// a clear night, falling stars, a blustery night or a petal shower all leave it open
+const SKY_CLEAR = { clear: true, stars: true, wind: true, petals: true };
 function skyHidden() {
   const a = weather.amt;
   let m = 0;

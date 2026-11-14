@@ -178,8 +178,8 @@ function updatePlayer() {
     goRight = goLeft = false;
   }
 
-  // weather only matters outdoors
-  const wx = outside ? weatherPhysics() : { speed: 1, slip: 0, wind: 0 };
+  // weather only matters outdoors, and not under the water (wind, slick ground, snow: all up top)
+  const wx = outside && !player.inWater ? weatherPhysics() : { speed: 1, slip: 0, wind: 0 };
 
   const snowSlow = wearing('scarf') ? 1 : wx.speed; // the scarf keeps you cozy in the snow
   const spd   = (player.hasBlades ? BLADE_SPEED : WALK_SPEED) * player.mods.speed * snowSlow;
@@ -296,7 +296,7 @@ function drawWornItems(s, bhx, bhy, fhx, fhy) {
   if (wearing('scarf')) {
     ctx.strokeStyle = 'rgba(200,110,120,0.85)'; ctx.lineWidth = 3 * s;
     ctx.beginPath(); ctx.ellipse(2 * s, -30 * s, 9 * s, 2.5 * s, 0, 0, Math.PI * 2); ctx.stroke();
-    const flow = Math.sin(tick * 0.15) * 3 * s, wind = (player.facingRight ? -1 : 1) * weather.wind * 4 * s;
+    const flow = Math.sin(tick * 0.15) * 3 * s, wind = player.inWater ? 0 : (player.facingRight ? -1 : 1) * weather.wind * 4 * s;
     const trail = Math.min(18, Math.abs(player._vx) * 5) * s;
     ctx.beginPath(); ctx.moveTo(-5 * s, -29 * s);
     ctx.quadraticCurveTo(-12 * s - trail * 0.5, -26 * s + flow, -16 * s - trail + wind, -18 * s + flow * 1.4);

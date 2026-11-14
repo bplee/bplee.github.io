@@ -8,11 +8,14 @@
      (the prompt over your head steps aside).
    · anything else (idle chatter, shouts, lines said from afar or on a timer) fades
      on its own, after a time that grows with the length of the line.
+   · lines type out (TYPE_CPS letters a second); E / a tap on a line that's still typing
+     shows the rest at once, and only the next E carries on.
    · bubbles hang just below the speaker's feet, tail pointing up; they flip above
      when there's no room, keep clear of each other, the mouse's prompt, the hint box
      and the touch button, and always stay on screen.
    Fields on an NPC: bubble (text), bubbleT (frames left; held bubbles don't count
-   down), bubbleHeld, bubbleShut (closing: fading out), bubbleAge, bubbleNext.
+   down), bubbleHeld, bubbleShut (closing: fading out), bubbleAge, bubbleNext,
+   bubbleTyped (letters shown so far), bubbleTypedAt (bubbleAge when it finished typing).
    n.at() → [x, feetY, headY] in world coords (set by the scene that owns the NPC).
 ══════════════════════════════════════════ */
 const TALKERS = [];                 // every NPC that can talk (makeRegular registers them)
@@ -22,7 +25,11 @@ const WALK_AWAY = 140;              // get this far from whoever's talking and t
 const WALK_OFF = 70;                // …or walk this far from where you stood (for folk who tag along, and so the
                                     //   next thing you walk up to gets your E)
 
-const speaking = n => !!n.bubble && !n.bubbleShut;          // for mouths, "is anyone talking" checks
+const TYPE_CPS = 55;                // typewriter speed, letters per second
+const TYPE_STEP = TYPE_CPS / 60;    // …per frame
+const speaking = n => !!n.bubble && !n.bubbleShut;
+const typing = n => !!n.bubble && n.bubbleTyped < n.bubble.length;
+const typeOut = n => { if (typing(n)) { n.bubbleTyped = n.bubble.length; n.bubbleTypedAt = n.bubbleAge; } };   // show the rest at once          // for mouths, "is anyone talking" checks
 const bubbleAge = n => n.bubble ? n.bubbleAge : Infinity;
 const talkHeld = () => talk.cur && talk.cur.bubbleHeld ? talk.cur : null;
 function talkDist(n) {
@@ -45,7 +52,8 @@ function say(n, text, byPlayer, opt) {
   Object.assign(n, {
     bubble: text, bubbleHeld: hold, bubbleShut: false, bubbleAge: 0, bubbleScene: scene,
     bubbleNext: hold && opt.next || null, bubbleD0: d, bubbleX0: player.wx,
-    bubbleT: hold ? Infinity : (opt.t || ambientFrames(text)),
+    bubbleT: hold ? Infinity : (opt.t || ambientFrames(text)) + Math.ceil(text.length / TYPE_STEP),   // (+ the time it takes to type)
+    bubbleTyped: 0, bubbleTypedAt: null,
   });
   if (hold) talk.cur = n;
 }
@@ -60,6 +68,7 @@ function shutBubble(n) {
 function advanceTalk() {
   const n = talkHeld(); if (!n) return false;
   if (n.bubbleAge < 6) return true;            // a stray double-press
+  if (typing(n)) { typeOut(n); return true; }  // still typing: show the whole line first
   const next = n.bubbleNext;
   if (!next) { shutBubble(n); return true; }
   n.bubbleNext = null;
@@ -73,6 +82,10 @@ function tickTalk() {
     if (!n.bubble) return;
     if (n.bubbleScene !== scene) { if (talk.cur === n) talk.cur = null; n.bubble = null; n.bubbleHeld = false; return; }
     n.bubbleAge++;
+    if (typing(n) && !n.bubbleShut) {
+      n.bubbleTyped = Math.min(n.bubble.length, n.bubbleTyped + TYPE_STEP);
+      if (!typing(n)) n.bubbleTypedAt = n.bubbleAge;
+    }
     if (n.bubbleHeld) {
       if (talkDist(n) > Math.max(WALK_AWAY, n.bubbleD0 + 60) || Math.abs(player.wx - n.bubbleX0) > WALK_OFF) shutBubble(n);
       return;
@@ -97,7 +110,7 @@ function tapBubble(clientX, clientY) {
   const gx = clientX / ZOOM, gy = clientY / ZOOM, m = 10;
   const r = talk.rects.find(r => gx > r.x - m && gx < r.x + r.w + m && gy > r.y - m && gy < r.y + r.h + m);
   if (!r) return false;
-  if (r.n === talkHeld()) advanceTalk(); else shutBubble(r.n);
+  if (r.n === talkHeld()) advanceTalk(); else if (typing(r.n)) typeOut(r.n); else shutBubble(r.n);
   return true;
 }
 window.addEventListener('load', () => canvas.addEventListener('pointerdown', e => { if (e.pointerType === 'mouse') tapBubble(e.clientX, e.clientY); }));
@@ -208,9 +221,12 @@ function drawTalkBubbles(list) {
     ctx.fill();
     ctx.fillStyle = 'rgba(50,38,28,0.95)'; ctx.textAlign = 'left';
     const base = i => y + pad + fs * 0.8 + i * lh;
-    it.lines.forEach((l, i) => ctx.fillText(l, x + pad, base(i)));
-    if (it.tag) {   // "E ▸" (more to come) or "E ✓" (that's all), bottom right, once you've had a moment to read
-      ctx.globalAlpha = a * Math.min(1, Math.max(0, (n.bubbleAge - 10) / 12)) * (0.8 + 0.2 * Math.sin(tick * 0.08));
+    // typewriter: the box is laid out for the whole line; only the letters typed so far are drawn
+    let left = n.bubbleTyped == null ? Infinity : Math.floor(n.bubbleTyped);
+    it.lines.forEach((l, i) => { if (left > 0) ctx.fillText(left >= l.length ? l : l.slice(0, left), x + pad, base(i)); left -= l.length + 1; });
+    if (it.tag && !typing(n)) {   // "E ▸" (more to come) or "E ✓" (that's all), bottom right, once it's all typed
+      const since = n.bubbleAge - (n.bubbleTypedAt == null ? 0 : n.bubbleTypedAt);
+      ctx.globalAlpha = a * Math.min(1, Math.max(0, (since - 6) / 12)) * (0.8 + 0.2 * Math.sin(tick * 0.08));
       ctx.font = `bold ${FS - 1}px Space Mono, monospace`; ctx.fillStyle = 'rgba(160,90,30,1)'; ctx.textAlign = 'right';
       ctx.fillText(it.tag, x + w - pad, base(it.lines.length - 1) + (it.extra ? lh * 0.85 : 0));
       ctx.font = `${FS}px Space Mono, monospace`;
