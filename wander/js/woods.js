@@ -11,6 +11,7 @@
 const HOME_X = 120;
 const HOME_K = 2;    // the burrow is drawn at 2× so its door is taller than you
 const SIGN_X = 700;
+const SHOVEL_X = 340; // a shovel left out by home — enough to dig into the cavern
 const POND_X = 1850;
 
 const BIG_TREES = [
@@ -79,6 +80,7 @@ function woodsPopup() {
 ══════════════════════════════════════════ */
 function updateWoods() {
   const a = weather.amt;
+  if (!hasItem('shovel') && Math.abs(player.wx - SHOVEL_X) < 22 && player.onGround) give('shovel');
 
   // landing puffs (+ a dusty trail on blades)
   const landed = player.onGround && !woods.prevOnGround;
@@ -379,10 +381,28 @@ function drawMushrooms() {
   });
 }
 
+function drawShovelPickup() {
+  if (hasItem('shovel')) return;
+  const sx = SHOVEL_X - camX; if (sx < -40 || sx > W + 40) return;
+  const gy = groundY(SHOVEL_X);
+  ctx.save(); ctx.translate(sx, gy + 2); ctx.rotate(0.18);
+  ctx.strokeStyle = 'rgba(160,120,75,0.95)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+  ctx.beginPath(); ctx.moveTo(0, -4); ctx.lineTo(0, -40); ctx.stroke();
+  ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(-6, -40); ctx.lineTo(6, -40); ctx.stroke();
+  ctx.fillStyle = 'rgba(175,182,192,0.9)';
+  ctx.beginPath(); ctx.moveTo(-7, -6); ctx.lineTo(7, -6); ctx.lineTo(6, 4); ctx.lineTo(-6, 4); ctx.closePath(); ctx.fill();
+  ctx.restore();
+  const t = (tick * 0.02) % 1;
+  ctx.fillStyle = `rgba(255,235,170,${(1 - t) * 0.8})`; ctx.fillRect(sx + 8 - 0.6, gy - 30 - t * 16, 1.2, 5); ctx.fillRect(sx + 8 - 2.5, gy - 28 - t * 16, 5, 1.2);
+  ctx.fillStyle = 'rgba(230,205,160,0.6)'; ctx.font = '8px Space Mono, monospace'; ctx.textAlign = 'center';
+  ctx.fillText('shovel', sx, gy - 50);
+}
+
 // everything in the woods that sits behind the player
 function drawWoodsBack() {
   BIG_TREES.forEach(t => drawBigTree(t.x, t.s, t.seed, t.swing));
   drawHome();
+  drawShovelPickup();
   drawSignpost();
   drawPond();
   drawMushrooms();

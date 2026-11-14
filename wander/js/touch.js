@@ -131,11 +131,11 @@ function onUp(e) {
   if (touchUI.jumpId === e.pointerId) { touchUI.jumpId = null; synthKey('Space', false); }
 }
 
-/* ── portrait: suggest turning the phone sideways ── */
+/* ── upright phone: a gentle one-time tip that sideways works too (no blocking card) ── */
 function updateRotateCard() {
-  const card = document.getElementById('rotate');
-  if (!card) return;
-  card.hidden = !(MOBILE && touchMode && !touchUI.rotateDismissed && window.innerHeight > window.innerWidth);
+  if (touchUI.rotateTipped || !MOBILE || !touchMode || !started || window.innerHeight <= window.innerWidth) return;
+  touchUI.rotateTipped = true;
+  setTimeout(() => showHint('tip: wander also works with your phone turned sideways', 4000), 4500);
 }
 
 /* ── phones: keep frames smooth — if they drag, turn effects down further ── */
@@ -161,7 +161,6 @@ window.addEventListener('load', () => {
   const tapKey = code => e => { e.preventDefault(); e.stopPropagation(); synthKey(code, true); synthKey(code, false); };
   document.getElementById('act').addEventListener('pointerdown', tapKey('KeyE'));
   document.getElementById('scope-close').addEventListener('pointerdown', tapKey('KeyE'));
-  document.getElementById('rotate-ok').addEventListener('click', () => { touchUI.rotateDismissed = true; updateRotateCard(); });
   window.addEventListener('resize', updateRotateCard);
   window.addEventListener('blur', () => { releaseJoystick(); if (touchUI.jumpId !== null) { touchUI.jumpId = null; synthKey('Space', false); } });
 

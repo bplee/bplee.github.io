@@ -21,7 +21,8 @@ function resize() {
     return;
   }
   // phone: W/H are "game pixels"; the canvas is scaled to fit and drawn at device resolution
-  ZOOM = Math.min(1, vh / MOBILE_LAYOUT_H);
+  // sideways: fit ≥560 game-px of height. upright: zoom out ~40% so more of the world fits
+  ZOOM = vh > vw ? 0.6 : Math.min(1, vh / MOBILE_LAYOUT_H);
   DPR  = Math.min(2, window.devicePixelRatio || 1) * (QUALITY < 0.45 ? 0.75 : 1);
   W = Math.round(vw / ZOOM); H = Math.round(vh / ZOOM);
   canvas.width  = Math.round(vw * DPR); canvas.height = Math.round(vh * DPR);
@@ -157,9 +158,10 @@ let camY = 0;   // vertical camera: negative = looking up (the hill), positive =
 function isPortrait() { return MOBILE && window.innerHeight > window.innerWidth; }
 function viewBias() { return !MOBILE ? 0 : isPortrait() ? H * 0.16 : H * 0.07; }
 function updateCamera() {
-  if (scene === 'tavern') {
+  if (scene === 'tavern' || scene === 'observatory') {
     // room fits on screen → center it; otherwise follow the player
-    const target = W >= ROOM_W ? (ROOM_W - W) / 2 : Math.max(0, Math.min(ROOM_W - W, player.wx - W * 0.5));
+    const RW = scene === 'tavern' ? ROOM_W : OBS_ROOM_W;
+    const target = W >= RW ? (RW - W) / 2 : Math.max(0, Math.min(RW - W, player.wx - W * 0.5));
     camX += (target - camX) * 0.15;
     camY += (viewBias() - camY) * 0.2;
     return;

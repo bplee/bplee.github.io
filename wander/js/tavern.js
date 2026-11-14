@@ -213,6 +213,7 @@ function regularLine(n) {
     }
     if (questState.shovel === 'open') {
       completeQuest('shovel'); startQuest('dig');
+      if (hasItem('shovel')) return "you found a shovel already? then nova's stays in my coat. it's very cosy in there.";
       setTimeout(() => give('shovel', 'rosco'), 600);
       return "nova's shovel? …fine. it was in my coat the whole time. don't tell her i used it for snacks.";
     }
@@ -295,6 +296,7 @@ window.addEventListener('keydown', e => {
     if (nearTavernDoor()) enterTavern();
     return;
   }
+  if (scene !== 'tavern') return;   // the cavern + observatory handle their own E
   const t = nearestTavernTarget();
   if (t) t.act();
 });
@@ -607,11 +609,12 @@ function drawTavernInterior() {
   drawRegular(gecko, ox, F);
 
   // bar counter
-  ctx.fillStyle = '#4a3522'; ctx.fillRect(ox + 300, F - 66, 270, 66);
-  ctx.fillStyle = '#5a4230'; ctx.fillRect(ox + 294, F - 72, 282, 8);
+  // (kept low so you can see pip behind it)
+  ctx.fillStyle = '#4a3522'; ctx.fillRect(ox + 300, F - 42, 270, 42);
+  ctx.fillStyle = '#5a4230'; ctx.fillRect(ox + 294, F - 48, 282, 8);
   ctx.strokeStyle = 'rgba(30,20,12,0.5)'; ctx.lineWidth = 1;
-  for (let x = 330; x < 570; x += 45) { ctx.beginPath(); ctx.moveTo(ox + x, F - 64); ctx.lineTo(ox + x, F); ctx.stroke(); }
-  if (player.drink) { ctx.fillStyle = 'rgba(220,200,160,0.85)'; ctx.fillRect(ox + 548, F - 84, 10, 12); }
+  for (let x = 330; x < 570; x += 45) { ctx.beginPath(); ctx.moveTo(ox + x, F - 40); ctx.lineTo(ox + x, F); ctx.stroke(); }
+  if (player.drink) { ctx.fillStyle = 'rgba(220,200,160,0.85)'; ctx.fillRect(ox + 548, F - 60, 10, 12); }
 
   // stools
   [360, 525].forEach(x => {

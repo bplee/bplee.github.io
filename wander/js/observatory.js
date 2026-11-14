@@ -10,8 +10,7 @@
        the weather gets in the way (clouds, fog, rain on the lens…)
 ══════════════════════════════════════════ */
 const OBS_X   = 6330;  // observatory tower center
-const SCOPE_X = 6470;  // the outdoor telescope
-const NOVA_X  = 6170;
+const NOVA_X  = 300;   // nova works inside the observatory now (room x, see observatory_inside.js)
 
 // how high the plateau is: always above the top of the screen when you're on the ground
 function hillTopPx() { return Math.max(560, H * 0.95); }
@@ -87,6 +86,10 @@ function talkToNova() {
     line = "a whole LAKE under my hill?? glowing roots? i'm putting it on the map. i'm naming it after you.";
     completeQuest('report');
   }
+  else if (!caveState.dug && hasItem('shovel') && !questState.dig && !questState.shovel) {
+    line = "see that glow down the far side of the hill? there's a cave. oh — you've got a shovel! go on, dig it open.";
+    startQuest('dig');
+  }
   else if (!questState.shovel && !hasItem('shovel')) {
     line = "see that glow down the far side of the hill? there's a cave. i'd dig in myself, but my cousin rosco borrowed my shovel. typical.";
     startQuest('shovel');
@@ -99,12 +102,12 @@ function talkToNova() {
   say(nova, line, true);
 }
 
-function nearScope() { return scene === 'outside' && Math.abs(player.wx - SCOPE_X) < 40; }
-function nearNova()  { return scene === 'outside' && Math.abs(player.wx - nova.x) < nova.talkR; }
+function nearScope() { return scene === 'observatory' && Math.abs(player.wx - OBS_SCOPE_X) < 50; }
+function nearNova()  { return scene === 'observatory' && Math.abs(player.wx - nova.x) < nova.talkR; }
 
+// outside: the door into the tower
 function observatoryPopup() {
-  if (nearScope()) return 'press E to look through the telescope';
-  if (nearNova() && nova.bubbleT <= 0) return 'press E to talk to nova';
+  if (nearObsDoor()) return 'the observatory · press E to step inside';
   return null;
 }
 
@@ -112,27 +115,24 @@ function openTelescope()  { obs.viewing = true; hideJoinPrompt(); }
 function closeTelescope() { obs.viewing = false; }
 
 window.addEventListener('keydown', e => {
-  if (e.repeat || transitioning || !started || scene !== 'outside') return;
+  if (e.repeat || transitioning || !started) return;
   if (obs.viewing) {
     if (e.code === 'KeyE' || e.code === 'Escape') closeTelescope();
     return;
   }
   if (e.code !== 'KeyE') return;
-  if (nearScope()) openTelescope();
+  if (scene === 'outside') { if (nearObsDoor()) enterObservatory(); return; }
+  if (scene !== 'observatory') return;
+  if (nearObsExit()) exitObservatory();
+  else if (nearScope()) openTelescope();
   else if (nearNova()) talkToNova();
 });
 
 /* ══════════════════════════════════════════
    UPDATE
 ══════════════════════════════════════════ */
+// outside: just the stove-pipe smoke (nova + the telescope are inside, see observatory_inside.js)
 function updateObservatory() {
-  if (nova.bubbleT > 0) nova.bubbleT--;
-  // nova paces a little, looking up
-  nova.x = NOVA_X + Math.sin(tick * 0.006) * 12;
-  if (tick % 700 === 0 && nova.bubbleT === 0 && Math.abs(player.wx - nova.x) > 80) {
-    say(nova, ['hmm…', 'fascinating.', 'is that a new one? no. a moth.', '*scribbles notes*'][Math.floor(Math.random() * 4)]);
-    nova.bubbleT = 150;
-  }
   if (tick % 22 === 0) obs.smoke.push({ x: OBS_X - 56, y: groundY(OBS_X) - 172, r: 3, a: 0.25 });
   for (let i = obs.smoke.length - 1; i >= 0; i--) {
     const s = obs.smoke[i]; s.y -= 0.4; s.x += 0.1 + weather.wind * 0.5; s.r += 0.06; s.a -= 0.003;
@@ -243,37 +243,15 @@ function drawObservatory() {
   ctx.fillStyle = 'rgba(230,205,160,0.6)'; ctx.font = '9px Space Mono, monospace'; ctx.textAlign = 'center';
   ctx.fillText('observatory', sx, top + 22);
 
-  // the outdoor telescope on its tripod (mouse-sized)
-  const tx = SCOPE_X - camX, near = nearScope();
-  ctx.strokeStyle = 'rgba(160,130,90,0.9)'; ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(tx - 20, base); ctx.lineTo(tx, base - 52); ctx.lineTo(tx + 20, base); ctx.moveTo(tx, base - 52); ctx.lineTo(tx, base); ctx.stroke();
-  ctx.save(); ctx.translate(tx, base - 54); ctx.rotate(-0.75 + Math.sin(tick * 0.01) * 0.04);
-  ctx.fillStyle = near ? '#d8b068' : '#b08848'; ctx.fillRect(-16, -5, 56, 10); ctx.fillRect(36, -7, 9, 14);
-  ctx.fillStyle = '#8a6a3a'; ctx.fillRect(-20, -3, 6, 6);
-  ctx.restore();
-  if (near) drawGlow(tx, base - 56, 50, 0.15, [255, 230, 160]);
-
-  // nova, with a clipboard and a pencil that wiggles while she scribbles
-  const ny = base + Math.sin(tick * 0.04) * 0.8, nd = faceToward(nova.x, 1);
-  drawCritter(nova.x - camX, ny, 'raccoon', { color: nova.color, dir: nd, label: 'nova' });
-  ctx.fillStyle = 'rgba(230,220,195,0.9)'; ctx.fillRect(nova.x - camX + 8 * nd - 4, ny - 24, 9, 11);
-  ctx.strokeStyle = 'rgba(200,170,90,0.9)'; ctx.lineWidth = 1;
-  const pw = Math.sin(tick * 0.3) * 2;
-  ctx.beginPath(); ctx.moveTo(nova.x - camX + 10 * nd + pw, ny - 20); ctx.lineTo(nova.x - camX + 16 * nd + pw, ny - 28); ctx.stroke();
+  // the door glows when you're close enough to go in
+  if (nearObsDoor()) { ctx.strokeStyle = 'rgba(255,200,130,0.9)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(sx - 42, base); ctx.lineTo(sx - 42, base - 62); ctx.arc(sx - 22, base - 62, 20, Math.PI, 0); ctx.lineTo(sx - 2, base); ctx.stroke(); }
   ctx.restore();
 }
 
 function drawObservatoryBack() { drawHill(); drawObservatory(); }
 
-// nova's speech bubble (in front of everything)
-function drawObservatoryFront() {
-  const nsx = nova.x - camX;
-  if (nova.bubbleT > 0 && nova.bubble && nsx > -60 && nsx < W + 60) {
-    ctx.save(); ctx.globalAlpha = Math.min(1, nova.bubbleT / 20);
-    drawBubble(nova.x - camX, groundY(nova.x) - 62, nova.bubble);
-    ctx.restore();
-  }
-}
+function drawObservatoryFront() {}   // (nova's bubble is drawn inside now)
 
 /* ══════════════════════════════════════════
    DRAW — looking through the telescope

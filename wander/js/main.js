@@ -19,6 +19,8 @@ function update() {
     updateCaveMouth();
   } else if (scene === 'tavern') {
     updateTavernInterior();
+  } else if (scene === 'observatory') {
+    updateObsInterior();
   } else {
     updateCavern();
   }
@@ -41,6 +43,17 @@ function draw() {
     drawTavernOverlay();
     drawPopup();
     ctx.restore();
+    return;
+  }
+  if (scene === 'observatory') {
+    ctx.save(); ctx.translate(0, -Math.round(camY));
+    drawObsInterior();
+    drawPlayer();
+    drawDrinkFx();
+    drawObsInteriorFront();
+    drawPopup();
+    ctx.restore();
+    drawTelescopeView();
     return;
   }
   if (scene === 'cavern') {

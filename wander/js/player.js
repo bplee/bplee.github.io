@@ -117,7 +117,7 @@ let _vx = 0;
 
 // Ground height under the player in the current scene
 function floorAt(x) {
-  if (scene === 'tavern') return tavernFloorAt(x);
+  if (scene === 'tavern' || scene === 'observatory') return tavernFloorY();
   if (scene === 'cavern') return caveFloorY(x);
   return groundY(x);
 }
@@ -185,6 +185,7 @@ function updatePlayer() {
   let minX = 20, maxX = WORLD_W - 20;
   if (scene === 'tavern')      { minX = 30; maxX = ROOM_W - 30; }
   else if (scene === 'cavern') { minX = 20; maxX = CAVE_W - 20; }
+  else if (scene === 'observatory') { minX = 30; maxX = OBS_ROOM_W - 30; }
   else if (vball.active){ minX = COURT_L - 120; maxX = NET_X - 30; } // stay on your side
 
   if (goRight)     { _vx=Math.min(_vx+accel,spd);  player.facingRight=true; }

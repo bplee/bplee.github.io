@@ -138,7 +138,8 @@ function updateCaveMouth() {
     if (tick % 4 === 0) cave.dirt.push({ x: CAVE_X + rand(-14, 14), y: groundY(CAVE_X) - 10, vx: rand(-2.5, 2.5), vy: rand(-4, -2), life: 1 });
     if (caveState.digging === 0) {
       caveState.dug = true;
-      completeQuest('dig'); startQuest('report');
+      if (questState.dig === 'open') completeQuest('dig');
+      startQuest('report');
       showHint('the earth gives way. a cool breath of air comes out of the dark.', 3200);
     }
   }

@@ -163,7 +163,7 @@ kbd {
 
 /* ══════════ touch controls (body.touch is set on the first touch) ══════════ */
 #touch { position:fixed; inset:0; z-index:30; touch-action:none; }
-#touch[hidden], #joy[hidden], #act[hidden], #scope-close[hidden], #rotate[hidden] { display:none; }
+#touch[hidden], #joy[hidden], #act[hidden], #scope-close[hidden] { display:none; }
 #joy {
   position:fixed; z-index:31; width:104px; height:104px; margin:-52px 0 0 -52px; pointer-events:none;
   border-radius:50%; border:1px solid rgba(255,255,255,0.18); background:rgba(20,24,32,0.25);
@@ -184,12 +184,6 @@ kbd {
   width:44px; height:44px; border-radius:50%; font-size:22px; line-height:1;
   color:rgba(235,228,214,0.9); background:rgba(20,24,32,0.7); border:0.5px solid rgba(255,255,255,0.2); touch-action:none;
 }
-#rotate { position:fixed; inset:0; z-index:120; display:flex; align-items:center; justify-content:center; background:rgba(8,10,14,0.92); }
-.rot-card { text-align:center; font-family:'Space Mono',monospace; color:rgba(235,228,214,0.85); padding:24px; max-width:280px; }
-.rot-card p { font-size:13px; line-height:1.6; margin:18px 0; }
-.rot-phone { width:34px; height:58px; margin:0 auto; border:1.5px solid rgba(235,228,214,0.7); border-radius:7px; animation:rotphone 2.4s ease-in-out infinite; }
-@keyframes rotphone { 0%,30% { transform:rotate(0); } 60%,100% { transform:rotate(-90deg); } }
-#rotate-ok { font:inherit; font-size:12px; color:rgba(235,228,214,0.8); background:none; border:0.5px solid rgba(255,255,255,0.3); border-radius:16px; padding:8px 16px; }
 
 /* phones: no zooming/selection, bigger tap targets, stay clear of the notch + home bar */
 @media (pointer: coarse) {

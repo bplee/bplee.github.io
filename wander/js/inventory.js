@@ -18,7 +18,7 @@ const ITEMS = {
   peanut:    { name: 'lucky peanut',          desc: 'hold it and the other team fumbles more often.',             wearable: true },
   bracelet:  { name: 'friendship bracelet',   desc: 'your bumps and spikes reach a little further.',              wearable: true },
   chart:     { name: 'star chart',            desc: 'hold it to see your charted constellations in the sky.',     wearable: true },
-  shovel:    { name: "nova's shovel",         desc: 'for digging. there is a cave mouth somewhere that needs it.', wearable: true },
+  shovel:    { name: 'shovel',                desc: 'for digging. there is a cave mouth somewhere that needs it.', wearable: true },
   glowstone: { name: 'glowstone',             desc: 'found deep in the cavern. it hums, faintly, and glows teal.', wearable: true },
   button:    { name: "rosco's lucky button",  desc: 'shiny. not yours. rosco is at the bar.',                      wearable: false },
 };

@@ -357,6 +357,7 @@ const POPUP_TRIGGERS = {
 function checkProximity() {
   if (scene === 'tavern') { activePopup = tavernPopup(); return; }
   if (scene === 'cavern') { activePopup = cavernPopup(); return; }
+  if (scene === 'observatory') { activePopup = obsInteriorPopup(); return; }
   if (vball.active) { activePopup = null; return; }
   if (nearTavernDoor()) { activePopup = 'the dozy gecko · press E to step inside'; return; }
   const cp = caveMouthPopup(); if (cp) { activePopup = cp; return; }
