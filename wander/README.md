@@ -18,13 +18,14 @@ Scripts are plain (non-module) `<script>` tags sharing globals, loaded in this o
 | `js/tavern.js` | the dozy gecko: exterior, ground floor, stairs + balcony geometry, regulars, drinks |
 | `js/tavern_balcony.js` | balcony residents: nana fern + yarn, lumen, dusk, rooms 1–3, nap, rosco's button |
 | `js/observatory.js` | the hill (part of `groundY`, via `hillH`), observatory, nova, telescope sky + constellations |
+| `js/observatory_inside.js` | inside the observatory (`scene === 'observatory'`): dome + slit, the big telescope, nova's desk, orrery, wall chart |
 | `js/cavern.js` | cave mouth + digging, the cavern scene (tunnel → chamber → pool), swimming, ledges, glowstone |
 | `js/touch.js` | phones/tablets: pop-up joystick (right), tap-to-jump (left), action button, telescope drag, rotate card — sends the same key events as the keyboard |
 | `js/main.js` | `update()` / `draw()` per scene, fixed 60Hz loop, init |
 
 `css/world.css` — HUD styles (hint pill, score, weather/drink label).
 
-Scenes: `scene` is `'outside'`, `'tavern'` or `'cavern'`. `floorAt(x)` / `platformY(x)` in `player.js`
+Scenes: `scene` is `'outside'`, `'tavern'`, `'observatory'` or `'cavern'`. `floorAt(x)` / `platformY(x)` in `player.js`
 pick the floor and one-way platforms (tavern balcony + stairs, cavern ledges; ↓ drops through) per scene.
 The camera has `camX` and `camY`; world drawing happens inside `ctx.translate(0, -camY)` in `main.js`,
 sky layers stay in screen space.
