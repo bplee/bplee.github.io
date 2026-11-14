@@ -99,6 +99,17 @@ function cloudiness() {
 }
 
 /* ── UPDATE ── */
+// where falling weather lands (screen x → screen y): the ground, or the sea's surface over the sea
+// (the ground is never below sea level on land, so the higher of the two is always right)
+function weatherFloor(sx) { return Math.min(groundY(sx + camX), seaY()) - camY; }
+// clip what's drawn next to above the sea's surface, when the view is over the sea:
+// rain, fog, lightning and leaves stay up top; under the water it's calm
+function clipAboveSea() {
+  if (scene !== 'outside' || camX + W < SEA_X0 || camX > SEA_X1) return;
+  const sy = seaY() - camY;
+  if (sy >= H) return;
+  ctx.beginPath(); ctx.rect(-50, -50, W + 100, Math.max(0, sy + 50)); ctx.clip();
+}
 function spawnCount(rate) { rate *= QUALITY; return Math.floor(rate) + (Math.random() < rate % 1 ? 1 : 0); }
 
 function makeBolt() {
@@ -165,7 +176,7 @@ function updateWeather() {
     switch (p.k) {
       case 'rain':
         p.x += p.vx; p.y += p.vy;
-        if (p.y >= (groundY(p.x + camX) - camY)) {
+        if (p.y >= weatherFloor(p.x)) {
           dead = true;
           if (Math.random() < 0.4) for (let j = 0; j < 2; j++)
             P.push({ k: 'splash', x: p.x, y: p.y - 1, vx: rand(-1.2, 1.2), vy: rand(-2, -1), life: 12 });
@@ -174,12 +185,12 @@ function updateWeather() {
       case 'snow':
         p.ph += 0.03;
         p.x += w * 0.9 + Math.sin(p.ph) * 0.4; p.y += p.vy;
-        if (p.y >= (groundY(p.x + camX) - camY)) dead = true;
+        if (p.y >= weatherFloor(p.x)) dead = true;
         break;
       case 'petal':
         p.ph += 0.04; p.rot += p.vr;
         p.x += w * 1.4 + Math.sin(p.ph) * 0.8; p.y += p.vy;
-        if (p.y >= (groundY(p.x + camX) - camY)) dead = true;
+        if (p.y >= weatherFloor(p.x)) dead = true;
         break;
       case 'leaf':
         p.ph += 0.05; p.rot += p.vr;
@@ -286,6 +297,7 @@ function drawFrogs() {
 function drawWeatherFront() {
   const a = weather.amt;
   ctx.save();
+  clipAboveSea();
   ctx.lineCap = 'round';
 
   // particles
