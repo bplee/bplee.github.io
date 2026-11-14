@@ -29,6 +29,7 @@ function update() {
     updateCavern();
   }
 
+  updateSkyCharts();   // rae's telescope, rae watching it, starlight sparkles (skycharts.js)
   checkProximity();
   updateCamera();
 }
@@ -52,7 +53,9 @@ function draw() {
   if (scene === 'observatory') {
     ctx.save(); ctx.translate(0, -Math.round(camY));
     drawObsInterior();
+    drawSkyChartsInterior();   // nova's crate of spares
     drawPlayer();
+    drawSkyRoadSparkle();
     drawDrinkFx();
     drawObsInteriorFront();
     drawPopup();
@@ -77,6 +80,7 @@ function draw() {
   drawSky();
   drawStars();
   drawChartSky();
+  drawChartSkyExtras(); // the island's page of the chart
   drawShootingStars();
   drawMoon();
   drawOwlFlyby();
@@ -103,11 +107,13 @@ function draw() {
   drawSeaBack();       // the bay: water, coral, ollie, the net, bart
   drawBeachBack();     // birch, his workshop, the boat
   drawIslandBack();    // palms, rae's hut, the bonfire, the surf, rae
+  drawSkyChartsWorld(); // rae's telescope on the point (skycharts.js)
   drawNPCs();
   drawLandingMarker();
   drawBall();
   drawFrogs();
   drawPlayer();
+  drawSkyRoadSparkle();
   drawBoatFront();
   drawSeaFront();
   drawGrass();

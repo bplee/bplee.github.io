@@ -34,10 +34,17 @@ const ITEMS = {
   conch:     { name: 'a big empty conch',     desc: 'pink inside, spirals the right way. somebody small could live in this.', wearable: false },
   bell:      { name: 'the school bell',       desc: "the reef school's bell. it says 'ding', which means 'morning'.", wearable: false },
   goldstar:  { name: 'a gold star',           desc: "from miss coralie. she only has a few. you've been very good.", wearable: false },
+  // marigold's general store (store.js): personal things you can buy
+  boots:     { name: 'sturdy boots',         desc: 'stitched tight, soles like bread crusts. you walk about a fifth faster.', wearable: true },
+  umbrella:  { name: 'a little umbrella',    desc: 'hold jump in the air to float down slowly. rain and slick ground bother you less.', wearable: true },
+  fins:      { name: 'swim fins',            desc: 'much faster in the water. a bit waddly on land.',             wearable: true },
+  snorkel:   { name: 'a snorkel',            desc: 'twice the breath underwater. not enough for the deep trench, mind.', wearable: true },
+  compass:   { name: 'pocket compass',       desc: 'the needle points toward whoever needs you next. when nobody does, toward buried things.', wearable: true },
+  charm:     { name: 'four-leaf charm',      desc: 'tucked in your fur. digging turns up a little extra, now and then.', wearable: true },
   drawing:   { name: "nib's drawing",         desc: 'you, from memory, in squid ink. you have six legs in it. it is perfect.', wearable: false },
 };
 const ITEM_ORDER = ['blades', 'lantern', 'feather', 'scarf', 'peanut', 'bracelet', 'chart', 'shovel', 'glowstone', 'helmet', 'pickaxe', 'axe', 'surfboard', 'shells',
-                    'button', 'gold', 'birdhouse', 'wood', 'canvas', 'mallows', 'conch', 'bell', 'goldstar', 'drawing'];
+                    'boots', 'umbrella', 'fins', 'snorkel', 'compass', 'charm', 'button', 'gold', 'birdhouse', 'wood', 'canvas', 'mallows', 'conch', 'bell', 'goldstar', 'drawing'];
 
 const FRIENDS = {
   'clover':       { kind: 'bunny',    color: '#e8d5c0', species: 'bunny',    where: 'your volleyball partner' },
@@ -111,6 +118,9 @@ const ACHIEVEMENTS = {
   surfer:     { name: 'hang ten',            desc: 'ride three waves to shore.' },
   puffed:     { name: 'very alarming',       desc: 'startle bart until he puffs up.' },
   toasty:     { name: 'golden brown',        desc: 'toast a marshmallow with rae.' },
+  shopper:    { name: 'a regular',          desc: "buy something at marigold's general store." },
+  allwares:   { name: 'one of everything',  desc: "own every personal item marigold sells." },
+  treasure:   { name: 'x marks the spot',   desc: 'dig up every buried nugget in the meadows.' },
   headcount:  { name: 'everyone accounted for', desc: "bring nib back to miss coralie's class." },
 };
 const achieved = {};
@@ -342,6 +352,67 @@ const ITEM_ART = {
     ctx.fillStyle = 'rgba(15,12,12,0.85)'; ctx.beginPath(); ctx.arc(w / 2 - 3, h / 2, 1.2, 0, 7); ctx.arc(w / 2 + 3, h / 2, 1.2, 0, 7); ctx.fill();
     ctx.strokeStyle = 'rgba(15,12,12,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(w / 2, h / 2 + 3, 2.5, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
   },
+  boots: (w, h) => {
+    const boot = (x, f) => {
+      ctx.save(); ctx.translate(x, 24); ctx.scale(f, 1);
+      ctx.fillStyle = '#7a5434'; ctx.strokeStyle = 'rgba(40,26,14,0.9)'; ctx.lineWidth = 1.2; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(-5, -14); ctx.lineTo(5, -14); ctx.lineTo(5, 3); ctx.quadraticCurveTo(14, 4, 14, 11); ctx.lineTo(14, 14); ctx.lineTo(-5, 14); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#3e2a18'; ctx.fillRect(-5, 11, 19, 3);
+      ctx.strokeStyle = 'rgba(230,205,160,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(-5, -10); ctx.lineTo(5, -10); ctx.moveTo(-5, -5); ctx.lineTo(5, -5); ctx.stroke();
+      ctx.restore();
+    };
+    boot(10, 1); boot(36, -1);
+  },
+  umbrella: (w, h) => {
+    ctx.lineJoin = 'round';
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = i % 2 ? 'rgba(235,225,205,0.95)' : 'rgba(190,85,80,0.95)';
+      const a0 = Math.PI + i * Math.PI / 4, a1 = a0 + Math.PI / 4;
+      ctx.beginPath(); ctx.moveTo(24, 26); ctx.arc(24, 26, 19, a0, a1); ctx.closePath(); ctx.fill();
+    }
+    ctx.strokeStyle = 'rgba(60,40,30,0.8)'; ctx.lineWidth = 1.1; ctx.beginPath(); ctx.arc(24, 26, 19, Math.PI, 0); ctx.stroke();
+    ctx.strokeStyle = 'rgba(150,115,75,0.95)'; ctx.lineWidth = 2; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(24, 26); ctx.lineTo(24, 40); ctx.arc(21, 40, 3, 0, Math.PI / 2 + 0.4); ctx.stroke();
+  },
+  fins: (w, h) => {
+    const fin = (x, f) => {
+      ctx.save(); ctx.translate(x, 24); ctx.scale(f, 1);
+      ctx.fillStyle = 'rgba(80,175,170,0.95)'; ctx.strokeStyle = 'rgba(30,80,80,0.9)'; ctx.lineWidth = 1.2; ctx.lineJoin = 'round';
+      ctx.beginPath(); ctx.moveTo(-4, -14); ctx.lineTo(3, -14); ctx.lineTo(4, -2); ctx.lineTo(13, 14); ctx.quadraticCurveTo(0, 20, -12, 14); ctx.lineTo(-4, -2); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = 'rgba(30,80,80,0.55)'; ctx.lineWidth = 0.9;
+      [-6, 0, 6].forEach(d => { ctx.beginPath(); ctx.moveTo(0, 2); ctx.lineTo(d + 1, 15); ctx.stroke(); });
+      ctx.restore();
+    };
+    fin(15, 1); fin(34, 1);
+  },
+  snorkel: (w, h) => {
+    ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+    ctx.strokeStyle = 'rgba(235,150,70,0.97)'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(32, 6); ctx.lineTo(32, 28); ctx.quadraticCurveTo(32, 38, 22, 38); ctx.stroke();
+    ctx.fillStyle = 'rgba(235,150,70,0.97)'; ctx.fillRect(29, 3, 6, 5);
+    ctx.fillStyle = 'rgba(40,30,28,0.95)'; ctx.fillRect(17, 35, 9, 6);
+    ctx.fillStyle = 'rgba(150,215,230,0.45)'; ctx.strokeStyle = 'rgba(210,225,230,0.95)'; ctx.lineWidth = 1.8;
+    ctx.beginPath(); ctx.ellipse(14, 18, 8, 6, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(210,225,230,0.55)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(22, 17); ctx.lineTo(30, 14); ctx.stroke();
+  },
+  compass: (w, h) => {
+    ctx.fillStyle = 'rgba(205,165,80,0.97)'; ctx.strokeStyle = 'rgba(120,85,30,0.95)'; ctx.lineWidth = 1.6;
+    ctx.beginPath(); ctx.arc(24, 26, 15, 0, 7); ctx.fill(); ctx.stroke(); ctx.fillRect(21, 7, 6, 5); ctx.strokeRect(21, 7, 6, 5);
+    ctx.fillStyle = 'rgba(245,235,205,0.97)'; ctx.beginPath(); ctx.arc(24, 26, 11.5, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,85,30,0.6)'; ctx.lineWidth = 0.9;
+    for (let i = 0; i < 8; i++) { const a = i * Math.PI / 4; ctx.beginPath(); ctx.moveTo(24 + Math.cos(a) * 9, 26 + Math.sin(a) * 9); ctx.lineTo(24 + Math.cos(a) * 11, 26 + Math.sin(a) * 11); ctx.stroke(); }
+    ctx.save(); ctx.translate(24, 26); ctx.rotate(0.6);
+    ctx.fillStyle = 'rgba(190,70,65,0.97)'; ctx.beginPath(); ctx.moveTo(0, -9); ctx.lineTo(3, 0); ctx.lineTo(-3, 0); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(70,75,95,0.9)'; ctx.beginPath(); ctx.moveTo(0, 9); ctx.lineTo(3, 0); ctx.lineTo(-3, 0); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  },
+  charm: (w, h) => {
+    drawGlow(24, 24, 22, 0.25, [140, 230, 150]);
+    ctx.fillStyle = 'rgba(100,185,105,0.97)'; ctx.strokeStyle = 'rgba(40,100,50,0.9)'; ctx.lineWidth = 1.2;
+    [[-6.5, 0], [6.5, 0], [0, -6.5], [0, 6.5]].forEach(([dx, dy]) => { ctx.beginPath(); ctx.arc(24 + dx, 22 + dy, 6.5, 0, 7); ctx.fill(); ctx.stroke(); });
+    ctx.fillStyle = 'rgba(100,185,105,0.97)'; ctx.beginPath(); ctx.arc(24, 22, 5, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(40,100,50,0.95)'; ctx.lineWidth = 2; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(24, 24); ctx.quadraticCurveTo(25, 36, 30, 42); ctx.stroke();
+  },
   drawing: (w, h) => {
     ctx.save(); ctx.translate(w / 2, h / 2); ctx.rotate(-0.08);
     ctx.fillStyle = 'rgba(232,224,200,0.97)'; ctx.fillRect(-15, -17, 30, 34);
@@ -513,6 +584,8 @@ function gridMove(dx, dy, n) {
 window.addEventListener('keydown', e => {
   if (!started) return;
   const c = e.code;
+  // marigold's shop panel (store.js) takes over the keys while it is open
+  if (typeof shop !== 'undefined' && shop.open) { e.preventDefault(); e.stopImmediatePropagation(); shopKey(e); return; }
   if (!menu.open) {
     if (transitioning || obs.viewing) return;
     if (c === 'KeyI' || c === 'Tab') { e.preventDefault(); openMenu('bag'); e.stopImmediatePropagation(); }

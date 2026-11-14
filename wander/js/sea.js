@@ -10,7 +10,9 @@
      deeper tiers need umber's helmet. shelves of reef jut out over the
      tiers (solid: swim under them, land on them — see shelfCollide), with
      little flats tucked underneath. a big bait ball turns over the city.
-   · the reef school sits on the school ledge: miss coralie (a seahorse) and
+     it is a long city, east to west: the crest + night market under the crest shelf, the garden row,
+     the arcade and the long hall (market terrace), the schoolyard, and at the far west end the school.
+   · the reef school (two stories + a bell tower) sits on the school ledge: miss coralie (a seahorse) and
      her class. quests: the school bell (shelby the hermit crab has moved
      into it, and wants a conch instead) and headcount (nib the octopus is
      hiding under the deep ledge — swim him back to class).
@@ -18,8 +20,8 @@
      drop, and each net's one gap is guarded by a pufferfish: bart on the
      mainland side, his sister bea on the island side. nobody swims through.
 ══════════════════════════════════════════ */
-const SEA_NET_X = 11510, ISLE_NET_X = 13710, REEF_X = 14470;
-const CORAL_X0 = 10640, CORAL_X1 = 11480, CITY_X0 = 13740, CITY_X1 = 14560;
+const SEA_NET_X = 11510, ISLE_NET_X = 13340, REEF_X = 14470;
+const CORAL_X0 = 10640, CORAL_X1 = 11480, CITY_X0 = 13370, CITY_X1 = 14560;
 const sea = { ripples: [], splashes: [], bubbles: [], fish: [], warnT: 0, puff: { bart: 0, bea: 0 }, swimmers: [] };
 
 const ollie = makeRegular({ name: 'ollie', kind: 'octopus', color: '#d890a8', x: 10980 });
@@ -46,15 +48,19 @@ function makeCorals(x0, x1, n, seed, big) {
   });
 }
 const CORALS = makeCorals(CORAL_X0, CORAL_X1, 46, 0).filter(c => Math.abs(c.x - ollie.x) > 30);
-const CITY_CORALS = makeCorals(CITY_X0, CITY_X1, 90, 17, true).filter(c => Math.abs(c.x - 13848) > 26 && Math.abs(c.x - 14036) > 30);   // room for nib + shelby
-const STARS_SEA = [10760, 10890, 11170, 11330, 13820, 14050, 14260, 14420].map((x, i) => ({ x, r: 0.4 + i * 0.37, col: ['#e88a70', '#e8b070', '#d870a0', '#e88a70'][i % 4] }));
+const CITY_CORALS = makeCorals(CITY_X0, CITY_X1, 150, 17, true).filter(c => Math.abs(c.x - 13478) > 26 && Math.abs(c.x - 13700) > 30 && !(c.x > 14100 && c.x < 14122));   // room for nib + shelby
+const STARS_SEA = [10760, 10890, 11170, 11330, 13400, 13700, 13930, 14120, 14290, 14440].map((x, i) => ({ x, r: 0.4 + i * 0.37, col: ['#e88a70', '#e8b070', '#d870a0', '#e88a70'][i % 4] }));
 // the city skyline: coral towers on the tiers + shelves, windows lit by glowing polyps. on: the depth they stand on (else the seabed)
 const TOWERS = [
-  { x: 13830, on: 440, h: 170, w: 28 }, { x: 13872, on: 440, h: 240, w: 36 },     // up on the high shelf
-  { x: 13812, h: 70, w: 26 }, { x: 13885, h: 56, w: 22 },                           // little flats down under the deep ledge…
-  { x: 13996, h: 64, w: 24 }, { x: 14092, h: 58, w: 22 },                           // …and under the school ledge
-  { x: 14180, h: 200, w: 30 }, { x: 14228, on: 200, h: 90, w: 22 },                  // the third tier, and up on the crest shelf
-  { x: 14250, h: 52, w: 22 }, { x: 14322, h: 46, w: 20 },                           // more flats, under the crest shelf
+  { x: 13460, on: 440, h: 170, w: 28 }, { x: 13502, on: 440, h: 240, w: 36 },     // far west: up on the high shelf, by the drop
+  { x: 13442, h: 70, w: 26 }, { x: 13515, h: 56, w: 22 }, { x: 13385, h: 120, w: 30 },   // little flats under the deep ledge, a tall one by the shaft
+  { x: 13640, h: 56, w: 22 }, { x: 13790, h: 60, w: 22 },                           // flats under the school ledge
+  { x: 13897, h: 150, w: 24 },                                                      // the schoolyard's lookout tower, at the top of the wall
+  { x: 14010, h: 52, w: 22 }, { x: 14064, h: 58, w: 22 },                           // flats under the long hall
+  { x: 14100, h: 190, w: 30 },                                                      // the hall's tall neighbor
+  { x: 14160, h: 46, w: 20 },                                                       // flats under the arcade
+  { x: 14205, h: 210, w: 30 }, { x: 14228, on: 200, h: 90, w: 22 },                  // the market gate, and up on the crest shelf
+  { x: 14338, h: 50, w: 20 },                                                       // more flats, under the crest shelf
 ].map((t, i) => Object.assign(t, { col: CORAL_COLS[(i * 3) % CORAL_COLS.length], eel: i % 3 === 1 }));
 const towerBase = t => (t.on != null ? seaY() + t.on : groundY(t.x)) + 4;
 const ARCH = { x0: 14255, x1: 14335, on: 200 };   // stands on the crest shelf
@@ -63,17 +69,26 @@ const ARCH = { x0: 14255, x1: 14335, on: 200 };   // stands on the crest shelf
    can't swim up through them (shelfCollide). every one opens to the LEFT — toward the drop — and the
    water between the net and the shelves is a clear shaft from the surface to the very bottom. ── */
 const SHELVES = [
-  { x0: 13800, x1: 13950, top: 610, bot: 648 },                // the deep ledge, off the second tier: a dark nook under it
-  { x0: 13790, x1: 13920, top: 440, bot: 474 },                // the high shelf, stacked on the deep ledge…
-  { x0: 13896, x1: 13920, top: 474, bot: 610, pillar: true },  // …on a coral pillar
-  { x0: 13960, x1: 14185, top: 400, bot: 438 },                // the school ledge, off the third tier
-  { x0: 14215, x1: 14400, top: 200, bot: 232 },                // the crest shelf, off the reef crest, over the third tier
+  { x0: 13430, x1: 13580, top: 610, bot: 648 },                // the deep ledge, off the second tier: a dark nook under it
+  { x0: 13420, x1: 13550, top: 440, bot: 474 },                // the high shelf, stacked on the deep ledge…
+  { x0: 13526, x1: 13550, top: 474, bot: 610, pillar: true },  // …on a coral pillar
+  { x0: 13590, x1: 13915, top: 400, bot: 438 },                // the school ledge, off the third tier: the school stands on it
+  { x0: 13985, x1: 14080, top: 195, bot: 225 },                // the long hall: a roof of reef over the market terrace, on a middle pillar…
+  { x0: 14030, x1: 14046, top: 225, bot: 345, pillar: true },  // …so there are two bays, one open each way
+  { x0: 14120, x1: 14185, top: 205, bot: 235 },                // the arcade, with its own pillar
+  { x0: 14167, x1: 14185, top: 235, bot: 350, pillar: true },
+  { x0: 14215, x1: 14400, top: 200, bot: 232 },                // the crest shelf, off the reef crest, over the market
 ];
 const inShelf = (x, d, m) => SHELVES.some(b => x > b.x0 - m && x < b.x1 + m && d > b.top - m && d < b.bot + m);
 // coral growing on the shelves (by = the depth it stands on)
 const SHELF_CORALS = [
-  ...makeCorals(13792, 13865, 6, 31).map(c => Object.assign(c, { by: 440, s: c.s * 0.85 })),
-  ...makeCorals(13806, 13890, 5, 43).map(c => Object.assign(c, { by: 610, s: c.s * 0.7 })),
+  ...makeCorals(13422, 13495, 6, 31).map(c => Object.assign(c, { by: 440, s: c.s * 0.85 })),
+  ...makeCorals(13436, 13520, 5, 43).map(c => Object.assign(c, { by: 610, s: c.s * 0.7 })),
+  ...makeCorals(13840, 13880, 3, 61).map(c => Object.assign(c, { by: 400, s: c.s * 0.7 })),
+  ...makeCorals(13990, 14076, 6, 53).map(c => Object.assign(c, { by: 195, s: c.s * 0.8 })),
+  ...makeCorals(14124, 14182, 4, 71).map(c => Object.assign(c, { by: 205, s: c.s * 0.75 })),
+  ...makeCorals(14222, 14250, 2, 83).map(c => Object.assign(c, { by: 200, s: c.s * 0.8 })),
+  ...makeCorals(14340, 14396, 3, 89).map(c => Object.assign(c, { by: 200, s: c.s * 0.8 })),
 ];
 
 /* ── things that live down there ── */
@@ -91,20 +106,20 @@ function addFish(lo, hi, n, seed, homeFn, colFn, schools) {
 }
 const FISH_COLS = [[230, 170, 90], [160, 200, 220], [220, 130, 120], [200, 210, 150], [190, 150, 230], [250, 220, 120], [120, 220, 200]];
 addFish(10500, SEA_NET_X - 30, 36, 0, (i, s) => s >= 0 ? 70 + s * 45 : 40 + hash(i * 2.2) * 170, (i, s) => s >= 0 ? FISH_COLS[s] : FISH_COLS[i % 5], 3);
-addFish(CITY_X0, CITY_X1, 64, 10, (i, s) => s >= 0 ? 90 + s * 110 : 60 + hash(i * 2.2) * 520, (i, s) => s >= 0 ? FISH_COLS[(s + 3) % 7] : FISH_COLS[i % 7], 4);
+addFish(CITY_X0, CITY_X1, 120, 10, (i, s) => s >= 0 ? 80 + s * 100 : 60 + hash(i * 2.2) * 520, (i, s) => s >= 0 ? FISH_COLS[(s + 3) % 7] : FISH_COLS[i % 7], 6);
 // drifting and gliding things in the reef city (jellies bob around y0, clear of the shelves)
 const CITY_LIFE = [
-  ...[[13760, 300], [13940, 190], [14230, 120], [14420, 80], [13845, 540], [14060, 490]].map(([x, y0], i) => ({ kind: 'jelly', x, y0, y: y0, ph: i * 1.3, col: [[200, 160, 240], [160, 220, 240], [240, 170, 200]][i % 3] })),
-  { kind: 'turtle', x: 13900, y: 150, vx: 0.35 }, { kind: 'turtle', x: 14300, y: 90, vx: -0.25 },
-  { kind: 'ray', x: 14100, y: 220, vx: 0.5, hi: 14180 },
-  ...[13960, 14150, 14330, 14480].map((x, i) => ({ kind: 'seahorse', x, ph: i * 2, col: [[240, 190, 90], [240, 140, 150], [150, 210, 190], [220, 180, 240]][i] })),
-  ...[13830, 14090, 14400, 14520].map((x, i) => ({ kind: 'crab', x, ph: i * 1.7 })),
-  ...[13760, 14112, 14250, 14450].map((x, i) => ({ kind: 'urchin', x, s: 0.8 + i * 0.15 })),
+  ...[[13385, 330], [13480, 525], [13590, 60], [13690, 490], [13800, 230], [13960, 160], [14060, 110], [14170, 120], [14320, 60], [14420, 80], [14230, 120]].map(([x, y0], i) => ({ kind: 'jelly', x, y0, y: y0, ph: i * 1.3, col: [[200, 160, 240], [160, 220, 240], [240, 170, 200]][i % 3] })),
+  { kind: 'turtle', x: 13700, y: 140, vx: 0.35 }, { kind: 'turtle', x: 14300, y: 90, vx: -0.25 }, { kind: 'turtle', x: 13950, y: 60, vx: 0.2 },
+  { kind: 'ray', x: 14000, y: 105, vx: 0.5, hi: 14180 },
+  ...[13380, 13760, 13950, 14110, 14240, 14330, 14480].map((x, i) => ({ kind: 'seahorse', x, ph: i * 2, col: [[240, 190, 90], [240, 140, 150], [150, 210, 190], [220, 180, 240]][i % 4] })),
+  ...[13470, 13770, 13940, 14070, 14150, 14400, 14520].map((x, i) => ({ kind: 'crab', x, ph: i * 1.7 })),
+  ...[13400, 13720, 13945, 14040, 14172, 14250, 14450].map((x, i) => ({ kind: 'urchin', x, s: 0.8 + (i % 4) * 0.15 })),
 ];
 // the bait ball: one big school of little silver fish, slowly turning over the city. it parts around you
-const SWARM = { x: 13895, d: 230, fish: Array.from({ length: 92 }, (_, i) => {
+const SWARM = { x: 13740, d: 95, fish: Array.from({ length: 92 }, (_, i) => {
   const a = hash(i * 4.3 + 50) * 6.283, r = 8 + Math.sqrt(hash(i * 7.7 + 50)) * 50;
-  return { a, r, x: 13895 + Math.cos(a) * r * 1.5, d: 230 + Math.sin(a) * r * 0.75, ph: hash(i * 2.9 + 50) * 6, k: 0.3 + hash(i * 1.9 + 50) * 0.14, dir: 1 };
+  return { a, r, x: 13740 + Math.cos(a) * r * 1.5, d: 95 + Math.sin(a) * r * 0.75, ph: hash(i * 2.9 + 50) * 6, k: 0.3 + hash(i * 1.9 + 50) * 0.14, dir: 1 };
 }) };
 
 /* ── who's nearby ── */
@@ -151,18 +166,20 @@ function talkToGuard(g) {
    · then: headcount. nib (a very small octopus) is hiding in the dark nook under the
      deep ledge. talk him round, and he follows your path back up to class.
 ══════════════════════════════════════════ */
-const SCHOOL_X = 14114, SCHOOL_D = 400, CORALIE_X = 14062, SHELBY_X = 14036, CONCH_X = 13842, NIB_HIDE_X = 13848, NIB_SEAT_X = 14012;
+const SCHOOL_X = 13660, SCHOOL_D = 400, CORALIE_X = 13742, SHELBY_X = 13700, CONCH_X = 13472, NIB_HIDE_X = 13478, NIB_SEAT_X = 13816;
 const coralie = makeRegular({ name: 'miss coralie', kind: 'seahorse', color: '#e0a878', x: CORALIE_X, stage: 0 });
 const shelby  = makeRegular({ name: 'shelby', kind: 'hermit', color: '#d88068', x: SHELBY_X, stage: 0, shell: 'bell' });
 const nib     = makeRegular({ name: 'nib', kind: 'octopus', color: '#b8a0e0', x: NIB_HIDE_X, d: null, stage: 0, follow: false, home: false, trail: [] });
-const theClass = makeRegular({ name: 'the class', x: 13998 });
+const theClass = makeRegular({ name: 'the class', x: 13806 });
 const nibY = () => nib.d == null ? groundY(nib.x) : seaY() + nib.d;      // his feet (on the seabed while he hides)
 // the class, in two rows on coral stools, facing miss coralie. nib's seat stays empty till he's back
 const STUDENTS = [
-  { x: 13976, kind: 'crab', color: '#e8a080', k: 0.48, back: true }, { x: 14000, kind: 'puffer', color: '#f0d890', k: 0.5, back: true },
-  { x: 14026, kind: 'seahorse', color: '#90d0c0', k: 0.55, back: true },
-  { x: 13988, kind: 'tortoise', color: '#a8c890', k: 0.5 }, { x: NIB_SEAT_X, nib: true }, { x: 14038, kind: 'fish', color: '#f0b0c0', k: 0.5 },
+  { x: 13780, kind: 'crab', color: '#e8a080', k: 0.48, back: true }, { x: 13804, kind: 'puffer', color: '#f0d890', k: 0.5, back: true },
+  { x: 13830, kind: 'seahorse', color: '#90d0c0', k: 0.55, back: true },
+  { x: 13792, kind: 'tortoise', color: '#a8c890', k: 0.5 }, { x: NIB_SEAT_X, nib: true }, { x: 13842, kind: 'fish', color: '#f0b0c0', k: 0.5 },
 ];
+// the schoolyard up on the terrace: kids at play around the gym, swing and slide (just for looks)
+const YARD_KIDS = [{ x: 13921, kind: 'crab', color: '#e07a5a', k: 0.42 }, { x: 13950, kind: 'puffer', color: '#9ad0c0', k: 0.42 }, { x: 13969, kind: 'tortoise', color: '#a8c890', k: 0.4 }, { x: 13935, kind: 'octopus', color: '#d890a8', k: 0.4 }];
 OUT_TALKERS.push({ n: coralie, at: () => [coralie.x, seaY() + SCHOOL_D - 62] });
 OUT_TALKERS.push({ n: shelby, at: () => [shelby.x, groundY(shelby.x) - 34] });
 OUT_TALKERS.push({ n: nib, at: () => [nib.x, nibY() - 34] });
@@ -173,7 +190,7 @@ const nearCoralie = () => near(CORALIE_X, seaY() + SCHOOL_D, 40, 60);
 const nearShelby  = () => near(shelby.x, groundY(shelby.x), 50, 60);
 const nearConch   = () => !sea.conchTaken && near(CONCH_X, seaY() + 610, 40, 50);
 const nearNib     = () => !nib.home && near(nib.x, nibY(), 50, 60);
-const nearClass   = () => near(14005, seaY() + SCHOOL_D, 40, 60);
+const nearClass   = () => near(13806, seaY() + SCHOOL_D, 40, 60);
 
 const CORALIE_INTRO = [
   "oh! a visitor! class, say hello. … class. CLASS. thank you. i'm miss coralie, and this is the reef school.",
@@ -385,7 +402,7 @@ function updateSea() {
   // the bait ball: turns slowly in a figure-eight over the city; the fish make room around you
   if (nearCity) {
     const t = tick * 0.0035, pd = player._py - 30 * s - wy, px = player.wx;
-    SWARM.x = 13895 + Math.sin(t) * 95; SWARM.d = 225 + Math.sin(t * 2) * 40;
+    SWARM.x = 13740 + Math.sin(t) * 120; SWARM.d = 95 + Math.sin(t * 2) * 28;
     SWARM.fish.forEach(f => {
       f.a += f.r < 30 ? 0.016 : 0.011;
       let tx = SWARM.x + Math.cos(f.a) * f.r * 1.5, td = SWARM.d + Math.sin(f.a) * f.r * 0.75 + Math.sin(tick * 0.05 + f.ph) * 2;
@@ -495,7 +512,7 @@ function drawReefCity() {
   const ox = -camX, wy = seaY();
   ctx.save(); ctx.lineCap = 'round';
   // a soft glow over the whole city
-  drawGlow(ox + 14000, wy + 400, 420, 0.08, [120, 200, 220]);
+  drawGlow(ox + 13850, wy + 400, 520, 0.08, [120, 200, 220]); drawGlow(ox + 14200, wy + 300, 380, 0.06, [120, 200, 220]);
   // towers
   TOWERS.forEach((t, i) => {
     const x = ox + t.x; if (x < -80 || x > W + 80) return;
@@ -532,6 +549,7 @@ function drawReefCity() {
     ctx.strokeStyle = 'rgba(220,160,200,0.4)'; ctx.lineWidth = 2; ctx.stroke();
     for (let i = 1; i < 8; i++) { const t = i / 8, x = ax0 + (ax1 - ax0) * t, y = top + 24 + Math.pow(2 * t - 1, 2) * 70; drawGlow(x, y, 10, 0.3, [240, 200, 255]); }
   }
+  drawCityDistricts();
   drawCorals(CITY_CORALS);
   // seahorses on the coral, crabs + urchins on the tiers
   CITY_LIFE.forEach(c => {
@@ -553,7 +571,7 @@ function drawReefCity() {
     else if (c.kind === 'ray') drawRay(x, y + Math.sin(tick * 0.015) * 14, Math.sign(c.vx));
     else if (c.kind === 'jelly') drawJelly(x + Math.sin(c.ph * 0.7) * 10, y, c.col, c.ph);
   });
-  drawReefSign(CITY_X1 - 40, 'the reef city');
+  drawReefSign(CITY_X1 - 40, 'the reef city'); drawReefSign(14345, 'school  <<');
   // the reef crest, where the surf begins
   for (let i = 0; i < 10; i++) {
     const x = REEF_X - 70 + i * 16, b = groundY(x);
@@ -615,10 +633,10 @@ function drawCityShelves() {
 // the school, the class, miss coralie, shelby (in his bell, or his new conch), and nib
 function drawSchoolAndClass() {
   const ox = -camX, wy = seaY(), ly = wy + SCHOOL_D;
-  if (SCHOOL_X - camX > -200 && SCHOOL_X - camX < W + 200) {
+  if (Math.abs(13760 - camX - W / 2) < W / 2 + 260) {
     drawSchool(ox + SCHOOL_X, ly);
     // the back row sits on a coral bench
-    ctx.fillStyle = 'rgba(190,140,150,0.75)'; ctx.fillRect(ox + 13966, ly - 13, 72, 4); ctx.fillRect(ox + 13968, ly - 10, 4, 10); ctx.fillRect(ox + 14032, ly - 10, 4, 10);
+    ctx.fillStyle = 'rgba(190,140,150,0.75)'; ctx.fillRect(ox + 13770, ly - 13, 72, 4); ctx.fillRect(ox + 13772, ly - 10, 4, 10); ctx.fillRect(ox + 13836, ly - 10, 4, 10);
     STUDENTS.forEach((st, i) => {
       const x = ox + st.x, y = (st.back ? ly - 13 : ly) + Math.sin(tick * 0.05 + i * 1.7) * (st.kind === 'puffer' || st.kind === 'fish' ? 1.5 : 0);
       if (!st.back) { ctx.fillStyle = 'rgba(200,150,120,0.7)'; ctx.beginPath(); ctx.ellipse(x, ly - 2, 7, 3, 0, 0, 7); ctx.fill(); }
@@ -626,7 +644,7 @@ function drawSchoolAndClass() {
       if (st.kind === 'fish') drawFish(x, y - 9, { k: 0.8, vx: 1, ph: i, col: [240, 176, 192] });
       else drawCritter(x, y, st.kind, { color: st.color, scale: st.k, dir: 1 });
     });
-    drawCritter(ox + coralie.x, ly + 1 + Math.sin(tick * 0.03) * 1.5, 'seahorse', { color: coralie.color, scale: 1.25, dir: faceToward(coralie.x, -1), specs: true, talking: coralie.bubbleT > 0 });
+    drawCritter(ox + coralie.x, ly + 1 + Math.sin(tick * 0.03) * 1.5, 'seahorse', { color: coralie.color, scale: 1.25, dir: faceToward(coralie.x, 1), specs: true, talking: coralie.bubbleT > 0 });
   }
   if (Math.abs(shelby.x - camX - W / 2) < W) {
     const sx = shelby.x + Math.sin(tick * 0.008) * 3;
@@ -640,29 +658,115 @@ function drawSchoolAndClass() {
 }
 function drawSchool(x, b) {
   ctx.save(); ctx.lineCap = 'round';
-  drawGlow(x, b - 40, 90, 0.12, [255, 210, 160]);
-  // walls: a big rounded block of brain coral
-  ctx.fillStyle = 'rgba(176,120,112,0.95)'; ctx.strokeStyle = 'rgba(240,190,170,0.5)'; ctx.lineWidth = 1.2;
-  ctx.beginPath(); ctx.moveTo(x - 30, b); ctx.lineTo(x - 30, b - 60); ctx.quadraticCurveTo(x - 30, b - 68, x - 22, b - 68); ctx.lineTo(x + 22, b - 68); ctx.quadraticCurveTo(x + 30, b - 68, x + 30, b - 60); ctx.lineTo(x + 30, b); ctx.closePath(); ctx.fill(); ctx.stroke();
+  drawGlow(x, b - 80, 170, 0.14, [255, 210, 160]);
+  const wall = 'rgba(176,120,112,0.96)', wallLine = 'rgba(240,190,170,0.5)', shell = 'rgba(232,206,170,0.96)', shellLine = 'rgba(160,120,90,0.8)';
+  // the annex wing on the yard side: the library, a lower dome of brain coral
+  ctx.fillStyle = 'rgba(160,108,112,0.96)'; ctx.strokeStyle = wallLine; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(x + 50, b); ctx.lineTo(x + 50, b - 34); ctx.quadraticCurveTo(x + 66, b - 62, x + 84, b - 34); ctx.lineTo(x + 84, b); ctx.closePath(); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = 'rgba(30,20,22,0.95)'; ctx.beginPath(); ctx.arc(x + 67, b - 34, 7, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,205,140,0.6)'; ctx.beginPath(); ctx.arc(x + 67, b - 34, 5, 0, 7); ctx.fill(); drawGlow(x + 67, b - 34, 16, 0.25, [255, 200, 130]);
+  // ground floor: a wide rounded block of brain coral
+  ctx.fillStyle = wall; ctx.strokeStyle = wallLine;
+  ctx.beginPath(); ctx.moveTo(x - 58, b); ctx.lineTo(x - 58, b - 64); ctx.quadraticCurveTo(x - 58, b - 72, x - 50, b - 72); ctx.lineTo(x + 50, b - 72); ctx.quadraticCurveTo(x + 58, b - 72, x + 58, b - 64); ctx.lineTo(x + 58, b); ctx.closePath(); ctx.fill(); ctx.stroke();
+  // second floor, a little narrower, with a balcony rail between
+  ctx.fillStyle = 'rgba(190,134,122,0.96)';
+  ctx.beginPath(); ctx.moveTo(x - 44, b - 72); ctx.lineTo(x - 44, b - 126); ctx.quadraticCurveTo(x - 44, b - 134, x - 36, b - 134); ctx.lineTo(x + 36, b - 134); ctx.quadraticCurveTo(x + 44, b - 134, x + 44, b - 126); ctx.lineTo(x + 44, b - 72); ctx.closePath(); ctx.fill(); ctx.stroke();
   ctx.strokeStyle = 'rgba(120,70,70,0.35)'; ctx.lineWidth = 1;
-  for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo(x - 28, b - 8 - i * 10); ctx.quadraticCurveTo(x, b - 12 - i * 10 + (i % 2 ? 4 : -4), x + 28, b - 8 - i * 10); ctx.stroke(); }
-  // roof: a scallop shell
-  ctx.fillStyle = 'rgba(232,206,170,0.95)'; ctx.strokeStyle = 'rgba(160,120,90,0.8)';
-  ctx.beginPath(); ctx.moveTo(x - 38, b - 64); ctx.quadraticCurveTo(x - 30, b - 98, x, b - 100); ctx.quadraticCurveTo(x + 30, b - 98, x + 38, b - 64); ctx.closePath(); ctx.fill(); ctx.stroke();
-  for (let i = -3; i <= 3; i++) { ctx.beginPath(); ctx.moveTo(x + i * 3, b - 98); ctx.lineTo(x + i * 10.5, b - 65); ctx.stroke(); }
-  // belfry, with the bell back in it once it's found
-  ctx.strokeStyle = 'rgba(232,206,170,0.95)'; ctx.lineWidth = 2.5;
-  ctx.beginPath(); ctx.moveTo(x - 8, b - 99); ctx.lineTo(x - 8, b - 118); ctx.moveTo(x + 8, b - 99); ctx.lineTo(x + 8, b - 118); ctx.stroke();
-  ctx.beginPath(); ctx.arc(x, b - 118, 8, Math.PI, 0); ctx.stroke();
-  if (questState.schoolbell === 'done') drawSchoolBell(x + Math.sin(tick * 0.05) * 1.2, b - 113, 0.55);
-  else { ctx.strokeStyle = 'rgba(200,180,150,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x, b - 124); ctx.lineTo(x, b - 110); ctx.stroke(); }
-  // door + windows, lamplit
-  ctx.fillStyle = 'rgba(30,20,22,0.95)'; ctx.beginPath(); ctx.moveTo(x - 9, b); ctx.lineTo(x - 9, b - 20); ctx.arc(x, b - 20, 9, Math.PI, 0); ctx.lineTo(x + 9, b); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = 'rgba(255,200,130,0.45)'; ctx.beginPath(); ctx.moveTo(x - 6, b); ctx.lineTo(x - 6, b - 19); ctx.arc(x, b - 19, 6, Math.PI, 0); ctx.lineTo(x + 6, b); ctx.closePath(); ctx.fill();
-  [-19, 19].forEach(dx => { ctx.fillStyle = 'rgba(30,20,22,0.95)'; ctx.beginPath(); ctx.arc(x + dx, b - 30, 5.5, 0, 7); ctx.fill(); ctx.fillStyle = 'rgba(255,205,140,0.6)'; ctx.beginPath(); ctx.arc(x + dx, b - 30, 3.8, 0, 7); ctx.fill(); drawGlow(x + dx, b - 30, 14, 0.25, [255, 200, 130]); });
+  for (let i = 0; i < 12; i++) { const yy = b - 6 - i * 10.5, w = yy < b - 72 ? 42 : 56; ctx.beginPath(); ctx.moveTo(x - w, yy); ctx.quadraticCurveTo(x, yy - 4 + (i % 2 ? 4 : -4), x + w, yy); ctx.stroke(); }
+  ctx.strokeStyle = 'rgba(232,206,170,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x - 50, b - 75); ctx.lineTo(x + 50, b - 75); ctx.stroke();
+  for (let i = -5; i <= 5; i++) { ctx.beginPath(); ctx.moveTo(x + i * 9.5, b - 75); ctx.lineTo(x + i * 9.5, b - 84); ctx.stroke(); }
+  // roof: a big scallop shell
+  ctx.fillStyle = shell; ctx.strokeStyle = shellLine; ctx.lineWidth = 1.2;
+  ctx.beginPath(); ctx.moveTo(x - 52, b - 128); ctx.quadraticCurveTo(x - 40, b - 170, x, b - 174); ctx.quadraticCurveTo(x + 40, b - 170, x + 52, b - 128); ctx.closePath(); ctx.fill(); ctx.stroke();
+  for (let i = -4; i <= 4; i++) { ctx.beginPath(); ctx.moveTo(x + i * 3, b - 172); ctx.lineTo(x + i * 12, b - 130); ctx.stroke(); }
+  // the bell tower: a belfry on the ridge, with the bell back in it once it's found
+  ctx.strokeStyle = shell; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(x - 11, b - 172); ctx.lineTo(x - 11, b - 196); ctx.moveTo(x + 11, b - 172); ctx.lineTo(x + 11, b - 196); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x, b - 196, 11, Math.PI, 0); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(x, b - 207); ctx.lineTo(x, b - 218); ctx.stroke();
+  const fl = Math.sin(tick * 0.07) * 2; ctx.fillStyle = 'rgba(240,140,120,0.95)'; ctx.beginPath(); ctx.moveTo(x, b - 218); ctx.lineTo(x + 12 + fl, b - 214); ctx.lineTo(x, b - 210); ctx.closePath(); ctx.fill();
+  if (questState.schoolbell === 'done') drawSchoolBell(x + Math.sin(tick * 0.05) * 1.2, b - 190, 0.7);
+  else { ctx.strokeStyle = 'rgba(200,180,150,0.6)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(x, b - 205); ctx.lineTo(x, b - 186); ctx.stroke(); }
+  // the big door, with steps
+  ctx.fillStyle = 'rgba(30,20,22,0.95)'; ctx.beginPath(); ctx.moveTo(x - 12, b); ctx.lineTo(x - 12, b - 26); ctx.arc(x, b - 26, 12, Math.PI, 0); ctx.lineTo(x + 12, b); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(255,200,130,0.45)'; ctx.beginPath(); ctx.moveTo(x - 9, b); ctx.lineTo(x - 9, b - 25); ctx.arc(x, b - 25, 9, Math.PI, 0); ctx.lineTo(x + 9, b); ctx.closePath(); ctx.fill();
+  ctx.fillStyle = 'rgba(200,150,140,0.9)'; ctx.fillRect(x - 18, b - 3, 36, 3); ctx.fillRect(x - 15, b - 6, 30, 3);
+  // windows, lamplit: two on the ground floor, three up above
+  [[-36, 40], [36, 40], [-26, 100], [0, 100], [26, 100]].forEach(([dx, h]) => {
+    ctx.fillStyle = 'rgba(30,20,22,0.95)'; ctx.beginPath(); ctx.arc(x + dx, b - h, 6, 0, 7); ctx.fill();
+    ctx.fillStyle = 'rgba(255,205,140,0.62)'; ctx.beginPath(); ctx.arc(x + dx, b - h, 4.2, 0, 7); ctx.fill(); drawGlow(x + dx, b - h, 15, 0.26, [255, 200, 130]);
+  });
   // the sign
-  ctx.fillStyle = 'rgba(214,196,150,0.95)'; ctx.fillRect(x - 24, b - 56, 48, 13);
-  ctx.fillStyle = 'rgba(60,40,30,0.95)'; ctx.font = '7px Space Mono, monospace'; ctx.textAlign = 'center'; ctx.fillText('reef school', x, b - 47);
+  ctx.fillStyle = 'rgba(214,196,150,0.95)'; ctx.fillRect(x - 27, b - 62, 54, 13);
+  ctx.fillStyle = 'rgba(60,40,30,0.95)'; ctx.font = '7px Space Mono, monospace'; ctx.textAlign = 'center'; ctx.fillText('reef school', x, b - 52);
+  ctx.restore();
+}
+// the reef city's districts, between the school and the crest: the schoolyard (gym, swing, slide), little coral houses,
+// the long hall and arcade (lamps + flats), the garden row, and the night market under the crest shelf
+const HOUSES = [[13392, 24, 40, 1], [13740, 22, 34, 3], [13810, 22, 34, 0], [13926, 26, 40, 2], [14000, 22, 36, 4], [14064, 22, 36, 0], [14150, 22, 34, 5], [14102, 20, 30, 6], [14202, 24, 42, 1], [14290, 22, 36, 2], [14325, 22, 34, 3]];
+const STALLS = [14240, 14268, 14306, 14352, 14378];
+function drawCityDistricts() {
+  const ox = -camX, wy = seaY(), on = x => x + ox > -80 && x + ox < W + 80;
+  ctx.save(); ctx.lineCap = 'round';
+  // coral houses: little domes with a lit window and a door
+  HOUSES.forEach(([hx, w, h, ci], i) => {
+    if (!on(hx)) return;
+    const x = ox + hx, b = groundY(hx) + 2, [r, g, bl] = CORAL_COLS[ci];
+    ctx.fillStyle = `rgba(${r * 0.5 | 0},${g * 0.5 | 0},${bl * 0.55 | 0},0.95)`; ctx.strokeStyle = `rgba(${r},${g},${bl},0.55)`; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(x - w / 2, b); ctx.lineTo(x - w / 2, b - h * 0.55); ctx.quadraticCurveTo(x - w / 2, b - h, x, b - h); ctx.quadraticCurveTo(x + w / 2, b - h, x + w / 2, b - h * 0.55); ctx.lineTo(x + w / 2, b); ctx.closePath(); ctx.fill(); ctx.stroke();
+    const lit = 0.55 + 0.4 * Math.sin(tick * 0.03 + i * 2.1);
+    ctx.fillStyle = `rgba(255,214,150,${0.45 + 0.4 * lit})`; ctx.beginPath(); ctx.arc(x - w * 0.12, b - h * 0.62, 2.8, 0, 7); ctx.fill(); drawGlow(x - w * 0.12, b - h * 0.62, 11, 0.22 * lit, [255, 205, 140]);
+    ctx.fillStyle = 'rgba(20,12,16,0.9)'; ctx.beginPath(); ctx.moveTo(x + w * 0.1, b); ctx.lineTo(x + w * 0.1, b - h * 0.3); ctx.arc(x + w * 0.22, b - h * 0.3, w * 0.12, Math.PI, 0); ctx.lineTo(x + w * 0.34, b); ctx.closePath(); ctx.fill();
+  });
+  // the schoolyard on the terrace: a jungle gym, a kelp swing, a slide, and the kids
+  if (on(13960) || on(13920)) {
+    const gb = groundY(13950) + 2, gx = ox + 13921;
+    ctx.strokeStyle = 'rgba(210,150,160,0.9)'; ctx.lineWidth = 3;   // jungle gym
+    ctx.beginPath(); ctx.moveTo(gx - 14, gb); ctx.lineTo(gx - 8, gb - 30); ctx.lineTo(gx - 2, gb); ctx.moveTo(gx + 2, gb); ctx.lineTo(gx + 8, gb - 30); ctx.lineTo(gx + 14, gb); ctx.moveTo(gx - 8, gb - 30); ctx.lineTo(gx + 8, gb - 30); ctx.stroke();
+    ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(gx - 11, gb - 18); ctx.lineTo(gx + 11, gb - 18); ctx.stroke();
+    const sx = ox + 13950, sa = Math.sin(tick * 0.04) * 0.35;   // swing
+    ctx.lineWidth = 3; ctx.strokeStyle = 'rgba(210,150,160,0.9)'; ctx.beginPath(); ctx.moveTo(sx - 12, gb); ctx.lineTo(sx - 12, gb - 44); ctx.lineTo(sx + 12, gb - 44); ctx.lineTo(sx + 12, gb); ctx.stroke();
+    const px = sx + Math.sin(sa) * 24, py = gb - 44 + Math.cos(sa) * 24;
+    ctx.lineWidth = 1; ctx.strokeStyle = 'rgba(150,200,140,0.9)'; ctx.beginPath(); ctx.moveTo(sx - 3, gb - 44); ctx.lineTo(px - 4, py); ctx.moveTo(sx + 3, gb - 44); ctx.lineTo(px + 4, py); ctx.stroke();
+    ctx.fillStyle = 'rgba(232,206,170,0.95)'; ctx.fillRect(px - 6, py, 12, 3);
+    ctx.strokeStyle = 'rgba(232,200,170,0.9)'; ctx.lineWidth = 4;   // slide
+    const lb = ox + 13972; ctx.beginPath(); ctx.moveTo(lb, gb - 34); ctx.quadraticCurveTo(lb + 12, gb - 14, lb + 18, gb - 3); ctx.stroke(); ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(lb - 3, gb - 36); ctx.lineTo(lb - 3, gb); ctx.stroke();
+    YARD_KIDS.forEach((k, i) => drawCritter(ox + k.x, groundY(k.x) + 1 - Math.max(0, Math.sin(tick * 0.08 + i * 2)) * 4, k.kind, { color: k.color, scale: k.k, dir: i % 2 ? -1 : 1 }));
+    drawFish(px, py - 8, { k: 0.5, vx: 1, ph: 1, col: [240, 176, 192] });
+  }
+  // the long hall + arcade: lamps of polyps along the roofs
+  [[13990, 14078, 225], [14124, 14182, 235]].forEach(([a, b2, bot]) => {
+    for (let hx = a + 10; hx < b2; hx += 22) {
+      if (!on(hx)) continue;
+      const on2 = 0.5 + 0.5 * Math.sin(tick * 0.035 + hx), gb = groundY(hx);
+      ctx.strokeStyle = 'rgba(120,100,120,0.8)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(ox + hx, wy + bot + 4); ctx.lineTo(ox + hx, wy + bot + 16); ctx.stroke();
+      drawGlow(ox + hx, wy + bot + 18, 12, 0.3 * on2 + 0.1, [255, 220, 150]);
+      ctx.fillStyle = 'rgba(255,230,170,0.85)'; ctx.beginPath(); ctx.arc(ox + hx, wy + bot + 18, 2.2, 0, 7); ctx.fill();
+    }
+  });
+  // the garden row: fence, kelp lanterns, flower beds
+  for (let gx0 = 14100; gx0 < 14214; gx0 += 7) {
+    if (!on(gx0)) continue;
+    const gb = groundY(gx0) + 2, x = ox + gx0, k = Math.floor(gx0 / 7);
+    ctx.strokeStyle = 'rgba(200,170,140,0.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(x, gb); ctx.lineTo(x, gb - 11); ctx.stroke();
+    if (k % 3 === 0) {
+      const [r, g, bl] = CORAL_COLS[k % 7], sw = Math.sin(tick * 0.04 + k) * 1.5;
+      ctx.fillStyle = `rgba(${r},${g},${bl},0.9)`; ctx.beginPath(); ctx.arc(x + 3 + sw, gb - 18, 3.2, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(90,170,120,0.85)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(x + 3, gb); ctx.quadraticCurveTo(x + 3 + sw, gb - 9, x + 3 + sw, gb - 16); ctx.stroke();
+    }
+    if (k % 6 === 0) { const lp = 0.55 + 0.45 * Math.sin(tick * 0.04 + k); ctx.strokeStyle = 'rgba(90,150,110,0.85)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x, gb); ctx.lineTo(x, gb - 30); ctx.stroke(); drawGlow(x, gb - 32, 14, 0.3 * lp, [190, 255, 200]); ctx.fillStyle = 'rgba(200,255,210,0.9)'; ctx.beginPath(); ctx.arc(x, gb - 32, 2, 0, 7); ctx.fill(); }
+  }
+  ctx.strokeStyle = 'rgba(200,170,140,0.6)'; ctx.lineWidth = 1;
+  if (on(14100) || on(14214)) { const gb = groundY(14150) + 2; ctx.beginPath(); ctx.moveTo(ox + 14100, gb - 8); ctx.lineTo(ox + 14214, gb - 8); ctx.stroke(); }
+  // the night market under the crest shelf: little stalls with striped awnings, goods, and lanterns
+  STALLS.forEach((sx0, i) => {
+    if (!on(sx0)) return;
+    const x = ox + sx0, gb = groundY(sx0) + 2, [r, g, bl] = CORAL_COLS[(i * 2 + 1) % 7], lp = 0.6 + 0.4 * Math.sin(tick * 0.04 + i * 1.9);
+    ctx.fillStyle = 'rgba(90,60,70,0.95)'; ctx.fillRect(x - 11, gb - 10, 22, 10);
+    ctx.strokeStyle = 'rgba(160,130,120,0.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(x - 11, gb); ctx.lineTo(x - 11, gb - 30); ctx.moveTo(x + 11, gb); ctx.lineTo(x + 11, gb - 30); ctx.stroke();
+    for (let k = 0; k < 4; k++) { ctx.fillStyle = k % 2 ? 'rgba(240,230,210,0.9)' : `rgba(${r},${g},${bl},0.92)`; ctx.beginPath(); ctx.moveTo(x - 13 + k * 6.5, gb - 31); ctx.lineTo(x - 13 + (k + 1) * 6.5, gb - 31); ctx.lineTo(x - 11 + (k + 1) * 5.5, gb - 24); ctx.lineTo(x - 11 + k * 5.5, gb - 24); ctx.closePath(); ctx.fill(); }
+    for (let k = 0; k < 3; k++) { const [r2, g2, b2] = CORAL_COLS[(i + k * 2) % 7]; ctx.fillStyle = `rgba(${r2},${g2},${b2},0.9)`; ctx.beginPath(); ctx.arc(x - 6 + k * 6, gb - 12.5, 2.6, 0, 7); ctx.fill(); }
+    drawGlow(x, gb - 20, 20, 0.25 * lp, [255, 210, 140]); ctx.fillStyle = 'rgba(255,225,160,0.9)'; ctx.beginPath(); ctx.arc(x, gb - 22, 2, 0, 7); ctx.fill();
+  });
   ctx.restore();
 }
 // a brass bell, upright (the belfry, the bag)

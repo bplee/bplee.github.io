@@ -27,6 +27,7 @@ Scripts are plain (non-module) `<script>` tags sharing globals, loaded in this o
 | `js/beach.js` | the beach, birch the beaver + his boat (build it, then sail it), wave heights (`waveY`), the sea horizon, the storm out at sea |
 | `js/sea.js` | swimming in the sea (reuses the lake's swimming + breath), the bay reef + ollie, the tiered reef city on the island side, the two nets + their pufferfish guards (bart, bea) |
 | `js/island.js` | the island: rae (species = `RAE_KIND` in critters.js), surfing, the bonfire, palms, her hut |
+| `js/skycharts.js` | rae's telescope quest ("a telescope for rae": nova's spare → the island's point → chart "the long wave"), and sky roads: `TELESCOPES` (id, scene, x, label, home `star`, built, charted) — line up another telescope's gold home star in the view and press E / enter to travel; clouds block it. Registers its items / quest / achievements into inventory.js globals at load. Also the layout map for the island east of rae's hut |
 | `js/touch.js` | phones/tablets: pop-up joystick (right), tap-to-jump (left), action button, telescope drag, rotate card — sends the same key events as the keyboard |
 | `js/main.js` | `update()` / `draw()` per scene, fixed 60Hz loop, init |
 

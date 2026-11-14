@@ -61,8 +61,9 @@ window.addEventListener('touchstart', enableTouch, { capture: true, passive: tru
 /* ── the action button: what does E do right here? ── */
 const VERB = { talk: 'talk', order: 'order', look: 'look', dig: 'dig', nap: 'nap', knock: 'knock',
                head: 'leave', step: 'enter', go: 'enter', climb: 'climb', join: 'join', mine: 'mine',
-               chop: 'chop', pick: 'pick up', hang: 'hang it', drop: 'drop it', set: 'set sail', sail: 'sail home' };
+               chop: 'chop', put: 'set up', pick: 'pick up', hang: 'hang it', drop: 'drop it', set: 'set sail', sail: 'sail home' };
 function actionLabel() {
+  if (obs.viewing && !transitioning) return skyRoadLabel();   // 'travel' when a sky road is lined up (skycharts.js)
   if (!started || transitioning || menu.open || obs.viewing) return null;
   if (vball.active) return 'leave game';
   if (joinPromptVisible) return 'join game';
@@ -161,7 +162,7 @@ window.addEventListener('load', () => {
   window.addEventListener('pointercancel', onUp);
   const tapKey = code => e => { e.preventDefault(); e.stopPropagation(); synthKey(code, true); synthKey(code, false); };
   document.getElementById('act').addEventListener('pointerdown', tapKey('KeyE'));
-  document.getElementById('scope-close').addEventListener('pointerdown', tapKey('KeyE'));
+  document.getElementById('scope-close').addEventListener('pointerdown', tapKey('Escape'));   // (E could travel, see skycharts.js)
   window.addEventListener('resize', updateRotateCard);
   window.addEventListener('blur', () => { releaseJoystick(); if (touchUI.jumpId !== null) { touchUI.jumpId = null; synthKey('Space', false); } });
 

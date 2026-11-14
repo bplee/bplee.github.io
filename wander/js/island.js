@@ -51,7 +51,7 @@ const RAE_INTRO = [
 const RAE_FLAVOR = [
   "the storm out there is always there. it's why nobody comes. it's also why the waves are so good. i think about that a lot.",
   'birch keeps measuring my hut. i think he\'s planning something.',
-  'do the stars look the same where you\'re from? here they look like freckles.',
+  "the moon comes up out of the sea here. it's wet for a while, then it's fine.",   // (her stars line is a proper beat now: raeSkyLine, skycharts.js)
   "come surf whenever! the waves don't mind who rides them.",
 ];
 function talkToRae() {
@@ -70,7 +70,7 @@ function talkToRae() {
       takeItem('mallows'); completeQuest('bonfire'); surf.toast = 1;
       line = 'is that… are those…? okay. OKAY. over to the fire. you hold it above, not in. birch was very clear about that.';
     } else line = "a marshmallow. golden brown. i think about it a lot now. marigold's store, birch says. by a tavern? what's a tavern?";
-  } else line = RAE_FLAVOR[rae.li++ % RAE_FLAVOR.length];
+  } else line = raeSkyLine() || RAE_FLAVOR[rae.li++ % RAE_FLAVOR.length];   // stars + her telescope: skycharts.js
   say(rae, line, true);
 }
 function raeY() {

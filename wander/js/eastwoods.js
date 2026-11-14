@@ -515,7 +515,7 @@ function drawEastTrees() {
       const pulse = 0.5 + 0.5 * Math.sin(tick * 0.09 + t.x), carrying = hasItem('birdhouse');
       if (carrying) drawGlow(hx, hy + 20 - 12 * HOUSE_K, 75, 0.16 + 0.22 * pulse, [255, 220, 150]);
       drawHousePost(hx, hy + 20, HOUSE_K, true);
-      drawHouseGhost(hx, hy + 20, HOUSE_K, carrying ? 0.55 + 0.4 * pulse : 0.4);
+      if (carrying) drawHouseGhost(hx, hy + 20, HOUSE_K, 0.55 + 0.4 * pulse);   // only show where it goes once you're carrying one
     }
   });
   drawFallen();

@@ -97,6 +97,8 @@ function foundCount() { return CONSTELLATIONS.filter(c => c.found).length; }
 function talkToNova() {
   const n = foundCount();
   let line;
+  const sl = novaSkyLine();               // rae's telescope + sky roads (skycharts.js)
+  if (sl) { say(nova, sl, true); return; }
   if (nova.stage === 0)      { line = "oh! a visitor! i'm nova. rosco's cousin. the clever one."; nova.stage = 1; }
   else if (nova.stage === 1) { line = "i've charted four constellations. can you find them? use the telescope — arrow keys to look around."; nova.stage = 2; startQuest('stars'); }
   else if (n === 4 && nova.stage < 3) { line = "all four! even the mouse. …wait. it looks a lot like you. here — keep my chart."; nova.stage = 3;
@@ -137,7 +139,10 @@ function closeTelescope() { obs.viewing = false; }
 window.addEventListener('keydown', e => {
   if (e.repeat || transitioning || !started) return;
   if (obs.viewing) {
+    // E / enter on another telescope's home star = travel along the sky road (skycharts.js)
+    if ((e.code === 'KeyE' || e.code === 'Enter') && skyRoadGo()) { e.stopImmediatePropagation(); return; }
     if (e.code === 'KeyE' || e.code === 'Escape') closeTelescope();
+    e.stopImmediatePropagation();   // nothing behind the eyepiece hears this key (e.g. the island scope's own E spot)
     return;
   }
   if (e.code !== 'KeyE') return;
@@ -183,6 +188,7 @@ function updateTelescope() {
       if (foundCount() === 4) achieve('stargazer');
     }
   });
+  updateSkyExtras(seeing);   // the island's constellation + sky roads (skycharts.js)
 }
 
 /* ══════════════════════════════════════════
@@ -349,6 +355,7 @@ function drawTelescopeView() {
   ctx.restore();
   ctx.strokeStyle = 'rgba(80,70,60,0.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(mx + 5, my - 68); ctx.lineTo(mx + 5, my - 84); ctx.stroke();
   ctx.fillStyle = '#c85050'; ctx.fillRect(mx + 5, my - 84, 9, 6);
+  drawSkyExtras(ox, oy, t);   // the long wave + telescopes' home stars (skycharts.js)
 
   ctx.restore();
   }
@@ -379,10 +386,11 @@ function drawTelescopeView() {
   ctx.strokeStyle = '#8a6a3a'; ctx.lineWidth = 10; ctx.beginPath(); ctx.arc(cx, cy, R + 5, 0, 7); ctx.stroke();
   ctx.strokeStyle = '#d8b068'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, R + 10, 0, 7); ctx.stroke();
   ctx.fillStyle = 'rgba(220,210,190,0.7)'; ctx.font = '12px Space Mono, monospace'; ctx.textAlign = 'center';
-  ctx.fillText(touchMode ? `drag to look around · charted ${foundCount()}/4` : `arrow keys to look around · E to step back · charted ${foundCount()}/4`, cx, Math.min(H - 16, cy + R + 34));
+  ctx.fillText(skyScopeHud() || (touchMode ? `drag to look around · charted ${foundCount()}/4` : `arrow keys to look around · E to step back · charted ${foundCount()}/4`), cx, Math.min(H - 16, cy + R + 34));
   if (hid > 0.5 && HIDDEN_LINE[weather.type]) ctx.fillText(HIDDEN_LINE[weather.type], cx, Math.max(20, cy - R - 22));
   ctx.restore();
   if (cloudA > 0.5) drawCloudyMessage(cx, cy, R, (cloudA - 0.5) * 2);
+  drawSkyExtrasHud(cx, cy, R, ox, oy);   // travel prompt, arrows to other telescopes, rae's words, the starlight (skycharts.js)
 }
 
 function obsHash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }

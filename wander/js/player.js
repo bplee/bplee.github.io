@@ -154,7 +154,8 @@ window.addEventListener('keydown', e => {
 
 // how big the mouse is on screen (it scales with the window), and its body box
 // the mouse's size: fixed on phones (the world is scaled to fit there), a little under the old size on computers
-function playerScale() { return MOBILE ? 0.8 : Math.min(W, H) * 0.0012; }
+// a fixed size: on a computer the mouse no longer grows/shrinks with the browser window
+function playerScale() { return MOBILE ? 0.8 : 0.92; }
 function playerBox() {
   const s = playerScale();
   return { s, top: player._py - 72 * s, bottom: player._py, half: 12 * s, cx: player.wx };
@@ -392,6 +393,8 @@ function drawWornItems(s, bhx, bhy, fhx, fhy) {
       ctx.fillStyle = c; ctx.beginPath(); ctx.arc((-3 + i * 3) * s, (-29 + Math.abs(i - 1.5) * -0.8) * s, 1.3 * s, 0, Math.PI * 2); ctx.fill();
     });
   }
+  // marigold's wares: boots, fins, snorkel, charm, compass, umbrella (store.js)
+  if (typeof drawShopGear === 'function') drawShopGear(s, bhx, bhy, fhx, fhy);
   // umber's fishbowl helmet, over everything
   if (wearing('helmet')) drawHelmetOn(2 * s, -44 * s, s);
   ctx.restore();
