@@ -118,7 +118,7 @@ let drag = null;   // a slot / spare tile being dragged (see BAG PANEL)
      (and write) it. slotSync() squares slots{} up with it (e.g. after inv.on.x = true).
 ══════════════════════════════════════════ */
 const SLOT_KEYS = ['head', 'neck', 'lhand', 'rhand', 'chest', 'feet'];
-const DOLL_ORDER = ['head', 'neck', 'chest', 'lhand', 'rhand', 'feet'];   // the panel's 3×2 grid, row by row
+const DOLL_ORDER = ['head', 'lhand', 'neck', 'rhand', 'chest', 'feet'];   // the order the panel walks them in
 const SLOT_NAME = { head: 'head', neck: 'neck', lhand: 'left arm', rhand: 'right arm', chest: 'chest', feet: 'feet' };
 const SLOT_GROUP = { head: ['head'], neck: ['neck'], chest: ['chest'], hand: ['rhand', 'lhand'], feet: ['feet'] };
 const KIND_FULL = { head: 'your head is', neck: 'your neck is', chest: 'your back is', hand: 'both arms are', feet: 'your feet are' };
@@ -615,22 +615,28 @@ function ensureArt() {
 }
 
 /* ══════════════════════════════════════════
-   HUD — what you're wearing, bottom-left
+   HUD — the six body boxes + everything else you own, bottom center
 ══════════════════════════════════════════ */
+const HUD_ORDER = ['head', 'neck', 'chest', 'lhand', 'rhand', 'feet'];   // the HUD's boxes, left to right
 function updateCarryHud() {
   const el = document.getElementById('worn');
   if (!el) return;
   ensureArt();
   slotSync();
-  // what you're wearing first (head to feet, bright + outlined), then everything else you own, faded. Click/tap toggles.
+  // six fixed boxes, labeled beneath (click one: take it off, or pick something for it);
+  // then, to the side, the pocket things + spare gear + carried things (click: on/off)
   const worn = SLOT_KEYS.map(k => slots[k]).filter(Boolean);
-  const owned = worn.concat(ITEM_ORDER.filter(id => hasItem(id) && !worn.includes(id)));
-  el.hidden = !owned.length;
-  el.innerHTML = owned.map(id => {
-    const it = ITEMS[id], on = it.wearable ? wearing(id) : true, k = slotOf(id);
-    const tip = it.wearable ? `${it.name} — ${on && k ? SLOT_NAME[k] : 'off'}` : `${it.name} (carried)`;
+  const side = ITEM_ORDER.filter(id => hasItem(id) && !worn.includes(id));
+  el.hidden = !worn.length && !side.length;
+  const lbl = { head: 'head', neck: 'neck', chest: 'chest', lhand: 'arm', rhand: 'arm', feet: 'feet' };
+  el.innerHTML = `<div class="w-body">${HUD_ORDER.map(k => {
+    const id = slots[k], tip = id ? `${SLOT_NAME[k]}: ${ITEMS[id].name}` : `${SLOT_NAME[k]}: empty`;
+    return `<div class="w-slot" data-slot="${k}" title="${esc(tip)}"><div class="w-box${id ? '' : ' empty'}">${id ? `<img src="${ART.items[id]}" alt="${esc(tip)}">` : ''}</div><span class="w-lbl">${lbl[k]}</span></div>`;
+  }).join('')}</div><div class="w-side">${side.map(id => {
+    const it = ITEMS[id], on = it.wearable ? wearing(id) : true;
+    const tip = it.wearable ? `${it.name} — ${on ? 'on' : 'off'}` : `${it.name} (carried)`;
     return `<img src="${ART.items[id]}" class="${on ? 'on' : 'off'}${it.wearable ? '' : ' carried'}" alt="${esc(tip)}" title="${esc(tip)}" data-id="${id}">`;
-  }).join('');
+  }).join('')}</div>`;
 }
 
 /* ══════════════════════════════════════════
@@ -848,13 +854,13 @@ function setFoot() {
 }
 
 // arrows in the bag: around the body, then down into the grids (4 across), and back up
-const DOLL_NAV = {   // [left, right, up, down] around the 3×2 grid
-  head:  [null,    'neck',  null,    'lhand'],
-  neck:  ['head',  'chest', null,    'rhand'],
-  chest: ['neck',  null,    null,    'feet'],
-  lhand: [null,    'rhand', 'head',  '+grid'],
-  rhand: ['lhand', 'feet',  'neck',  '+grid'],
-  feet:  ['rhand', null,    'chest', '+grid'],
+const DOLL_NAV = {   // [left, right, up, down]
+  head:  ['lhand', 'rhand', null,    'neck'],
+  lhand: [null,    'neck',  'head',  'feet'],
+  neck:  ['lhand', 'rhand', 'head',  'chest'],
+  rhand: ['neck',  null,    'head',  'feet'],
+  chest: ['lhand', 'rhand', 'neck',  'feet'],
+  feet:  ['lhand', 'rhand', 'chest', '+grid'],
 };
 function bagMove(dir) {
   const { pockets, spare, carried } = bagLists(), D = DOLL_ORDER.length;
@@ -1055,7 +1061,9 @@ window.addEventListener('load', () => {
   });
   // click/tap an item in the strip to put it on / take it off
   document.getElementById('worn').addEventListener('click', e => {
-    const img = e.target.closest('img'); if (img && ITEMS[img.dataset.id].wearable) toggleItem(img.dataset.id);
+    const box = e.target.closest('.w-slot');
+    if (box) { const k = box.dataset.slot; if (slots[k]) unequip(k); else { openMenu('bag'); openPick(k); renderMenu(); } return; }
+    const img = e.target.closest('img[data-id]'); if (img && ITEMS[img.dataset.id].wearable) toggleItem(img.dataset.id);
   });
   pingPill(); updateCarryHud();
 });

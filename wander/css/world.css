@@ -11,7 +11,7 @@ canvas { display:block; }
 }
 #hint-box {
   position:fixed;
-  bottom:68px; left:50%;
+  bottom:78px; left:50%;
   transform:translateX(-50%);
   font-family:'Space Mono',monospace;
   font-size:16px;
@@ -187,8 +187,8 @@ kbd {
 .m-empty { font-size:11px; color:rgba(220,212,196,0.45); padding:8px 4px; line-height:1.6; }
 #pill-quests { margin-left:6px; color:#ffd890; }
 #worn {
-  position:fixed; left:50%; transform:translateX(-50%); bottom:18px; z-index:50;
-  display:flex; gap:4px; padding:5px; border-radius:12px;
+  position:fixed; left:50%; transform:translateX(-50%); bottom:24px; z-index:50;
+  display:flex; align-items:center; gap:4px; padding:5px; border-radius:12px;
   background:rgba(20,24,32,0.55); border:0.5px solid rgba(255,255,255,0.08);
 }
 #worn[hidden] { display:none; }
@@ -197,20 +197,46 @@ kbd {
 #worn img.off { opacity:0.32; }
 #worn img.carried { cursor:default; border-style:dashed; border-color:rgba(255,255,255,0.18); }
 #worn img:hover { background:rgba(255,255,255,0.1); }
-/* the bag's body: six fixed boxes, one thing each (inventory.js BODY SLOTS) */
-.m-doll { display:grid; gap:6px; grid-template-columns:repeat(3, minmax(0, 1fr)); }
+/* the six body boxes: always there, always in this order, labeled beneath */
+#worn .w-body { display:flex; flex-shrink:0; gap:4px; }
+#worn { max-width:calc(100vw - 24px); box-sizing:border-box; }
+#worn .w-side img { flex-shrink:0; }
+#worn .w-slot { position:relative; display:flex; cursor:pointer; }
+#worn .w-box { width:32px; height:32px; box-sizing:border-box; border-radius:7px; display:flex; align-items:center; justify-content:center;
+  border:1px solid rgba(255,230,180,0.55); background:rgba(255,255,255,0.06); }
+#worn .w-box.empty { border:1px dashed rgba(255,255,255,0.18); background:rgba(0,0,0,0.15); }
+#worn .w-box img { width:28px; height:28px; border:none; background:none; }
+#worn .w-slot:hover .w-box { background:rgba(255,255,255,0.12); }
+/* labels hang just under the bar */
+#worn .w-lbl { position:absolute; top:calc(100% + 8px); left:50%; transform:translateX(-50%); white-space:nowrap; pointer-events:none; text-shadow:0 1px 3px rgba(0,0,0,0.8); font:8px 'Space Mono',monospace; letter-spacing:0.08em; text-transform:uppercase; color:rgba(230,205,160,0.6); }
+#worn .w-side { display:flex; flex-wrap:nowrap; min-width:0; overflow-x:auto; scrollbar-width:none; gap:4px; padding-left:6px; margin-left:2px; border-left:0.5px solid rgba(255,255,255,0.12); }
+#worn .w-side:empty { display:none; }
+/* the bag's body: six slots, one thing each (inventory.js BODY SLOTS) */
+.m-doll {
+  position:relative; display:grid; gap:6px; padding:2px 4px;
+  grid-template-columns:repeat(3, minmax(0, 1fr));
+  grid-template-areas:". head ." "lhand neck rhand" "lhand chest rhand" ". feet .";
+}
+/* a soft figure behind the middle column, so it reads as a body */
+.m-doll::before {
+  content:''; position:absolute; left:50%; top:26px; bottom:26px; width:30%; transform:translateX(-50%);
+  border-radius:40px; background:linear-gradient(rgba(255,255,255,0.035), rgba(255,255,255,0.015));
+  border:0.5px solid rgba(255,255,255,0.05); pointer-events:none;
+}
 .m-slot {
   position:relative; font:inherit; color:inherit; cursor:pointer;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
-  aspect-ratio:1; min-height:0; padding:5px 3px 5px; border-radius:12px;
+  min-height:52px; padding:4px 3px; border-radius:10px;
   background:rgba(22,25,32,0.9); border:0.5px solid rgba(255,255,255,0.1);
   transition:border-color 0.15s ease, background 0.15s ease;
 }
-.m-slot img { width:42px; height:42px; }
+.s-head { grid-area:head; } .s-neck { grid-area:neck; } .s-chest { grid-area:chest; } .s-feet { grid-area:feet; }
+.s-lhand { grid-area:lhand; } .s-rhand { grid-area:rhand; }
+.m-slot img { width:34px; height:34px; }
 .m-slot.filled { border-color:rgba(160,210,170,0.3); }
 .m-slot.empty { border-style:dashed; border-color:rgba(255,255,255,0.16); background:rgba(18,21,27,0.9); }
 .m-slot.none { cursor:default; opacity:0.5; }
-.m-slot-plus { width:42px; height:42px; display:flex; align-items:center; justify-content:center; font-size:18px; color:rgba(220,212,196,0.32); }
+.m-slot-plus { width:34px; height:34px; display:flex; align-items:center; justify-content:center; font-size:18px; color:rgba(220,212,196,0.32); }
 .m-slot-lbl { font-size:8.5px; letter-spacing:0.12em; text-transform:uppercase; color:rgba(230,205,160,0.5); white-space:nowrap; }
 .m-slot:hover { background:rgba(40,44,54,0.95); }
 .m-slot.sel { background:rgba(44,46,52,0.95); border-color:rgba(255,216,144,0.55); border-style:solid; opacity:1; }
@@ -293,11 +319,13 @@ kbd {
   #menu-pill kbd { display:none; }
   #menu-tabs kbd { display:none; }
   #menu { width:min(360px, 70vw); padding-right:env(safe-area-inset-right, 0px); }
-  #worn { bottom:calc(10px + env(safe-area-inset-bottom, 0px)); }
+  #worn { bottom:calc(20px + env(safe-area-inset-bottom, 0px)); }
   #worn img { width:36px; height:36px; }
-  #hint-box { bottom:calc(64px + env(safe-area-inset-bottom, 0px)); font-size:12px; max-width:70vw; text-align:center; }
+  #worn .w-box { width:38px; height:38px; } #worn .w-box img { width:32px; height:32px; }
+  #hint-box { bottom:calc(74px + env(safe-area-inset-bottom, 0px)); font-size:12px; max-width:70vw; text-align:center; }
   .m-foot { display:none; }
-  .m-slot img, .m-slot-plus { width:44px; height:44px; }
+  .m-slot { min-height:58px; }
+  .m-slot img, .m-slot-plus { width:38px; height:38px; }
   .m-pick-x { font-size:20px; padding:4px 8px; }
   .m-slot, .m-tile { -webkit-tap-highlight-color:transparent; }
   #toasts { top:calc(52px + env(safe-area-inset-top, 0px)); }
@@ -310,9 +338,10 @@ kbd {
   #worn {
     top:calc(56px + env(safe-area-inset-top, 0px)); right:calc(16px + env(safe-area-inset-right, 0px));
     bottom:auto; left:auto; transform:none;
-    flex-wrap:wrap; justify-content:flex-end; max-width:46vw;
+    flex-wrap:nowrap; justify-content:flex-end;
   }
-  #worn img { width:32px; height:32px; }
+  #worn img { width:30px; height:30px; }
+  #worn .w-box { width:30px; height:30px; } #worn .w-box img { width:26px; height:26px; } #worn .w-lbl { font-size:7px; }
   /* hints hug the bottom edge on one line so they don't cover the action */
   #hint-box {
     bottom:calc(4px + env(safe-area-inset-bottom, 0px));
@@ -326,8 +355,8 @@ kbd {
   .t-sub { display:none; }
   /* a shorter body so the picker + card fit without much scrolling */
   .m-doll { gap:5px; }
-  .m-slot { aspect-ratio:auto; min-height:58px; padding:3px 3px 4px; }
-  .m-slot img, .m-slot-plus { width:38px; height:38px; }
+  .m-slot { min-height:48px; padding:3px 3px 4px; }
+  .m-slot img, .m-slot-plus { width:32px; height:32px; }
 }
 
 /* chapter title cards (chapters.js) */
