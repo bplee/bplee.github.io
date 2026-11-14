@@ -35,8 +35,8 @@ const guardPuff = g => Math.min(1, sea.puff[g.n.name] / 30);
 const guardCY = g => seaY() + (GAP0 + GAP1) / 2 + Math.sin(tick * 0.03 + (g.side > 0 ? 2 : 0)) * (5 - 2.5 * guardPuff(g));   // body center
 const guardR = g => (9 + 9 * guardPuff(g) + 2 + 4 * guardPuff(g)) * GUARD_K;                                                     // body + spikes
 const guardY = g => guardCY(g) + (13 + 9 * guardPuff(g)) * GUARD_K;                                                               // feet (for drawCritter)
-OUT_TALKERS.push({ n: ollie, at: () => [ollie.x, groundY(ollie.x) - 60] });
-GUARDS.forEach(g => OUT_TALKERS.push({ n: g.n, at: () => [g.n.x, guardCY(g) - guardR(g) - 8] }));
+outTalker(ollie, () => [ollie.x, groundY(ollie.x), groundY(ollie.x) - 54]);
+GUARDS.forEach(g => outTalker(g.n, () => [g.n.x, guardY(g), guardCY(g) - guardR(g) - 4]));
 
 /* ── coral, built once ── */
 const CORAL_COLS = [[230, 120, 140], [240, 170, 110], [170, 130, 220], [120, 200, 190], [240, 210, 120], [250, 140, 100], [140, 170, 240]];
@@ -180,10 +180,10 @@ const STUDENTS = [
 ];
 // the schoolyard up on the terrace: kids at play around the gym, swing and slide (just for looks)
 const YARD_KIDS = [{ x: 13921, kind: 'crab', color: '#e07a5a', k: 0.42 }, { x: 13950, kind: 'puffer', color: '#9ad0c0', k: 0.42 }, { x: 13969, kind: 'tortoise', color: '#a8c890', k: 0.4 }, { x: 13935, kind: 'octopus', color: '#d890a8', k: 0.4 }];
-OUT_TALKERS.push({ n: coralie, at: () => [coralie.x, seaY() + SCHOOL_D - 62] });
-OUT_TALKERS.push({ n: shelby, at: () => [shelby.x, groundY(shelby.x) - 34] });
-OUT_TALKERS.push({ n: nib, at: () => [nib.x, nibY() - 34] });
-OUT_TALKERS.push({ n: theClass, at: () => [theClass.x, seaY() + SCHOOL_D - 40] });
+outTalker(coralie, () => [coralie.x, seaY() + SCHOOL_D, seaY() + SCHOOL_D - 56]);
+outTalker(shelby, () => [shelby.x, groundY(shelby.x), groundY(shelby.x) - 28]);
+outTalker(nib, () => [nib.x, nibY(), nibY() - 28]);
+outTalker(theClass, () => [theClass.x, seaY() + SCHOOL_D, seaY() + SCHOOL_D - 34]);
 
 const near = (x, y, rx, ry) => underSea() && Math.abs(player.wx - x) < rx && Math.abs(player._py - y) < ry;
 const nearCoralie = () => near(CORALIE_X, seaY() + SCHOOL_D, 40, 60);
@@ -224,13 +224,14 @@ const CLASS_LINES = [
 ];
 
 function talkCoralie() {
-  const n = coralie; let line;
+  const n = coralie; let line, more = false;
   if (hasItem('bell')) {
     takeItem('bell'); completeQuest('schoolbell'); n.stage = CORALIE_INTRO.length;
     line = "our bell! listen — ding. class, that means it's morning. at last. and this is for you: a gold star. i only have a few, so it means something.";
+    more = !questState.nib;   // …and then the headcount
     setTimeout(() => give('goldstar', 'miss coralie'), 900);
   } else if (n.stage < CORALIE_INTRO.length) {
-    line = CORALIE_INTRO[n.stage++];
+    line = CORALIE_INTRO[n.stage++]; more = n.stage < CORALIE_INTRO.length;
     if (n.stage === CORALIE_INTRO.length) startQuest('schoolbell');
   } else if (questState.schoolbell === 'open') line = "it went over the edge and under. i'd look myself, but seahorses swim about an inch an hour. we're not built for searching. we're built for waiting.";
   else if (!questState.nib) {
@@ -238,29 +239,29 @@ function talkCoralie() {
     startQuest('nib');
   } else if (questState.nib === 'open') line = nib.follow ? "is that — oh, NIB. bring him up onto the ledge, nice and slow. he likes the scenic route." : "nib's an octopus. he'll squeeze into the darkest nook he can find. try under the deep ledge, right down at the bottom.";
   else line = CORALIE_LINES[n.li++ % CORALIE_LINES.length];
-  say(n, line, true);
+  say(n, line, true, { next: more && talkCoralie });
 }
 function talkShelby() {
-  const n = shelby; let line;
+  const n = shelby; let line, more = false;
   if (n.shell === 'bell' && hasItem('conch')) {
     takeItem('conch'); n.shell = 'conch'; completeQuest('shelby');
     line = "oh. OH. look at the spiral on it. it has an UPSTAIRS. here — the bell's yours. tell the teacher i kept it polished. i didn't. but tell her.";
     setTimeout(() => give('bell', 'shelby'), 900);
   } else if (n.shell === 'bell') {
-    if (n.stage < SHELBY_INTRO.length) { line = SHELBY_INTRO[n.stage++]; if (n.stage === SHELBY_INTRO.length) startQuest('shelby'); }
+    if (n.stage < SHELBY_INTRO.length) { line = SHELBY_INTRO[n.stage++]; more = n.stage < SHELBY_INTRO.length; if (n.stage === SHELBY_INTRO.length) startQuest('shelby'); }
     else line = "a conch. big, pink inside, spirals the right way. it's under the high shelf, sitting on the deep ledge. i'd fetch it myself, but if i leave, someone moves in.";
   } else line = SHELBY_LINES[n.li++ % SHELBY_LINES.length];
-  say(n, line, true);
+  say(n, line, true, { next: more && talkShelby });
 }
 function nibFollow() { nib.follow = true; nib.trail = []; if (nib.d == null) nib.d = groundY(nib.x) - seaY(); }
 function talkNib() {
-  let line;
+  let line, more = false;
   if (nib.follow) line = NIB_LINES.follow[nib.li++ % NIB_LINES.follow.length];
   else if (questState.nib === 'open') {
-    if (nib.stage === 0) { nib.stage = 1; line = 'miss coralie sent you? …is she cross? the big fish ball went WHOOSH and i went under here, and then it was dark, and all the ways out looked the same.'; }
+    if (nib.stage === 0) { nib.stage = 1; more = true; line = 'miss coralie sent you? …is she cross? the big fish ball went WHOOSH and i went under here, and then it was dark, and all the ways out looked the same.'; }
     else { line = "will you swim me back? stay close. not too fast. i'll follow your bubbles."; nibFollow(); }
   } else line = NIB_LINES.rock[nib.li++ % NIB_LINES.rock.length];
-  say(nib, line, true);
+  say(nib, line, true, { next: more && talkNib });
 }
 // nib follows the path you actually swam (never through the rock), a little way behind
 function updateNib() {
@@ -288,14 +289,14 @@ function updateNib() {
 OUT_SPOTS.push(() => {
   if (!underSea()) return null;
   const g = nearGuard();
-  if (g && g.n.bubbleT < 200) return { text: `press E to talk to ${g.n.name}`, act: () => talkToGuard(g) };
-  if (nearOllie() && ollie.bubbleT < 200) return { text: 'press E to talk to ollie', act: () => say(ollie, OLLIE_LINES[ollie.li++ % OLLIE_LINES.length], true) };
+  if (g) return { text: `press E to talk to ${g.n.name}`, act: () => talkToGuard(g) };
+  if (nearOllie()) return { text: 'press E to talk to ollie', act: () => say(ollie, OLLIE_LINES[ollie.li++ % OLLIE_LINES.length], true) };
   if (player.wx > CITY_X0 - 40 && player.wx < CITY_X1) {
-    if (nearNib() && nib.bubbleT < 200) return { text: met.nib ? 'press E to talk to nib' : 'press E to talk to the rock', act: talkNib };
+    if (nearNib()) return { text: met.nib ? 'press E to talk to nib' : 'press E to talk to the rock', act: talkNib };
     if (nearConch()) return { text: 'press E to pick up the big empty shell', act: () => { sea.conchTaken = true; give('conch'); } };
-    if (nearShelby() && shelby.bubbleT < 200) return { text: 'press E to talk to shelby', act: talkShelby };
-    if (nearCoralie() && coralie.bubbleT < 200) return { text: 'press E to talk to miss coralie', act: talkCoralie };
-    if (nearClass() && theClass.bubbleT < 200) return { text: 'press E to say hi to the class', act: () => say(theClass, questState.schoolbell === 'done' || Math.random() < 0.6 ? CLASS_LINES[theClass.li++ % CLASS_LINES.length] : "we've had lunch three times today.") };
+    if (nearShelby()) return { text: 'press E to talk to shelby', act: talkShelby };
+    if (nearCoralie()) return { text: 'press E to talk to miss coralie', act: talkCoralie };
+    if (nearClass()) return { text: 'press E to say hi to the class', act: () => say(theClass, questState.schoolbell === 'done' || Math.random() < 0.6 ? CLASS_LINES[theClass.li++ % CLASS_LINES.length] : "we've had lunch three times today.", false, { hold: true }) };
     if (player._py > seaY() + 60) return { text: 'the reef city' };
   }
   return null;
@@ -644,11 +645,11 @@ function drawSchoolAndClass() {
       if (st.kind === 'fish') drawFish(x, y - 9, { k: 0.8, vx: 1, ph: i, col: [240, 176, 192] });
       else drawCritter(x, y, st.kind, { color: st.color, scale: st.k, dir: 1 });
     });
-    drawCritter(ox + coralie.x, ly + 1 + Math.sin(tick * 0.03) * 1.5, 'seahorse', { color: coralie.color, scale: 1.25, dir: faceToward(coralie.x, 1), specs: true, talking: coralie.bubbleT > 0 });
+    drawCritter(ox + coralie.x, ly + 1 + Math.sin(tick * 0.03) * 1.5, 'seahorse', { color: coralie.color, scale: 1.25, dir: faceToward(coralie.x, 1), specs: true, talking: speaking(coralie) });
   }
   if (Math.abs(shelby.x - camX - W / 2) < W) {
     const sx = shelby.x + Math.sin(tick * 0.008) * 3;
-    drawCritter(ox + sx, groundY(sx) + 1, 'hermit', { color: shelby.color, scale: 1.1, dir: faceToward(shelby.x, 1), shell: shelby.shell, talking: shelby.bubbleT > 0 });
+    drawCritter(ox + sx, groundY(sx) + 1, 'hermit', { color: shelby.color, scale: 1.1, dir: faceToward(shelby.x, 1), shell: shelby.shell, talking: speaking(shelby) });
   }
   if (Math.abs(nib.x - camX - W / 2) < W) {
     const hiding = !nib.follow && !nib.home && nib.d == null, y = nibY() + 1 + (nib.follow ? Math.sin(tick * 0.08) * 2 : 0);

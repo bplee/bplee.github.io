@@ -30,6 +30,7 @@ function update() {
   }
 
   updateSkyCharts();   // rae's telescope, rae watching it, starlight sparkles (skycharts.js)
+  tickTalk();          // speech bubbles: count down, close when you walk off (talk.js)
   checkProximity();
   updateCamera();
 }

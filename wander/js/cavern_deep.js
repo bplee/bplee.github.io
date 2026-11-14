@@ -18,6 +18,7 @@ const GOLD_VEINS = [
 const deep = { mining: null, chips: [], smoke: [], noteSeen: false };
 
 const umber = makeRegular({ name: 'umber', kind: 'mole', color: '#a596a8', x: 4150, talkR: 60, stage: 0, endStage: 0, atLake: false });
+umber.at = () => umber.atLake ? [UMBER_LAKE_X, caveFloorY(UMBER_LAKE_X), caveFloorY(UMBER_LAKE_X) - 74] : [umber.x, caveRef() + 700, caveRef() + 640];
 
 /* ── who/what is nearby ── */
 function onFarFloor() { return player._py > caveRef() + 600 && player._py < caveRef() + 710; }
@@ -38,7 +39,7 @@ function nearMoleHole() { return scene === 'outside' && Math.abs(player.wx - MOL
 function deepPopup() {
   if (deep.mining) return null;
   if (nearLadder()) return 'press E to climb the ladder';
-  if (nearUmber() && umber.bubbleT <= 0) return 'press E to talk to umber';
+  if (nearUmber()) return 'press E to talk to umber';
   if (nearNote()) return 'a note on the table: "gone visiting. back for supper. — u."';
   const v = nearVein();
   if (v) return hasItem('pickaxe') ? 'a seam of gold · press E to mine it' : "a seam of gold in the rock. you'd need a pickaxe…";
@@ -93,14 +94,14 @@ const UMBER_FLAVOR = [
   "people say moles like being alone. people say a lot of things about moles.",
 ];
 function talkToUmber() {
-  let line;
+  let line, more = false;
   if (umber.atLake) line = ["she's named every fish down here. one of them's called umber. very handsome fish.", "we're putting a little window in the teapot. for the evenings. for the stars that aren't stars."][umber.li++ % 2];
   else if (questState.peri === 'open') {
-    line = UMBER_END[umber.endStage++];
+    line = UMBER_END[umber.endStage++]; more = umber.endStage < UMBER_END.length;
     if (umber.endStage === UMBER_END.length) completeQuest('peri');
   }
   else if (umber.stage < UMBER_INTRO.length) {
-    line = UMBER_INTRO[umber.stage++];
+    line = UMBER_INTRO[umber.stage++]; more = umber.stage < UMBER_INTRO.length;
     if (umber.stage === UMBER_INTRO.length) { setTimeout(() => give('helmet', 'umber'), 900); startQuest('umber'); }
   }
   else if (questState.umber === 'open') line = Math.random() < 0.5
@@ -108,7 +109,7 @@ function talkToUmber() {
     : "put the helmet on and hold ↓. it does the breathing. you do the swimming. and… thank you.";
   else if (questState.peri === 'done') line = "off soon. i can't find my good scarf. i think i'm stalling. i'm definitely stalling.";
   else line = UMBER_FLAVOR[umber.li++ % UMBER_FLAVOR.length];
-  say(umber, line, true);
+  say(umber, line, true, { next: more && talkToUmber });
 }
 
 /* ── gold ── */
@@ -162,7 +163,6 @@ function enterMoleHole() {
 ══════════════════════════════════════════ */
 function updateDeep() {
   const R = caveRef();
-  if (umber.bubbleT > 0) umber.bubbleT--;
   if (!umber.atLake) umber.x = 4150 + Math.sin(tick * 0.004) * 30;      // pottering between chair and stove
   // after the last talk, umber heads down to the lake once you've wandered off
   if (questState.peri === 'done' && !umber.atLake && Math.abs(player.wx - 4150) > 900) umber.atLake = true;
@@ -424,12 +424,7 @@ function drawDen(ox, F, flick) {
 }
 
 // in front of the player: umber's speech bubble at home
-function drawDeepFront() {
-  if (umber.atLake || umber.bubbleT <= 0 || !umber.bubble) return;
-  ctx.save(); ctx.globalAlpha = Math.min(1, umber.bubbleT / 20);
-  drawBubble(umber.x - camX, caveRef() + 700 - 66, umber.bubble);
-  ctx.restore();
-}
+function drawDeepFront() { if (!umber.atLake) drawTalkBubbles([umber]); }
 
 // a glass fishbowl helmet with a little brass collar and bellows reed, centered on a head
 function drawHelmetOn(x, y, k) {

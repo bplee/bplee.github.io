@@ -12,7 +12,7 @@ const PALMS = [{ x: 15160, s: 1 }, { x: 15470, s: 1.2 }, { x: 15800, s: 0.95 }, 
 
 const surf = { waves: [], next: 60, rides: 0, sparks: [], toast: 0, spray: [], swash: [], set: 0 };
 const rae = makeRegular({ name: 'rae', kind: RAE_KIND, color: '#e09a5c', x: SURF_TAKEOFF, stage: 0, mode: 'wait', wave: null, ashore: false });
-OUT_TALKERS.push({ n: rae, at: () => [rae.x, raeY() - 64] });
+outTalker(rae, () => [rae.x, raeY(), raeY() - 58]);
 
 /* ── surfing ── */
 function surfWaveAt(x) { return surf.waves.find(w => Math.abs(w.x - x) < 34 && w.h > 8); }
@@ -55,9 +55,9 @@ const RAE_FLAVOR = [
   "come surf whenever! the waves don't mind who rides them.",
 ];
 function talkToRae() {
-  let line;
+  let line, more = false;
   if (rae.stage < RAE_INTRO.length) {
-    line = RAE_INTRO[rae.stage++];
+    line = RAE_INTRO[rae.stage++]; more = rae.stage < RAE_INTRO.length;
     if (rae.stage === RAE_INTRO.length) { setTimeout(() => give('surfboard', 'rae'), 900); startQuest('surf'); }
   } else if (questState.surf === 'open') {
     line = surf.rides ? `that's ${surf.rides}! ${3 - surf.rides} more!`
@@ -70,8 +70,11 @@ function talkToRae() {
       takeItem('mallows'); completeQuest('bonfire'); surf.toast = 1;
       line = 'is that… are those…? okay. OKAY. over to the fire. you hold it above, not in. birch was very clear about that.';
     } else line = "a marshmallow. golden brown. i think about it a lot now. marigold's store, birch says. by a tavern? what's a tavern?";
-  } else line = raeSkyLine() || RAE_FLAVOR[rae.li++ % RAE_FLAVOR.length];   // stars + her telescope: skycharts.js
-  say(rae, line, true);
+  } else {
+    line = raeSkyLine() || RAE_FLAVOR[rae.li++ % RAE_FLAVOR.length];   // stars + her telescope: skycharts.js
+    more = sky.rae === 2 || (sky.rae === 1 && hasItem('chart'));   // the stars → the chart → the ask
+  }
+  say(rae, line, true, { next: more && talkToRae });
 }
 function raeY() {
   if (rae.mode === 'ride' && rae.wave) return seaY() - rae.wave.h + 3;
@@ -81,7 +84,7 @@ function raeY() {
 
 OUT_SPOTS.push(() => {
   if (player.wx < 14400) return null;
-  if (rae.ashore && Math.abs(player.wx - rae.x) < 50 && player.onGround && rae.bubbleT < 200) return { text: 'press E to talk to rae', act: talkToRae };
+  if (rae.ashore && Math.abs(player.wx - rae.x) < 50 && player.onGround) return { text: 'press E to talk to rae', act: talkToRae };
   if (Math.abs(player.wx - BONFIRE_X) < 40) return { text: surf.toast ? 'toasting…' : "rae's bonfire. she lights it every night, just in case." };
   if (Math.abs(player.wx - HUT_X) < 50) return { text: "rae's hut. there's a hammock, and a shelf of very good shells." };
   if (player.inWater && player.wx < SURF_X1 && !wearing('surfboard')) return { text: hasItem('surfboard') ? 'put the surfboard on (I) to catch a wave' : 'long, gentle waves. perfect for surfing, if you had a board.' };

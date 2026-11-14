@@ -16,6 +16,7 @@ const PERI_X = 2300, TEAPOT_X = 2400, UMBER_LAKE_X = 2200;
 const lake = { breath: 1, surfacing: false, under: false, strokeT: 0, deepHintT: 0, taught: false,
                bubbles: [], fish: [], periStage: 0 };
 const peri = makeRegular({ name: 'peri', kind: 'crab', color: '#d8876a', x: PERI_X, talkR: 70 });
+peri.at = () => [peri.x, caveFloorY(peri.x), caveFloorY(peri.x) - 34];
 
 // fish: most dart around the shallows, three lantern-fish keep to the trench
 for (let i = 0; i < 18; i++) {
@@ -115,13 +116,14 @@ const PERI_FLAVOR = [
   "the light on the water looks like stars from down here. umber says it isn't. umber's wrong.",
 ];
 function talkToPeri() {
-  let line;
+  let line, more = false;
   if (questState.umber === 'open') {
     line = [
       "umber? UMBER sent you? that old digger. is he all right? is he eating? he never eats when he's thinking.",
       "i stopped watching the surface, you know. every evening i'd look up at the light and think: maybe today. then one day i just… didn't look. it was easier not looking.",
       "tell him — no. tell him i kept his chair. he'll know what that means. and give him this. it fell from the mine years ago. i've kept it shiny. i didn't know why. i think i know why.",
     ][lake.periStage++];
+    more = lake.periStage < 3;
     if (lake.periStage === 3) {
       completeQuest('umber');
       setTimeout(() => give('pickaxe', 'peri'), 900);
@@ -132,11 +134,11 @@ function talkToPeri() {
   else if (umber.atLake) line = ["he brought biscuits. they're soggy. they're the best thing i've ever eaten.", "eleven years, and he still hums when he's thinking. i'd forgotten. no — i hadn't."][Math.floor(Math.random() * 2)];
   else if (!met.peri) line = "oh! hello! sorry — i don't get visitors. not anymore. is it evening up there? it always feels like evening down here.";
   else line = PERI_FLAVOR[peri.li++ % PERI_FLAVOR.length];
-  say(peri, line, true);
+  say(peri, line, true, { next: more && talkToPeri });
 }
 
 function lakePopup() {
-  if (nearPeri() && peri.bubbleT <= 0) return 'press E to talk to peri';
+  if (nearPeri()) return 'press E to talk to peri';
   return null;
 }
 function lakeAction() {
@@ -151,7 +153,6 @@ function updateLake() {
   const wy = waterY(), s = playerScale();
   if (lake.deepHintT > 0) lake.deepHintT--;
   if (player.inWater && player.onGround && player.wx > 2080 && player.wx < 2520) achieve('diver');
-  if (peri.bubbleT > 0) peri.bubbleT--;
   peri.x = PERI_X + Math.sin(tick * 0.012) * 18;          // shuffling sideways, as crabs do
   if (lake.under && tick % 24 === 0) puffBubbles(1);
   if (Math.random() < 0.05) {                             // bubbles from the teapot spout + the trench floor
@@ -234,7 +235,7 @@ function drawLakeBack() {
   // peri
   const pb = caveFloorY(peri.x);
   drawGlow(ox + peri.x, pb - 12, 60, 0.12, [255, 180, 150]);
-  drawCritter(ox + peri.x, pb + 1, 'crab', { color: peri.color, dir: faceToward(peri.x, 1), talking: peri.bubbleT > 0, scale: 1.35 });
+  drawCritter(ox + peri.x, pb + 1, 'crab', { color: peri.color, dir: faceToward(peri.x, 1), talking: speaking(peri), scale: 1.35 });
   // fish
   lake.fish.forEach(f => {
     const x = ox + f.x, y = wy + f.d;
@@ -328,10 +329,7 @@ function drawLakeFront() {
   cave.splashes.forEach(sp => { ctx.fillStyle = `rgba(180,240,240,${sp.life})`; ctx.fillRect(ox + sp.x, sp.y, 2, 2); });
 
   // speech bubbles down here
-  [[peri, peri.x, caveFloorY(peri.x) - 40]].concat(umber.atLake ? [[umber, UMBER_LAKE_X, caveFloorY(UMBER_LAKE_X) - 80]] : []).forEach(([n, x, y]) => {
-    if (n.bubbleT <= 0 || !n.bubble) return;
-    ctx.save(); ctx.globalAlpha = Math.min(1, n.bubbleT / 20); drawBubble(x - camX, y, n.bubble); ctx.restore();
-  });
+  drawTalkBubbles(umber.atLake ? [peri, umber] : [peri]);
 
   drawBreathMeter();
 }

@@ -378,8 +378,10 @@ function checkProximity() {
   activePopup = nearest ? nearest.text : null;
 }
 
-function drawPopup() {
-  if (!activePopup) return;
+// where the prompt over your head goes (world coords: drawn inside the camY translation).
+// none while someone's speech bubble is waiting on you: E belongs to that (talk.js)
+function popupBox() {
+  if (!activePopup || talkHeld()) return null;
   // on touch screens the action button does what E does, so the popup just names the thing
   const text = touchMode ? activePopup.replace(/(^|· )press E to /, '$1').replace(/^(.)/, c => c) : activePopup;
   const sx = player.wx - camX;
@@ -388,8 +390,12 @@ function drawPopup() {
   ctx.font=`${FONT}px Space Mono,monospace`;
   const tw=ctx.measureText(text).width;
   const bw=tw+PAD*2, bh=FONT+PAD*2;
-  let bx=Math.max(10,Math.min(W-bw-10,sx-bw/2));
-  const by=sy-bh-8;
+  return { text, x: Math.max(10,Math.min(W-bw-10,sx-bw/2)), y: sy-bh-8, w: bw, h: bh, PAD, FONT };
+}
+function drawPopup() {
+  const b = popupBox(); if (!b) return;
+  const { text, x: bx, y: by, w: bw, h: bh, PAD, FONT } = b;
+  ctx.font=`${FONT}px Space Mono,monospace`;
   ctx.save();
   ctx.fillStyle='rgba(20,24,32,0.78)'; ctx.strokeStyle='rgba(255,255,255,0.1)'; ctx.lineWidth=0.5;
   manualRoundRect(bx,by,bw,bh,6); ctx.fill(); ctx.stroke();

@@ -15,7 +15,7 @@
 const STORE_X = 5010;
 
 const marigold = makeRegular({ name: 'marigold', kind: 'goose', color: '#d8d4c8', x: STORE_X + 10, greeted: false });
-OUT_TALKERS.push({ n: marigold, at: () => [marigold.x, groundY(STORE_X) - 118] });
+outTalker(marigold, () => [marigold.x, groundY(STORE_X) - 52, groundY(STORE_X) - 112]);   // feet: the counter
 
 const MARI_FLAVOR = [
   'honk. sorry. that slips out when i\'m concentrating.',
@@ -36,8 +36,9 @@ function talkToMarigold() {
   const gold = inv.gold || 0;
   const wantCloth = questState.boat === 'open' && !hasItem('canvas') && !boat.sail;
   const wantMallows = questState.bonfire === 'open' && !hasItem('mallows');
+  let more = false;
   if (!marigold.greeted) {
-    marigold.greeted = true;
+    marigold.greeted = true; more = wantCloth || wantMallows;   // straight on to business
     line = "welcome to marigold's! everything you need, and several things you don't. browse, browse.";
   } else if (wantCloth) {
     line = gold ? sell('canvas', "sailcloth? i keep one bolt for emergencies, and a boat is always an emergency. one gold nugget. pleasure doing business!")
@@ -46,7 +47,7 @@ function talkToMarigold() {
     line = gold ? sell('mallows', "marshmallows! for rae? tell her to hold them just above the fire, not in it. everyone puts them in it. one nugget.")
                 : "marshmallows are one gold nugget. they're very good marshmallows. i'm not allowed to give them away. i asked myself.";
   } else line = MARI_FLAVOR[marigold.li++ % MARI_FLAVOR.length];
-  say(marigold, line, true);
+  say(marigold, line, true, { next: more && talkToMarigold });
 }
 const nearShelves = () => scene === 'outside' && !vball.active && player.wx >= STORE_X - 100 && player.wx < STORE_X - 30;
 OUT_SPOTS.push(() => {

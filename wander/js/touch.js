@@ -9,6 +9,7 @@
      · left side: tap = jump (again in the air = double jump / spike),
          hold = keep jump held (glide with the owl's feather)
      · action button (left, above your thumb) = E, labelled for what's nearby
+     · tap a speech bubble to carry on / close it (talk.js)
      · telescope: drag to look around, ✕ to step back
      · tapping outside the bag/friends panel closes it
 ══════════════════════════════════════════ */
@@ -65,6 +66,8 @@ const VERB = { talk: 'talk', order: 'order', look: 'look', dig: 'dig', nap: 'nap
 function actionLabel() {
   if (obs.viewing && !transitioning) return skyRoadLabel();   // 'travel' when a sky road is lined up (skycharts.js)
   if (!started || transitioning || menu.open || obs.viewing) return null;
+  const held = talkHeld();   // someone's waiting on you to read their line (talk.js)
+  if (held) return held.bubbleNext ? 'next' : 'ok';
   if (vball.active) return 'leave game';
   if (joinPromptVisible) return 'join game';
   const p = activePopup;
@@ -91,6 +94,7 @@ function onDown(e) {
   enableTouch();
   const x = e.clientX, y = e.clientY;
   if (menu.open) { closeMenu(); return; }
+  if (tapBubble(x, y)) return;   // tapping a speech bubble = E on it (talk.js)
   if (obs.viewing) { touchUI.scope = { id: e.pointerId, x, y }; return; }
   if (x > window.innerWidth / 2) {
     if (touchUI.joy) return;

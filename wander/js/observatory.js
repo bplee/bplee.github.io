@@ -97,9 +97,10 @@ function foundCount() { return CONSTELLATIONS.filter(c => c.found).length; }
 function talkToNova() {
   const n = foundCount();
   let line;
+  let more = false;                       // E again carries straight on (talk.js)
   const sl = novaSkyLine();               // rae's telescope + sky roads (skycharts.js)
-  if (sl) { say(nova, sl, true); return; }
-  if (nova.stage === 0)      { line = "oh! a visitor! i'm nova. rosco's cousin. the clever one."; nova.stage = 1; }
+  if (sl) { say(nova, sl, true, { next: sky.step === 'ask' && talkToNova }); return; }
+  if (nova.stage === 0)      { line = "oh! a visitor! i'm nova. rosco's cousin. the clever one."; nova.stage = 1; more = true; }
   else if (nova.stage === 1) { line = "i've charted four constellations. can you find them? use the telescope — arrow keys to look around."; nova.stage = 2; startQuest('stars'); }
   else if (n === 4 && nova.stage < 3) { line = "all four! even the mouse. …wait. it looks a lot like you. here — keep my chart."; nova.stage = 3;
                                         completeQuest('stars'); setTimeout(() => give('chart', 'nova'), 800); }
@@ -121,7 +122,7 @@ function talkToNova() {
   else if (cloudiness() > 0.6 && Math.random() < 0.5) line = 'clouds. the natural enemy of astronomy. try a nap at the tavern?';
   else if (nova.stage === 2) line = n ? `${n} of 4 so far. ${n === 3 ? "the last one's shy. look low and to the east." : 'keep looking!'}` : 'the telescope is right there. go on!';
   else line = NOVA_FLAVOR[nova.li++ % NOVA_FLAVOR.length];
-  say(nova, line, true);
+  say(nova, line, true, { next: more && talkToNova });
 }
 
 function nearScope() { return scene === 'observatory' && Math.abs(player.wx - OBS_SCOPE_X) < 50; }

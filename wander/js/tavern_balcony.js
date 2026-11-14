@@ -96,7 +96,6 @@ function nap() {
 /* ── UPDATE ── */
 function updateBalcony() {
   const B = tavernFloorY() - BAL_H;
-  BALCONY_FOLK.forEach(n => { if (n.bubbleT > 0) n.bubbleT--; });
   if (doors.ghostOpen > 0) doors.ghostOpen--;
 
   // the moth circles the lamp
@@ -116,7 +115,7 @@ function updateBalcony() {
   if (Math.abs(yarn.vx) < 0.02) yarn.vx = 0;
   if (yarn.x < BAL_X0 + 12) { yarn.x = BAL_X0 + 12; yarn.vx *= -0.6; }
   if (yarn.x > BAL_X1 - 12) { yarn.x = BAL_X1 - 12; yarn.vx *= -0.6; }
-  if (Math.abs(yarn.x - fern.x) > 260 && !yarn.wandered && fern.bubbleT === 0) {
+  if (Math.abs(yarn.x - fern.x) > 260 && !yarn.wandered && !fern.bubble) {
     yarn.wandered = true;
     say(fern, 'my yarn! …oh, let it roam. it always comes back.');
   }

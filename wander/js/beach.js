@@ -14,7 +14,7 @@ const STORM_X0 = 11750, STORM_X1 = 13450;
 
 const boat = { hull: false, sail: false, launched: false, side: 'beach', x: BOAT_BUILD_X, ride: null, tilt: 0, y: 0, hammer: 0, crossed: false };
 const birch = makeRegular({ name: 'birch', kind: 'beaver', color: '#a8805a', x: 10150, stage: 0 });
-OUT_TALKERS.push({ n: birch, at: () => [birchX(), birchY() - 66] });
+outTalker(birch, () => [birchX(), birchY(), birchY() - 60]);
 function birchX() { return boat.ride ? boat.x - 40 * boat.ride.dir : boat.side === 'island' ? 15050 : boat.launched ? 10335 : birch.x; }
 function birchY() { return boat.ride ? boat.y - 4 : groundY(birchX()); }
 
@@ -55,9 +55,9 @@ function boatNeeds() {
   return n.join(', and ');
 }
 function talkToBirch() {
-  let line;
+  let line, more = false;
   if (birch.stage < BIRCH_INTRO.length) {
-    line = BIRCH_INTRO[birch.stage++];
+    line = BIRCH_INTRO[birch.stage++]; more = birch.stage < BIRCH_INTRO.length;
     if (birch.stage === BIRCH_INTRO.length) { setTimeout(() => give('axe', 'birch'), 900); startQuest('boat'); }
   } else if (questState.boat === 'open') {
     if ((inv.wood || 0) >= 3 && !boat.hull) {
@@ -72,7 +72,7 @@ function talkToBirch() {
       setTimeout(() => { boat.launched = true; boat.x = DOCK_X; say(birch, "she's done. i'm calling her the maybe — because maybe we'll make it. hop in whenever you're ready."); }, 2200);
     }
   } else line = (boat.side === 'island' ? BIRCH_ISLAND : BIRCH_FLAVOR)[birch.li++ % 3];
-  say(birch, line, true);
+  say(birch, line, true, { next: more && talkToBirch });
 }
 
 /* ── sailing ── */

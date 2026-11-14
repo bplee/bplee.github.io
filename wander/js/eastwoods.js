@@ -11,13 +11,13 @@
      the mole hole you kick it over, and it unrolls down the cliff.
 
    Also here (used by store.js, beach.js, sea.js, island.js): OUT_SPOTS,
-   the list of "what can you press E on outside", and the shared helpers
-   for outdoor speech bubbles.
+   the list of "what can you press E on outside", and OUT_TALKERS, the
+   outdoor folk whose speech bubbles drawOutBubbles() draws (talk.js).
 ══════════════════════════════════════════ */
 
 /* ── outdoor E targets: each entry returns null or { text, act } ── */
 const OUT_SPOTS = [];
-const OUT_TALKERS = [];          // { n, at: () => [x, bubbleBottomY] } — bubbles drawn by drawOutBubbles()
+const OUT_TALKERS = [];          // { n, at: () => [x, feetY, headY] } — bubbles drawn by drawOutBubbles()
 function outSpot() {
   if (scene !== 'outside' || player.riding || player.surfing || player.roping) return null;
   for (const f of OUT_SPOTS) { const r = f(); if (r) return r; }
@@ -28,15 +28,8 @@ window.addEventListener('keydown', e => {
   const r = outSpot();
   if (r && r.act) r.act();
 });
-function updateOutTalkers() { OUT_TALKERS.forEach(t => { if (t.n.bubbleT > 0) t.n.bubbleT--; }); }
-function drawOutBubbles() {
-  OUT_TALKERS.forEach(t => {
-    const n = t.n; if (n.bubbleT <= 0 || !n.bubble) return;
-    const [x, y] = t.at();
-    if (x - camX < -300 || x - camX > W + 300) return;
-    ctx.save(); ctx.globalAlpha = Math.min(1, n.bubbleT / 20); drawBubble(x - camX, y, n.bubble); ctx.restore();
-  });
-}
+const outTalker = (n, at) => { n.at = at; OUT_TALKERS.push({ n, at }); };
+function drawOutBubbles() { drawTalkBubbles(OUT_TALKERS.map(t => t.n)); }
 const onPlateau = () => scene === 'outside' && player.wx > CLIFF_X + 12 && player.wx < 9600;
 
 /* ══════════════════════════════════════════
@@ -69,7 +62,7 @@ const east = { chop: null, chips: [], birds: [], rope: false, ropeT: 0, ropeShow
 // out: she's come out of her house (until then nobody sees her) · pop: frames left of popping out of a door
 const JUN_POP = 50;
 const jun = makeRegular({ name: 'juniper', kind: 'bird', color: '#8aa8d8', x: 8070, y: 0, stage: 0, near: false, cross: false, flying: false, idle: 0, out: false, pop: 0, from: null, scale: 1.3 });
-OUT_TALKERS.push({ n: jun, at: () => [jun.x, jun.y - 30] });
+outTalker(jun, () => [jun.x, jun.y, jun.y - 30]);
 const junHome = () => { const t = EAST_TREES.find(t => t.home); return [houseX(t) + 6, groundY(t.x) - HOUSE_Y(t.s) + 20 - 24 * HOUSE_K + 3]; };   // on the roof
 jun.y = junHome()[1];
 
@@ -107,17 +100,19 @@ function talkToJuniper() {
     ? "careful with that! find a tree with an empty post. you'll see the outline where it goes."
     : ["the houses are lying by the fallen trees. one at a time! houses are delicate. so are wrens.", 'three houses, three empty posts. i counted twice.'][jun.li++ % 2];
   else line = JUN_FLAVOR[jun.li++ % JUN_FLAVOR.length];
-  say(jun, line, true);
+  say(jun, line, true, { next: east.talk && junNext });
 }
 // you swung an axe at a tree: juniper bursts out of the nearest lived-in birdhouse and flies at you
 function junWake(why) {
   const t = EAST_TREES.filter(t => t.house || t.filled).reduce((a, b) => Math.abs(b.x - player.wx) < Math.abs(a.x - player.wx) ? b : a);
   Object.assign(jun, { from: t, x: houseX(t), y: holeY(t), out: true, pop: JUN_POP, stage: 1, cross: true, near: false, idle: 0 });
   east.chop = null; east.talk = true; east.lockX = player.wx;
-  say(jun, JUN_SHOUT[why]);
+  say(jun, JUN_SHOUT[why], false, { hold: true, next: junNext });   // you're hearing her out: it stays up
 }
+// E on her line while she has the floor: the next line, once she's landed by you
 // she's arrived next to you and her last line has been up long enough to read
-const junReady = () => east.talk && jun.pop <= 0 && Math.abs(jun.x - player.wx) < 70 && jun.bubbleT < 60 * 4.5 - 24;
+const junReady = () => east.talk && jun.pop <= 0 && Math.abs(jun.x - player.wx) < 70 && bubbleAge(jun) > 24;
+const junNext = () => junReady() ? (talkToJuniper(), true) : false;
 
 /* ══════════════════════════════════════════
    WHAT'S NEARBY
@@ -138,7 +133,7 @@ const nearNail = () => EAST_TREES.find(t => t.nail != null && !t.filled && Math.
 OUT_SPOTS.push(() => {
   if (east.talk) return junReady() ? { text: 'press E to continue', act: talkToJuniper } : null;   // she has the floor
   if (!onPlateau() || east.chop) return null;
-  const junTalk = nearJuniper() && jun.bubbleT < 200 ? { text: 'press E to talk to juniper', act: talkToJuniper } : null;
+  const junTalk = nearJuniper() ? { text: 'press E to talk to juniper', act: talkToJuniper } : null;
   if (junTalk && jun.stage <= JUN_INTRO.length) return junTalk;      // she's mid-rant: hear her out first
   const nail = nearNail();
   if (nail && hasItem('birdhouse')) return { text: 'an empty post · press E to hang the birdhouse', act: () => hangHouse(nail) };
@@ -219,7 +214,6 @@ function updateRope() {
    UPDATE
 ══════════════════════════════════════════ */
 function updateEastWoods() {
-  updateOutTalkers();
   const c = east.chop;
   if (c) {
     c.t--; player.bumpT = 4; _vx = 0;
@@ -243,13 +237,12 @@ function updateEastWoods() {
 
   updateRopeRoll();
 
-  // hearing juniper out: you stay put (no walking, no jumping) and her line stays up until you press E
+  // hearing juniper out: you stay put (no walking, no jumping); her line is held until you press E (talk.js)
   if (east.talk) {
     player.inputLock = true; player.wx = east.lockX; _vx = 0; player._vx = 0;
     if (scene === 'outside') { player._py = groundY(player.wx); player.vy = 0; player.onGround = true; }
     player.jumpCount = 0; player.flipActive = false; player.flipRotation = 0;
     player.facingRight = jun.x >= player.wx;
-    if (jun.bubbleT < 30) jun.bubbleT = 30;
   }
   // juniper popping out of a birdhouse door: squeezes out, then hops up and away toward you
   if (jun.pop > 0) {

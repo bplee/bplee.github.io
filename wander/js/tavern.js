@@ -141,7 +141,11 @@ const BARTENDER_GREETING = {
 };
 
 function makeRegular(o) {
-  return Object.assign({ li: 0, bubble: null, bubbleT: 0, y: 0, talkR: 46, level: 0, seed: Math.random() * 10, talks: 0 }, o);
+  const n = Object.assign({ li: 0, bubble: null, bubbleT: 0, y: 0, talkR: 46, level: 0, seed: Math.random() * 10, talks: 0 }, o);
+  TALKERS.push(n);   // speech bubbles: talk.js
+  // where the bubble hangs, indoors: [x, feet, head] (outdoor + cavern folk set their own)
+  n.at = () => { const F = tavernFloorY(), feet = (n === gecko ? F - 22 : F + n.y + (n.bubbleDY || 0)); return [n.x, feet, feet - 50]; };
+  return n;
 }
 
 const gecko = makeRegular({
@@ -193,12 +197,6 @@ const REGULARS = [
   ]}),
 ];
 
-// say(): show a speech bubble. byPlayer = you pressed E on them (so you've "met")
-function say(n, text, byPlayer) {
-  n.bubble = text; n.bubbleT = 60 * 4.5;
-  if (byPlayer) meet(n.name, text);
-}
-
 const quest = { buttonReturned: false };
 
 function regularLine(n) {
@@ -230,7 +228,7 @@ function regularLine(n) {
 function talkToGecko() {
   if (!gecko.greeted) {
     gecko.greeted = true;
-    say(gecko, BARTENDER_GREETING[weather.type] + ' press E again for a drink.', true);
+    say(gecko, BARTENDER_GREETING[weather.type] + ' press E again for a drink.', true, { next: talkToGecko });
     return;
   }
   const d = serveDrink();
@@ -306,7 +304,7 @@ function tavernPopup() {
   const balPop = balconyPopup();
   if (balPop) return balPop;
   const t = nearestTavernTarget();
-  if (t && !(t.npc && t.npc.bubbleT > 0)) return t.popup;
+  if (t) return t.popup;
   if (playerLevel() === 0 && Math.abs(player.wx - STAIR_X1) < 40) return 'stairs ↑ the balcony';
   return null;
 }
@@ -331,7 +329,6 @@ function updateTavernInterior() {
   gecko.x = gecko.home + Math.sin(tick * 0.008) * 70;
 
   REGULARS.forEach(n => {
-    if (n.bubbleT > 0) n.bubbleT--;
     if (n.anim === 'snail') {
       n.x += 0.06 * n.dir;
       if (n.x > 1000 || n.x < 140) n.dir *= -1;
@@ -341,13 +338,12 @@ function updateTavernInterior() {
 
   // ambient chatter so the room feels alive
   if (tick % 480 === 0) {
-    const idle = REGULARS.concat(fern, lumen, dusk).filter(n => n !== gecko && n.bubbleT === 0 && Math.abs(n.x - player.wx) > 60);
+    const idle = REGULARS.concat(fern, lumen, dusk).filter(n => n !== gecko && !n.bubble && Math.abs(n.x - player.wx) > 60);
     if (idle.length) {
       const n = idle[Math.floor(Math.random() * idle.length)];
       // random line, but never one that comes with a gift (those are for when you talk to them)
       const pool = n.lines.filter((l, i) => i !== n.giftLine);
       say(n, Math.random() < 0.4 ? WEATHER_CHATTER[weather.type] : pool[Math.floor(Math.random() * pool.length)]);
-      n.bubbleT = 60 * 3.5;
     }
   }
 
@@ -467,34 +463,6 @@ function drawTavernExterior() {
 /* ══════════════════════════════════════════
    DRAW — INTERIOR
 ══════════════════════════════════════════ */
-function wrapText(text, maxW) {
-  const words = text.split(' '), lines = [];
-  let cur = '';
-  words.forEach(w => {
-    const t = cur ? cur + ' ' + w : w;
-    if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t;
-  });
-  if (cur) lines.push(cur);
-  return lines;
-}
-
-function drawBubble(cx, bottomY, text) {
-  ctx.save();
-  ctx.font = '11px Space Mono, monospace';
-  const lines = wrapText(text, 200);
-  const lh = 15, pad = 8;
-  const bw = Math.max(...lines.map(l => ctx.measureText(l).width)) + pad * 2;
-  const bh = lines.length * lh + pad * 2 - 4;
-  const bx = Math.max(8, Math.min(W - bw - 8, cx - bw / 2));
-  const by = bottomY - bh - 8;
-  ctx.fillStyle = 'rgba(245,235,215,0.94)'; ctx.strokeStyle = 'rgba(120,95,65,0.6)'; ctx.lineWidth = 1;
-  manualRoundRect(bx, by, bw, bh, 7); ctx.fill(); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(cx - 5, by + bh); ctx.lineTo(cx, by + bh + 7); ctx.lineTo(cx + 5, by + bh); ctx.fill();
-  ctx.fillStyle = 'rgba(50,38,28,0.95)'; ctx.textAlign = 'left';
-  lines.forEach((l, i) => ctx.fillText(l, bx + pad, by + pad + 9 + i * lh));
-  ctx.restore();
-}
-
 function drawLanternGlow(x, y, r, a) {
   const g = ctx.createRadialGradient(x, y, 2, x, y, r);
   g.addColorStop(0, `rgba(255,190,110,${a})`); g.addColorStop(1, 'rgba(255,190,110,0)');
@@ -707,11 +675,5 @@ function drawTavernOverlay() {
   v.addColorStop(0, 'rgba(0,0,0,0)'); v.addColorStop(1, 'rgba(0,0,0,0.45)');
   ctx.fillStyle = v; ctx.fillRect(0, 0, W, H);
 
-  REGULARS.concat(BALCONY_FOLK).forEach(n => {
-    if (n.bubbleT <= 0 || !n.bubble) return;
-    const top = (n === gecko ? F - 40 : F + n.y + (n.bubbleDY || 0)) - 58;
-    ctx.save(); ctx.globalAlpha = Math.min(1, n.bubbleT / 20);
-    drawBubble(n.x - camX, top, n.bubble);
-    ctx.restore();
-  });
+  drawTalkBubbles(REGULARS.concat(BALCONY_FOLK));
 }

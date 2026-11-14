@@ -24,7 +24,7 @@ function enterObservatory() {
     player.wx = OBS_EXIT_X + 50; player._py = tavernFloorY(); player.vy = 0; _vx = 0;
     player.onPlatform = false; player.facingRight = true;
     camX = W >= OBS_ROOM_W ? (OBS_ROOM_W - W) / 2 : 0;
-    if (nova.stage === 0 && nova.bubbleT <= 0) say(nova, 'oh! come in, come in. mind the cables.');
+    if (nova.stage === 0 && !nova.bubble) say(nova, 'oh! come in, come in. mind the cables.');
   });
 }
 function exitObservatory() {
@@ -40,17 +40,14 @@ function exitObservatory() {
 function obsInteriorPopup() {
   if (nearObsExit()) return 'press E to head back out';
   if (nearScope()) return skyHidden() > 0.5 ? 'press E to look through the telescope (clouded over)' : 'press E to look through the telescope';
-  if (nearNova() && nova.bubbleT <= 0) return 'press E to talk to nova';
+  if (nearNova()) return 'press E to talk to nova';
   return null;
 }
 
 function updateObsInterior() {
-  if (nova.bubbleT > 0) nova.bubbleT--;
   nova.x = NOVA_X + Math.sin(tick * 0.006) * 14;       // pacing by her desk
-  if (tick % 700 === 0 && nova.bubbleT === 0 && Math.abs(player.wx - nova.x) > 80) {
+  if (tick % 700 === 0 && !nova.bubble && Math.abs(player.wx - nova.x) > 80)
     say(nova, ['hmm…', 'fascinating.', 'is that a new one? no. a moth.', '*scribbles notes*'][Math.floor(Math.random() * 4)]);
-    nova.bubbleT = 150;
-  }
   const F = tavernFloorY();
   if (tick % 26 === 0) obsIn.steam.push({ x: 286 + rand(-2, 2), y: F - 64, a: 0.35, r: 2 });   // her tea
   for (let i = obsIn.steam.length - 1; i >= 0; i--) {
@@ -207,10 +204,5 @@ function drawObsInterior() {
 }
 
 // nova's speech bubble, in front
-function drawObsInteriorFront() {
-  if (nova.bubbleT > 0 && nova.bubble) {
-    ctx.save(); ctx.globalAlpha = Math.min(1, nova.bubbleT / 20);
-    drawBubble(nova.x - camX, tavernFloorY() - 62, nova.bubble);
-    ctx.restore();
-  }
-}
+nova.at = () => [nova.x, tavernFloorY(), tavernFloorY() - 56];
+function drawObsInteriorFront() { drawTalkBubbles([nova]); }
