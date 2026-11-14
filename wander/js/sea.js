@@ -2,7 +2,8 @@
    THE SEA — wade in and swim (same controls as the lake: hold ↓ to dive,
    hold jump to swim up, the same breath meter; the fishbowl helmet works too).
    · the bay (mainland side): sandy shallows, then a coral shelf with a little
-     community on it, and ollie the octopus, who gardens it.
+     community on it, and ollie the octopus, and ollie's garden: raised beds of kelp, sea lettuce,
+     sea grapes and sea cabbage (drawOllieGarden).
    · the reef city (island side): a big tiered reef stepping down from the
      surf to a sheer drop. the reef crest is what breaks the swell into the
      island's surf. towers of coral lit by glowing polyps, an arch, eels,
@@ -47,7 +48,10 @@ function makeCorals(x0, x1, n, seed, big) {
              s: (0.7 + hash(i * 5.1 + seed) * 0.8) * (big ? 1.35 : 1), col: CORAL_COLS[(i + seed) % CORAL_COLS.length], ph: hash(i + seed) * 6 };
   });
 }
-const CORALS = makeCorals(CORAL_X0, CORAL_X1, 46, 0).filter(c => Math.abs(c.x - ollie.x) > 30);
+// ollie's garden: tidy raised beds in the middle of the bay, cleared of wild coral (drawOllieGarden)
+const GARDEN_X0 = 10850, GARDEN_X1 = 11150;
+const GARDEN_BEDS = [[10884, 'kelp'], [10950, 'lettuce'], [11040, 'grapes'], [11106, 'cabbage']];   // [center x, crop]; ollie works the gap
+const CORALS = makeCorals(CORAL_X0, CORAL_X1, 46, 0).filter(c => c.x < GARDEN_X0 - 40 || c.x > GARDEN_X1 + 20);
 const CITY_CORALS = makeCorals(CITY_X0, CITY_X1, 150, 17, true).filter(c => Math.abs(c.x - 13478) > 26 && Math.abs(c.x - 13700) > 30 && !(c.x > 14100 && c.x < 14122));   // room for nib + shelby
 const STARS_SEA = [10760, 10890, 11170, 11330, 13400, 13700, 13930, 14120, 14290, 14440].map((x, i) => ({ x, r: 0.4 + i * 0.37, col: ['#e88a70', '#e8b070', '#d870a0', '#e88a70'][i % 4] }));
 // the city skyline: coral towers on the tiers + shelves, windows lit by glowing polyps. on: the depth they stand on (else the seabed)
@@ -133,7 +137,7 @@ function nearGuard(r) { return underSea() ? GUARDS.find(g => onGuardSide(g) && g
 
 const OLLIE_LINES = [
   "welcome to the reef! wipe your feet. well — you can't really wipe anything down here. welcome anyway!",
-  "i garden. that's brain coral, that's fan coral, and that's gerald. gerald is a rock. he's doing his best.",
+  "this is my garden. kelp, sea lettuce, sea grapes, sea cabbage. and that's gerald. gerald is a rock. he's doing his best.",
   "everyone on the reef knows everyone. it's a small reef. everybody knows your business. i love it.",
   "don't mind bart at the net. he's grumpy because he cares. mostly he's grumpy.",
   'i have three hearts. two of them like you already. the third takes a while.',
@@ -370,7 +374,7 @@ function updateSea() {
   if (lake.deepHintT > 0 && scene === 'outside') lake.deepHintT--;
   const g = nearGuard(GUARD_STARTLE_R);   // zooming right up to a guard startles them
   if (g && sea.puff[g.n.name] < 40 && Math.hypot(_vx, player.vy) > 1.5) { sea.puff[g.n.name] = 120; achieve('puffed'); }
-  ollie.x = 10980 + Math.sin(tick * 0.008) * 24;
+  ollie.x = 10995 + Math.sin(tick * 0.008) * 8;    // pottering in the gap between the beds
   GUARDS.forEach(q => q.n.x = q.netX + 7 + Math.sin(tick * 0.02 + q.side) * 2);   // right in the hole (the net is 14 wide)
   const wy = seaY(), s = playerScale();
   if (lake.under && scene === 'outside' && tick % 24 === 0) puffBubbles(1);
@@ -457,6 +461,7 @@ function drawSeaBack() {
   });
   if (camX + W > CORAL_X0 - 50 && camX < SEA_NET_X + 200) {
     drawCorals(CORALS);
+    drawOllieGarden();
     drawCritter(ox + ollie.x, groundY(ollie.x) + 1, 'octopus', { color: ollie.color, scale: 1.4, dir: faceToward(ollie.x, 1) });
     drawReefSign(10700, 'the reef');
   }
@@ -478,6 +483,63 @@ function drawReefSign(x, text) {
   ctx.fillStyle = 'rgba(220,230,210,0.8)'; ctx.font = '8px Space Mono, monospace'; ctx.textAlign = 'center'; ctx.fillText(text, sx, sb - 41);
 }
 
+function drawOllieGarden() {
+  const ox = -camX, B = x => groundY(x) + 1;
+  ctx.save(); ctx.lineCap = 'round';
+  // the kelp arch at the gate
+  const ax = GARDEN_X0 - 18, ab = B(ax);
+  ctx.strokeStyle = '#6a5a40'; ctx.lineWidth = 3;
+  ctx.beginPath(); ctx.moveTo(ox + ax - 14, ab); ctx.lineTo(ox + ax - 14, ab - 46); ctx.quadraticCurveTo(ox + ax, ab - 62, ox + ax + 14, ab - 46); ctx.lineTo(ox + ax + 14, ab); ctx.stroke();
+  ctx.strokeStyle = 'rgba(110,150,70,0.85)'; ctx.lineWidth = 2;
+  for (let i = 0; i < 6; i++) { const hx = ox + ax - 12 + i * 4.8, hy = ab - 50 - Math.sin(i / 5 * Math.PI) * 8; ctx.beginPath(); ctx.moveTo(hx, hy); ctx.quadraticCurveTo(hx + Math.sin(tick * 0.03 + i) * 3, hy + 10, hx + Math.sin(tick * 0.03 + i + 1) * 2, hy + 16 + (i % 2) * 6); ctx.stroke(); }
+  ctx.restore();
+  drawReefSign(GARDEN_X0 - 52, "ollie's garden");
+  ctx.save(); ctx.lineCap = 'round';
+  GARDEN_BEDS.forEach(([cx, crop], bi) => {
+    const x0 = cx - 30, x1 = cx + 30;
+    if (ox + x1 < -40 || ox + x0 > W + 40) return;
+    // raised soil, edged with pale stones
+    ctx.fillStyle = '#3a2e24'; ctx.beginPath(); ctx.moveTo(ox + x0, B(x0));
+    for (let x = x0; x <= x1; x += 4) ctx.lineTo(ox + x, B(x) - 8);
+    ctx.lineTo(ox + x1, B(x1)); ctx.closePath(); ctx.fill();
+    for (let x = x0; x <= x1; x += 5) { ctx.fillStyle = (x / 5 | 0) % 2 ? '#a8a294' : '#8c877a'; ctx.beginPath(); ctx.ellipse(ox + x, B(x) - 1.5, 3, 2.2, 0, 0, 7); ctx.fill(); }
+    // the crop, planted in a neat row
+    for (let x = x0 + 7; x <= x1 - 5; x += 12) {
+      const px = 0, pb = 0, sw = Math.sin(tick * 0.025 + x * 0.3) * 2;
+      ctx.save(); ctx.translate(ox + x, B(x) - 7); ctx.scale(1.6, 1.6);
+      if (crop === 'kelp') {
+        ctx.strokeStyle = 'rgba(150,130,60,0.9)'; ctx.lineWidth = 2.5;
+        ctx.beginPath(); ctx.moveTo(px, pb); ctx.bezierCurveTo(px + sw, pb - 12, px - sw, pb - 22, px + sw * 1.5, pb - 34); ctx.stroke();
+        ctx.fillStyle = 'rgba(170,150,70,0.8)'; [14, 24].forEach(h => { ctx.beginPath(); ctx.ellipse(px + sw * 0.6 + 3, pb - h, 4, 1.6, -0.5, 0, 7); ctx.fill(); });
+      } else if (crop === 'lettuce') {
+        ctx.fillStyle = 'rgba(120,200,110,0.85)';
+        [[-3, -6, 0.6], [3, -6, -0.6], [0, -10, 0]].forEach(([dx, dy, a]) => { ctx.beginPath(); ctx.ellipse(px + dx + sw * 0.3, pb + dy, 4, 6, a, 0, 7); ctx.fill(); });
+        ctx.strokeStyle = 'rgba(60,120,60,0.8)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.moveTo(px, pb); ctx.lineTo(px, pb - 12); ctx.stroke();
+      } else if (crop === 'grapes') {
+        ctx.strokeStyle = 'rgba(90,140,70,0.9)'; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(px, pb); ctx.lineTo(px + sw * 0.5, pb - 18); ctx.stroke();
+        ctx.fillStyle = 'rgba(140,210,120,0.9)';
+        for (let k = 0; k < 6; k++) { ctx.beginPath(); ctx.arc(px + sw * 0.5 * (k / 6) + (k % 2 ? 2.2 : -2.2), pb - 5 - k * 2.4, 1.7, 0, 7); ctx.fill(); }
+      } else {   // sea cabbage: round pink heads
+        ctx.fillStyle = 'rgba(200,120,160,0.85)'; ctx.beginPath(); ctx.arc(px, pb - 5, 5, 0, 7); ctx.fill();
+        ctx.fillStyle = 'rgba(110,170,100,0.8)'; ctx.beginPath(); ctx.ellipse(px - 4, pb - 2, 4, 2, 0.4, 0, 7); ctx.ellipse(px + 4, pb - 2, 4, 2, -0.4, 0, 7); ctx.fill();
+      }
+      ctx.restore();
+    }
+    // a marker stake at the bed's end
+    const mx = ox + x1 + 3, mb = B(x1 + 3);
+    ctx.fillStyle = '#7a6a50'; ctx.fillRect(mx - 0.8, mb - 18, 1.6, 18);
+    ctx.fillStyle = 'rgba(230,225,205,0.85)'; ctx.fillRect(mx - 4, mb - 20, 8, 5);
+  });
+  // a little rake leaning by the beds, and gerald (a rock; he's doing his best)
+  const rx = ox + GARDEN_X1 + 26, rb = B(GARDEN_X1 + 26);
+  ctx.strokeStyle = '#7a6a50'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(rx, rb); ctx.lineTo(rx + 10, rb - 30); ctx.stroke();
+  ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(rx + 5, rb - 33); ctx.lineTo(rx + 15, rb - 27); ctx.stroke();
+  for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.moveTo(rx + 6 + k * 3, rb - 32 + k * 1.8); ctx.lineTo(rx + 4 + k * 3, rb - 28 + k * 1.8); ctx.stroke(); }
+  const gx = ox + GARDEN_X1 + 8, gb = B(GARDEN_X1 + 8);
+  ctx.fillStyle = '#6e6c66'; ctx.beginPath(); ctx.ellipse(gx, gb - 6, 11, 8, 0, Math.PI, 0); ctx.fill();
+  ctx.fillStyle = 'rgba(20,20,20,0.7)'; ctx.fillRect(gx - 4, gb - 9, 1.5, 1.5); ctx.fillRect(gx + 2.5, gb - 9, 1.5, 1.5);
+  ctx.restore();
+}
 function drawCorals(list) {
   const ox = -camX;
   ctx.save(); ctx.lineCap = 'round';
