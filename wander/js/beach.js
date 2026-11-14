@@ -190,6 +190,12 @@ function drawSeaHorizon() {
   ctx.restore();
 }
 
+// how much of the pale dry-sand look a spot of beach gets: rae's island in full, birch's beach a little
+function drySandW(x) {
+  const c = v => Math.max(0, Math.min(1, v));
+  if (x > 14600) return c((x - 14700) / 260) * c((16500 - x) / 100);
+  return 0.6 * c((x - 9990) / 130) * c((10560 - x) / 160);
+}
 // sand over the terrain: the mainland beach, the sea floor, the island (world space)
 function drawSand() {
   const x0 = Math.max(9950, camX - 20), x1 = Math.min(WORLD_W, camX + W + 20);
@@ -204,16 +210,56 @@ function drawSand() {
   // fade from grass to sand at the bottom of the slope: the sand fades in, strip by strip
   ctx.save(); ctx.clip();
   ctx.fillStyle = sg;
-  for (let x = 9950; x < 10120; x += 10) {
-    if (x + 10 < camX - 20 || x > camX + W + 20) continue;
-    ctx.globalAlpha = Math.min(1, (x - 9950 + 10) / 170); ctx.fillRect(x - camX, 0, 10.5, bottom);
+  for (let x = 9950; x < 10120; x += 2) {      // thin, pixel-snapped strips that butt up exactly (no seams)
+    if (x + 2 < camX - 20 || x > camX + W + 20) continue;
+    const sx = Math.round(x - camX);
+    ctx.globalAlpha = Math.min(1, (x - 9950 + 2) / 170); ctx.fillRect(sx, 0, Math.round(x + 2 - camX) - sx, bottom);
   }
   ctx.globalAlpha = 1; ctx.fillRect(10120 - camX, 0, Math.max(0, W + camX - 10100), bottom);
+  // dry sand above the waterline: pale, silvery-beige in the moonlight (rae's island most of all),
+  // a lighter wet band at the water's edge, then easing into the darker sand under the water
+  const sy = seaY(), dg = ctx.createLinearGradient(0, sy - 130, 0, sy + 200);
+  dg.addColorStop(0, '#aea58e'); dg.addColorStop(0.33, '#9f957c'); dg.addColorStop(0.4, '#8e8570');
+  dg.addColorStop(0.55, 'rgba(100,92,76,0.6)'); dg.addColorStop(0.8, 'rgba(80,72,58,0.2)'); dg.addColorStop(1, 'rgba(74,66,50,0)');
+  ctx.fillStyle = dg;
+  for (let x = Math.floor(x0 / 6) * 6; x < x1; x += 6) {
+    const w = drySandW(x); if (w <= 0) continue;
+    const l = Math.round(x - camX); ctx.globalAlpha = w; ctx.fillRect(l, 0, Math.round(x + 6 - camX) - l, bottom);
+  }
+  ctx.globalAlpha = 1;
+  // texture: specks, little wind ripples, a shell or two (only where it's dry and on screen)
+  for (let x = Math.floor(x0 / 9) * 9; x < x1; x += 9) {
+    const w = drySandW(x), gy = groundY(x); if (w < 0.3 || gy > sy + 30) continue;
+    const h1 = hash(x * 0.113), h2 = hash(x * 0.271), sx = x - camX;
+    ctx.fillStyle = h1 > 0.5 ? `rgba(230,224,206,${0.45 * w})` : `rgba(70,62,48,${0.4 * w})`;
+    ctx.fillRect(sx + h2 * 6, gy + 3 + h2 * 26, 1.6, 1.4);
+    ctx.fillRect(sx + h1 * 6, gy + 10 + h1 * 40, 1.3, 1.2);
+    if (x % 45 === 0 && gy < sy - 4) {     // a wind ripple just under the surface
+      ctx.strokeStyle = `rgba(120,108,86,${0.35 * w})`; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(sx - 8, gy + 5 + h1 * 3); ctx.quadraticCurveTo(sx, gy + 2 + h1 * 3, sx + 9, gy + 5 + h1 * 3); ctx.stroke();
+      ctx.strokeStyle = `rgba(225,220,200,${0.3 * w})`;
+      ctx.beginPath(); ctx.moveTo(sx - 6, gy + 3.5 + h1 * 3); ctx.quadraticCurveTo(sx, gy + 1 + h1 * 3, sx + 7, gy + 3.5 + h1 * 3); ctx.stroke();
+    }
+    if (h2 > 0.93 && gy < sy) {      // a shell lying on the sand
+      ctx.fillStyle = `rgba(236,222,212,${0.85 * w})`;
+      ctx.beginPath(); ctx.moveTo(sx, gy); ctx.arc(sx, gy, 3.2, Math.PI, 0); ctx.closePath(); ctx.fill();
+      ctx.strokeStyle = `rgba(150,130,120,${0.6 * w})`; ctx.lineWidth = 0.6;
+      ctx.beginPath(); for (let k = 1; k < 4; k++) { ctx.moveTo(sx, gy); ctx.lineTo(sx + Math.cos(Math.PI + k * Math.PI / 4) * 3.2, gy + Math.sin(Math.PI + k * Math.PI / 4) * 3.2); } ctx.stroke();
+    } else if (h2 > 0.86 && gy < sy) {   // or a pebble
+      ctx.fillStyle = `rgba(150,150,150,${0.6 * w})`; ctx.beginPath(); ctx.ellipse(sx + 3, gy - 0.5, 2.2, 1.4, 0, 0, 7); ctx.fill();
+    }
+  }
   ctx.restore();
-  // the edge: pale where it's dry
+  // the edge: pale where it's dry, with a silvery wet sheen where the water runs up it
   ctx.beginPath();
   for (let x = x0; x <= x1; x += 6) { const y = groundY(x); x === x0 ? ctx.moveTo(x - camX, y) : ctx.lineTo(x - camX, y); }
-  ctx.strokeStyle = 'rgba(170,155,120,0.5)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.strokeStyle = 'rgba(200,190,160,0.55)'; ctx.lineWidth = 1.5; ctx.stroke();
+  for (let x = Math.floor(x0 / 6) * 6; x < x1; x += 6) {
+    const w = drySandW(x), dy = groundY(x) - sy, k = w * Math.max(0, 1 - Math.abs(dy + 4) / 16);
+    if (k <= 0.02) continue;
+    ctx.strokeStyle = `rgba(206,214,218,${0.4 * k})`; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(x - camX, groundY(x) + 1.5); ctx.lineTo(x + 6 - camX, groundY(x + 6) + 1.5); ctx.stroke();
+  }
   // the drop-off into the deep: bare rock
   const dx = 11540 - camX;
   if (dx > -80 && dx < W + 80) {

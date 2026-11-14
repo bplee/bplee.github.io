@@ -4,7 +4,9 @@
      x, y   : screen position of their feet
      kind   : bunny fox ferret hedgehog gecko raccoon badger squirrel otter owl toad
               snail tortoise moth bat ghost mole crab beaver bird goose puffer octopus
-     opts   : { color:'#rrggbb', dir:±1 (facing), label, scale, sleep, flap, talking, working, fly, cross, puffed }
+              seahorse hermit
+     opts   : { color:'#rrggbb', dir:±1 (facing), label, scale, sleep, flap, talking, working, fly, cross, puffed,
+                specs (seahorse: reading glasses), shell (hermit: 'bell' | 'conch') }
 ══════════════════════════════════════════ */
 // rae's species in one place: change these two and she (and her portrait) follow
 const RAE_KIND = 'fox', RAE_SPECIES = 'fox';
@@ -266,6 +268,47 @@ function drawCritter(x, y, kind, o) {
       ctx.beginPath(); ctx.moveTo(-12, -10); ctx.bezierCurveTo(-14, -38, 14, -38, 12, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
       eye(-3.5, -18, 1.8); eye(4.5, -18, 1.8); blush(-7, -14); blush(8, -14);
       ctx.beginPath(); ctx.arc(0.5, -14, 2, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke(); break;
+    }
+
+    case 'seahorse': {   // upright, curly tail, a fluttering back fin, a long snout
+      const fin = Math.sin(t * 4) * 1.2, nod = o.talking ? Math.sin(t * 3) * 0.06 : 0;
+      ctx.beginPath(); ctx.moveTo(-1, -13); ctx.quadraticCurveTo(-7, -6, -2, -2); ctx.arc(1.2, -3.2, 3.2, Math.PI * 0.85, Math.PI * 2.6); ctx.stroke();   // tail
+      ctx.save(); ctx.translate(-6, -21); ctx.scale(1 + fin * 0.12, 1);
+      ctx.fillStyle = line(0.3); ctx.beginPath(); ctx.ellipse(-2, 0, 3.5, 6, 0.1, 0, 7); ctx.fill(); ctx.stroke();
+      for (let i = -1; i <= 1; i++) L([[0, i * 3], [-5, i * 3.5]]);
+      ctx.restore(); ctx.fillStyle = line(0.13);
+      E(1, -20, 6.5, 9, 0.12);                                                                  // body
+      ctx.strokeStyle = line(0.4); for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.arc(2, -25 + i * 4, 4.5, 0.1 * Math.PI, 0.5 * Math.PI); ctx.stroke(); } ctx.strokeStyle = line(0.8);
+      ctx.save(); ctx.translate(2, -31); ctx.rotate(nod);
+      E(1, -3, 5.5, 4.8);                                                                       // head
+      ctx.beginPath(); ctx.moveTo(5, -4); ctx.lineTo(13, -2.5); ctx.lineTo(13, 0.5); ctx.lineTo(5, -0.5); ctx.closePath(); ctx.fill(); ctx.stroke();   // snout
+      L([[-2, -7], [-2, -11], [1, -8]]); L([[1, -8], [2, -11], [3, -7.5]]);                     // little crown
+      eye(2.5, -4, 1.5);
+      if (o.specs) { ctx.strokeStyle = 'rgba(220,210,190,0.8)'; ctx.lineWidth = 0.8 / k; ctx.beginPath(); ctx.arc(2.8, -4, 3, 0, 7); ctx.stroke(); L([[0, -4.5], [-4, -5]]); ctx.strokeStyle = line(0.8); ctx.lineWidth = 1.2 / k; }
+      ctx.restore(); break;
+    }
+
+    case 'hermit': {   // a hermit crab, peeking out of whatever it lives in (opts.shell: 'bell' or 'conch')
+      const wave = o.talking ? Math.sin(t * 3) * 0.4 : Math.sin(t * 0.6) * 0.1;
+      L([[3, -4], [8, -2], [10, 0]]); L([[6, -5], [12, -3], [14, 0]]);                         // legs
+      if (o.shell === 'bell') {   // the school bell, on its side, mouth to the front
+        ctx.fillStyle = 'rgba(226,186,92,0.9)'; ctx.strokeStyle = 'rgba(150,110,40,0.95)';
+        ctx.beginPath(); ctx.moveTo(3, -26); ctx.quadraticCurveTo(-6, -21, -15, -19); ctx.quadraticCurveTo(-22, -12, -15, -5); ctx.quadraticCurveTo(-6, -3, 3, 1); ctx.closePath(); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.arc(-21, -12, 3, 0, 7); ctx.stroke();
+        ctx.fillStyle = 'rgba(255,240,190,0.6)'; ctx.beginPath(); ctx.ellipse(-8, -15, 5, 1.4, -0.2, 0, 7); ctx.fill();
+      } else {                     // a big pink conch
+        ctx.fillStyle = 'rgba(236,200,176,0.92)'; ctx.strokeStyle = 'rgba(170,120,100,0.95)';
+        ctx.beginPath(); ctx.moveTo(4, -4); ctx.quadraticCurveTo(0, -24, -12, -22); ctx.quadraticCurveTo(-22, -18, -20, -8); ctx.quadraticCurveTo(-16, 0, 4, -1); ctx.closePath(); ctx.fill(); ctx.stroke();
+        [[-14, -21], [-8, -24], [-2, -22]].forEach(([sx, sy]) => L([[sx - 2, sy + 2], [sx, sy - 3], [sx + 2, sy + 2]]));
+        ctx.beginPath(); ctx.moveTo(-17, -12); ctx.quadraticCurveTo(-10, -8, -4, -16); ctx.stroke();
+      }
+      ctx.strokeStyle = line(0.8); ctx.fillStyle = line(0.3);
+      E(4, -9, 5.5, 4.5);                                                                          // the bit of crab you can see
+      L([[4, -13], [5, -20]]); L([[7, -13], [9, -19]]); eye(5, -21, 1.6); eye(9, -20, 1.6);
+      ctx.save(); ctx.translate(8, -8); ctx.rotate(-0.3 - wave);
+      ctx.beginPath(); ctx.ellipse(5, -2, 4.5, 3.2, 0, 0, 7); ctx.fill(); ctx.stroke();            // the big claw
+      L([[7, -4], [10, -6]]); ctx.restore(); ctx.fillStyle = line(0.13);
+      blush(1, -7); break;
     }
 
     default:

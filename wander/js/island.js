@@ -7,17 +7,17 @@
      (marshmallows from marigold's, back on the mainland).
    · palms, rae's driftwood hut, and the bonfire she lights every night.
 ══════════════════════════════════════════ */
-const SURF_X1 = 14935, RAE_BEACH_X = 15240, BONFIRE_X = 15340, HUT_X = 15600;
+const SURF_X1 = 14935, SURF_X0 = REEF_X - 210, SURF_TAKEOFF = REEF_X - 110, RAE_BEACH_X = 15240, BONFIRE_X = 15340, HUT_X = 15600;
 const PALMS = [{ x: 15160, s: 1 }, { x: 15470, s: 1.2 }, { x: 15800, s: 0.95 }, { x: 15960, s: 1.1 }];
 
 const surf = { waves: [], next: 60, rides: 0, sparks: [], toast: 0, spray: [], swash: [], set: 0 };
-const rae = makeRegular({ name: 'rae', kind: RAE_KIND, color: '#e09a5c', x: 14600, stage: 0, mode: 'wait', wave: null, ashore: false });
+const rae = makeRegular({ name: 'rae', kind: RAE_KIND, color: '#e09a5c', x: SURF_TAKEOFF, stage: 0, mode: 'wait', wave: null, ashore: false });
 OUT_TALKERS.push({ n: rae, at: () => [rae.x, raeY() - 64] });
 
 /* ── surfing ── */
 function surfWaveAt(x) { return surf.waves.find(w => Math.abs(w.x - x) < 34 && w.h > 8); }
 function trySurfJump() {
-  if (!wearing('surfboard') || !player.inWater || player.wx < REEF_X || player.wx > SURF_X1 - 30) return false;
+  if (!wearing('surfboard') || !player.inWater || player.wx < SURF_X0 + 40 || player.wx > SURF_X1 - 30) return false;
   if (player._py - seaY() > 60) return false;
   const w = surfWaveAt(player.wx);
   if (!w) return false;
@@ -93,27 +93,37 @@ OUT_SPOTS.push(() => {
    UPDATE
 ══════════════════════════════════════════ */
 function updateIsland() {
-  // waves: the swell lifts over the reef crest, steepens, curls, throws its lip, breaks into
-  // whitewash, and runs up the sand. they come in sets — a few big ones, then a lull.
+  // waves: the swell rises out over the reef city, builds as it feels the crest, steepens, curls,
+  // throws its lip just past the crest, and then rolls the rest of the way in as a tumbling wall
+  // of whitewash that shrinks as it goes and runs up the sand. they come in sets — a few big ones,
+  // then a lull. bigger waves feel the bottom sooner and break a little farther out.
   if (--surf.next <= 0) {
     surf.set = (surf.set + 1) % 5;
     const size = surf.set < 3 ? 0.95 + Math.random() * 0.35 : 0.7 + Math.random() * 0.2;
-    surf.waves.push({ x: REEF_X - 40, size, h: 3, lip: 0, broken: false, foam: 0, rider: false, ph: Math.random() * 6 });
+    surf.waves.push({ x: SURF_X0, bx: REEF_X + 50 - (size - 0.7) * 70, size, h: 3, peak: 3, lip: 0, broken: false, foam: 0, rider: false, ph: Math.random() * 6 });
     surf.next = surf.set < 3 ? 170 + Math.floor(Math.random() * 40) : 320 + Math.floor(Math.random() * 80);
   }
   for (let i = surf.waves.length - 1; i >= 0; i--) {
     const w = surf.waves[i];
-    w.x += 1.3 + w.size * 0.5 - (w.broken ? 0.3 : 0);
-    const p = Math.max(0, (w.x - REEF_X + 40) / (SURF_X1 - REEF_X + 40)), breakP = 0.5 + w.size * 0.12;
+    if (!w.bx) w.bx = REEF_X + 30;
+    w.x += w.broken ? 1.25 + w.size * 0.45 - Math.max(0, w.x - SURF_X1 + 120) * 0.003 : 1.4 + w.size * 0.55;
     if (!w.broken) {
-      w.h = 3 + w.size * 44 * Math.pow(Math.min(1, p / breakP), 1.4);
-      w.lip = Math.max(0, Math.min(1, (p - breakP * 0.7) / (breakP * 0.3)));
-      if (w.lip > 0.6 && Math.random() < 0.7) for (let k = 0; k < 2; k++) surf.spray.push({ x: w.x + 10 + w.lip * 10, y: seaY() - w.h - 2, vx: rand(0.8, 2.6), vy: rand(-2.2, -0.6), life: 1 });
-      if (p >= breakP) { w.broken = true; for (let k = 0; k < 18; k++) surf.spray.push({ x: w.x + rand(0, 26), y: seaY() - w.h * rand(0.2, 0.9), vx: rand(0.5, 3), vy: rand(-3.5, -1), life: 1 }); }
+      const q = Math.max(0, (w.x - SURF_X0) / (w.bx - SURF_X0));
+      w.h = w.peak = 3 + w.size * 46 * Math.pow(Math.min(1, q), 1.7);
+      w.lip = Math.max(0, Math.min(1, (q - 0.72) / 0.28));
+      if (w.lip > 0.5 && Math.random() < 0.8) for (let k = 0; k < 2; k++) surf.spray.push({ x: w.x + 10 + w.lip * 12, y: seaY() - w.h - 2, vx: rand(0.8, 2.8), vy: rand(-2.4, -0.6), life: 1 });
+      if (q >= 1) {                                          // the lip pitches over: the wave breaks
+        w.broken = true;
+        for (let k = 0; k < 26; k++) surf.spray.push({ x: w.x + rand(0, 30), y: seaY() - w.h * rand(0.2, 1), vx: rand(0.5, 3.2), vy: rand(-4, -1), life: 1 });
+      }
     } else {
-      w.h += (Math.max(6, w.size * 9) - w.h) * 0.04;      // collapses into a rolling wall of foam
-      w.lip = Math.max(0, w.lip - 0.05);
-      w.foam = Math.min(1, w.foam + 0.05);
+      // a rolling wall of foam: collapses fast from the break, then shrinks steadily toward the sand
+      const k = Math.max(0, Math.min(1, (w.x - w.bx) / (SURF_X1 - w.bx)));
+      const wall = Math.max(5, w.size * (26 - 17 * k));
+      w.h += (wall - w.h) * (w.h > wall + 6 ? 0.06 : 0.1);
+      w.lip = Math.max(0, w.lip - 0.04);
+      w.foam = Math.min(1, w.foam + 0.06);
+      if (Math.random() < 0.35 * (1 - k)) surf.spray.push({ x: w.x + rand(4, 18), y: seaY() - w.h * rand(0.6, 1.1), vx: rand(0.6, 2), vy: rand(-1.8, -0.4), life: 0.8 });
     }
     if (w.x > SURF_X1 + 4 && !w.rider) {
       surf.swash.push({ t: 0, reach: 40 + w.size * 70 });
@@ -129,14 +139,14 @@ function updateIsland() {
     if (!rae.wave || rae.wave.x >= SURF_X1 - 30) { rae.mode = wantSea ? 'paddle' : 'walk'; rae.wave = null; }
     else rae.x = rae.wave.x + 14;
   } else if (rae.mode === 'paddle') {
-    rae.x -= 0.9; if (rae.x < 14580) rae.mode = 'wait';
+    rae.x -= 1.3; if (rae.x < SURF_TAKEOFF) rae.mode = 'wait';
     if (!wantSea) rae.mode = 'walk';
   } else if (rae.mode === 'wait') {
     const w = surf.waves.find(w => Math.abs(w.x - rae.x) < 4 && !w.rider);
     if (w) { rae.mode = 'ride'; rae.wave = w; }
     if (!wantSea && !w) rae.mode = 'walk';
   } else if (rae.mode === 'walk') {
-    rae.x += Math.sign(RAE_BEACH_X - rae.x) * 1.6;
+    rae.x += Math.sign(RAE_BEACH_X - rae.x) * (rae.x < SURF_X1 ? 2.6 : 1.6);   // quick paddle in, then a stroll
     if (Math.abs(rae.x - RAE_BEACH_X) < 2) { rae.mode = 'ashore'; rae.x = RAE_BEACH_X; }
   } else if (rae.mode === 'ashore' && wantSea) { rae.mode = 'out'; }
   else if (rae.mode === 'out') { rae.x -= 1.8; if (rae.x < SURF_X1 - 10) rae.mode = 'paddle'; }
@@ -199,17 +209,32 @@ function drawWave(w) {
   // the white lip feathering off the crest
   ctx.strokeStyle = `rgba(240,248,250,${0.45 + lip * 0.5})`; ctx.lineWidth = 2 + lip * 2;
   ctx.beginPath(); ctx.moveTo(sx - 26 * S, wy - h * 0.86); ctx.quadraticCurveTo(sx + over * 0.4, wy - h - 4, sx + 6 + over, wy - h + 6 + lip * 8); ctx.stroke();
-  // broken: a tumbling band of whitewash riding in front, with foam trailing behind
+  // broken: a tumbling wall of whitewash rolling in front, churned foam trailing behind
   if (w.broken) {
-    const n = 14;
-    for (let k = 0; k < n; k++) {
-      const fx = sx - 30 * S + k * (46 * S / n) + Math.sin(tick * 0.3 + k * 1.7 + w.ph) * 3;
-      const fy = wy - h * (0.25 + 0.7 * hash(k + Math.floor(tick / 6))) ;
-      ctx.fillStyle = `rgba(240,248,250,${(0.4 + 0.4 * hash(k * 3.1 + Math.floor(tick / 5))) * w.foam})`;
-      ctx.beginPath(); ctx.arc(fx, fy, 2.5 + hash(k * 7.7) * 3.5, 0, 7); ctx.fill();
+    const f = w.foam, wall = Math.max(h, 6), fw = 26 + 30 * S;
+    // the churned wake: patchy foam lying on the water behind the wall
+    for (let k = 0; k < 16; k++) {
+      const fx = sx - 18 - k * 11 - hash(k * 2.3 + w.ph) * 6 + Math.sin(tick * 0.04 + k) * 2;
+      ctx.fillStyle = `rgba(225,238,242,${0.4 * f * (1 - k / 16)})`;
+      ctx.beginPath(); ctx.ellipse(fx, wy - 0.5 + hash(k * 5.1) * 1.5, 7 - k * 0.3, 1.6, 0, 0, 7); ctx.fill();
     }
-    ctx.fillStyle = `rgba(230,240,245,${0.35 * w.foam})`;
-    for (let k = 0; k < 10; k++) { const fx = sx - 40 - k * 14 + Math.sin(tick * 0.05 + k) * 3; ctx.beginPath(); ctx.ellipse(fx, wy - 1, 6 - k * 0.4, 1.4, 0, 0, 7); ctx.fill(); }
+    // the wall itself: a stack of tumbling blobs from the waterline up to the crest
+    const n = 34;
+    for (let k = 0; k < n; k++) {
+      const r = hash(k * 1.37 + w.ph), t = Math.floor(tick / 5);
+      const fx = sx - fw * 0.7 + r * fw + Math.sin(tick * 0.25 + k * 1.7 + w.ph) * 2.5;
+      const up = hash(k + t * 0.61) * (0.35 + 0.65 * (1 - Math.abs(r - 0.6)));
+      const fy = wy + 1 - wall * up - 1;
+      ctx.fillStyle = `rgba(${236 + 10 * hash(k * 9.1)},247,250,${(0.55 + 0.35 * hash(k * 3.1 + t)) * f})`;
+      ctx.beginPath(); ctx.arc(fx, fy, (2 + hash(k * 7.7) * 3.5) * Math.min(1.3, 0.6 + wall / 20), 0, 7); ctx.fill();
+    }
+    // a bright frothy cap rolling over the front
+    ctx.strokeStyle = `rgba(250,253,255,${0.8 * f})`; ctx.lineWidth = 2.5;
+    ctx.beginPath(); ctx.moveTo(sx - fw * 0.6, wy - wall * 0.55);
+    ctx.quadraticCurveTo(sx, wy - wall - 3 + Math.sin(tick * 0.3 + w.ph) * 1.5, sx + fw * 0.35, wy - wall * 0.2); ctx.stroke();
+    // the leading edge: a thin line of fizz pushed out ahead
+    ctx.fillStyle = `rgba(240,248,250,${0.5 * f})`;
+    ctx.beginPath(); ctx.ellipse(sx + fw * 0.35 + 6, wy, 9, 1.4, 0, 0, 7); ctx.fill();
   }
 }
 // spray thrown off the lips, and the swash running up the sand and back
@@ -237,7 +262,7 @@ function drawSurfboardAt(x, y, k) {
 
 // behind the player
 function drawIslandBack() {
-  if (camX + W < REEF_X - 100) return;
+  if (camX + W < SURF_X0 - 180) return;
   const ox = -camX;
   ctx.save();
   // rae's hut: driftwood walls, a thatch of palm leaves, a hammock
@@ -300,6 +325,6 @@ function drawIslandBack() {
   }
   // you, on your board
   if (player.surfing) drawSurfboardAt(player.wx - camX, player._py + 1, 1);
-  else if (wearing('surfboard') && player.inWater && player.wx > REEF_X - 50 && player.wx < SURF_X1) drawSurfboardAt(player.wx - camX + 4, Math.max(seaY() + 2, player._py - 10), 0.9);
+  else if (wearing('surfboard') && player.inWater && player.wx > SURF_X0 - 20 && player.wx < SURF_X1) drawSurfboardAt(player.wx - camX + 4, Math.max(seaY() + 2, player._py - 10), 0.9);
   ctx.restore();
 }

@@ -142,8 +142,8 @@ function climbOut() {
     player.onPlatform = false; player.inWater = false; player.facingRight = true;
     camX = Math.max(0, Math.min(WORLD_W - W, player.wx - W * 0.3)); camY = 0;
     weather.lastCamX = camX;
-    if (!caveState.moleHole) { showHint('you pop out of a mole hole on top of the big cliff. you tie off a rope ladder down the cliff, for next time.', 4200); achieve('longway'); }
-    east.rope = true;   // a shortcut back up, from now on
+    if (!caveState.moleHole) { showHint('you pop out of a mole hole on top of the big cliff. you kick the rope ladder over the edge. now you can climb the cliff.', 4800); achieve('longway'); }
+    east.rope = true;   // a shortcut back up, from now on (it unrolls down the cliff: eastwoods.js updateRopeRoll)
     caveState.moleHole = true;
   });
 }

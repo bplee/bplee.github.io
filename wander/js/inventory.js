@@ -31,9 +31,13 @@ const ITEMS = {
   wood:      { name: 'a log',                 desc: 'from a tree the storm took. birch needs three for the hull.', wearable: false },
   canvas:    { name: 'a bolt of sailcloth',   desc: "from marigold's store. enough for one very brave sail.",       wearable: false },
   mallows:   { name: 'a bag of marshmallows', desc: 'for rae. she has never had a toasted one.',                   wearable: false },
+  conch:     { name: 'a big empty conch',     desc: 'pink inside, spirals the right way. somebody small could live in this.', wearable: false },
+  bell:      { name: 'the school bell',       desc: "the reef school's bell. it says 'ding', which means 'morning'.", wearable: false },
+  goldstar:  { name: 'a gold star',           desc: "from miss coralie. she only has a few. you've been very good.", wearable: false },
+  drawing:   { name: "nib's drawing",         desc: 'you, from memory, in squid ink. you have six legs in it. it is perfect.', wearable: false },
 };
 const ITEM_ORDER = ['blades', 'lantern', 'feather', 'scarf', 'peanut', 'bracelet', 'chart', 'shovel', 'glowstone', 'helmet', 'pickaxe', 'axe', 'surfboard', 'shells',
-                    'button', 'gold', 'birdhouse', 'wood', 'canvas', 'mallows'];
+                    'button', 'gold', 'birdhouse', 'wood', 'canvas', 'mallows', 'conch', 'bell', 'goldstar', 'drawing'];
 
 const FRIENDS = {
   'clover':       { kind: 'bunny',    color: '#e8d5c0', species: 'bunny',    where: 'your volleyball partner' },
@@ -62,6 +66,9 @@ const FRIENDS = {
   'bea':          { kind: 'puffer',   color: '#9ad0c0', species: 'pufferfish', where: "guards the net under the island's reef city. bart's sister." },
   'bart':         { kind: 'puffer',   color: '#d8c070', species: 'pufferfish', where: 'guards the gap in the net. takes it seriously.' },
   'rae':          { kind: RAE_KIND,   color: '#e09a5c', species: RAE_SPECIES, where: 'surfs off the island across the sea' },
+  'miss coralie': { kind: 'seahorse', color: '#e0a878', species: 'seahorse', where: 'teaches at the reef school, on the school ledge' },
+  'shelby':       { kind: 'hermit',   color: '#d88068', species: 'hermit crab', where: 'under the school ledge, in whatever fits' },
+  'nib':          { kind: 'octopus',  color: '#b8a0e0', species: 'octopus (very small)', where: "miss coralie's class. sits at the front now." },
 };
 
 const QUESTS = {
@@ -76,6 +83,9 @@ const QUESTS = {
   birds:  { giver: 'juniper', title: 'houses for the neighbors', desc: 'the storm knocked three birdhouses out of the trees. hang each one back on an empty nail.' },
   surf:   { giver: 'rae',   title: 'catch a wave',         desc: "paddle out on rae's spare board. jump as a wave reaches you, and ride three to shore." },
   bonfire:{ giver: 'rae',   title: 'something to toast',   desc: "rae has never had a toasted marshmallow. marigold's store sells them." },
+  schoolbell: { giver: 'miss coralie', title: 'the school bell', desc: "the reef school's bell rolled off the school ledge. look underneath it." },
+  shelby: { giver: 'shelby', title: 'a bigger shell',      desc: "shelby will trade the bell for a proper conch. there's an empty one under the high shelf, sitting on the deep ledge." },
+  nib:    { giver: 'miss coralie', title: 'headcount',     desc: "nib is missing. he hides when he's frightened — try the dark nook under the deep ledge, then swim him back to class." },
 };
 const questState = {}; // id → 'open' | 'done'
 
@@ -101,6 +111,7 @@ const ACHIEVEMENTS = {
   surfer:     { name: 'hang ten',            desc: 'ride three waves to shore.' },
   puffed:     { name: 'very alarming',       desc: 'startle bart until he puffs up.' },
   toasty:     { name: 'golden brown',        desc: 'toast a marshmallow with rae.' },
+  headcount:  { name: 'everyone accounted for', desc: "bring nib back to miss coralie's class." },
 };
 const achieved = {};
 function achieve(id) {
@@ -320,6 +331,25 @@ const ITEM_ART = {
     ctx.fillStyle = 'rgba(250,245,240,0.95)';
     [[-6, 6], [5, 7], [0, -1], [-5, -5], [6, -4]].forEach(([dx, dy]) => { ctx.beginPath(); ctx.ellipse(w / 2 + dx, h / 2 + dy, 4.5, 3.5, 0, 0, 7); ctx.fill(); });
     ctx.fillStyle = 'rgba(200,110,120,0.9)'; ctx.fillRect(w / 2 - 12, h / 2 - 14, 24, 3);
+  },
+  conch: (w, h) => { drawConch(w / 2 - 1, h / 2 + 12, 1.35); },
+  bell: (w, h) => { drawSchoolBell(w / 2, h / 2 + 1, 1.25); },
+  goldstar: (w, h) => {
+    drawGlow(w / 2, h / 2, 22, 0.35, [255, 215, 110]);
+    ctx.fillStyle = 'rgba(240,200,80,0.97)'; ctx.strokeStyle = 'rgba(170,130,40,0.9)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const r = i % 2 ? 6.5 : 15, a = -Math.PI / 2 + i * Math.PI / 5; ctx.lineTo(w / 2 + Math.cos(a) * r, h / 2 + 1 + Math.sin(a) * r); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(15,12,12,0.85)'; ctx.beginPath(); ctx.arc(w / 2 - 3, h / 2, 1.2, 0, 7); ctx.arc(w / 2 + 3, h / 2, 1.2, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(15,12,12,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(w / 2, h / 2 + 3, 2.5, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+  },
+  drawing: (w, h) => {
+    ctx.save(); ctx.translate(w / 2, h / 2); ctx.rotate(-0.08);
+    ctx.fillStyle = 'rgba(232,224,200,0.97)'; ctx.fillRect(-15, -17, 30, 34);
+    ctx.strokeStyle = 'rgba(70,60,110,0.85)'; ctx.lineWidth = 1.1; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.arc(0, -2, 6, 0, 7); ctx.arc(-4, -8, 2.5, 0, 7); ctx.moveTo(6.5, -10); ctx.arc(4, -10, 2.5, 0, 7); ctx.stroke();   // you: a round mouse…
+    for (let i = 0; i < 6; i++) { ctx.beginPath(); ctx.moveTo(-5 + i * 2, 3); ctx.lineTo(-8 + i * 3.2, 12); ctx.stroke(); }                     // …with six legs
+    ctx.fillStyle = 'rgba(70,60,110,0.9)'; ctx.beginPath(); ctx.arc(1.5, -3, 0.9, 0, 7); ctx.fill();
+    ctx.restore();
   },
   button: (w, h) => {
     ctx.fillStyle = 'rgba(210,175,95,0.95)'; ctx.beginPath(); ctx.arc(w / 2, h / 2, 13, 0, 7); ctx.fill();

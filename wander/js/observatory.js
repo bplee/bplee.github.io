@@ -73,17 +73,23 @@ const obs = {
   viewing: false, vx: 1200, vy: 700, comet: 0, smoke: [],
 };
 
-// rain, storms, snow, fog (and frogs) hide the sky completely; wind, petals and falling stars don't
+// only a clear night (or a falling-star night, which is clear too) lets you see anything;
+// rain, storms, snow, fog, wind, petals and frogs all bring a deck of cloud over the sky
+const SKY_CLEAR = { clear: true, stars: true };
 function skyHidden() {
   const a = weather.amt;
-  return Math.min(1, Math.max(a.rain, a.storm, a.snow, a.fog, a.frogs));
+  let m = 0;
+  for (const k in a) if (!SKY_CLEAR[k]) m = Math.max(m, a[k] || 0);
+  return Math.min(1, m);
 }
 const HIDDEN_LINE = {
-  rain:  'rain clouds, all the way across. come back when it clears.',
-  storm: 'a thunderstorm. no stars tonight.',
-  snow:  'snow clouds, end to end. come back when it clears.',
-  fog:   "fog on the glass. you can't see a thing.",
-  frogs: '…there is a frog sitting on the lens.',
+  rain:   'rain clouds, all the way across.',
+  storm:  'a thunderstorm, end to end.',
+  snow:   'heavy snow clouds over everything.',
+  fog:    "fog on the glass. you can't see a thing.",
+  wind:   'the wind is dragging cloud across the whole sky.',
+  petals: 'a petal shower, under a sheet of cloud.',
+  frogs:  '…there is a frog sitting on the lens.',
 };
 
 function foundCount() { return CONSTELLATIONS.filter(c => c.found).length; }
@@ -165,7 +171,8 @@ function updateTelescope() {
   obs.comet = (obs.comet + 0.6) % (SKY_W + 400);
 
   const hidden = skyHidden();
-  const seeing = hidden > 0.5 ? 0 : (1 - cloudiness() * 0.85) * (1 - hidden);   // bad weather: nothing to see
+  // bad weather: nothing to see, so nothing to chart
+  const seeing = (hidden > 0.02 || !SKY_CLEAR[weather.type]) ? 0 : 1 - cloudiness() * 0.85;
   CONSTELLATIONS.forEach(c => {
     if (c.found) return;
     const d = Math.hypot(c.cx - obs.vx, c.cy - obs.vy);
@@ -276,7 +283,7 @@ function drawTelescopeView() {
   if (!obs.viewing) return;
   const cx = W / 2, cy = H / 2, R = Math.min(W, H) * 0.42;
   const ox = cx - obs.vx, oy = cy - obs.vy; // sky → screen
-  const a = weather.amt, c = cloudiness();
+  const a = weather.amt;
 
   ctx.save();
   ctx.fillStyle = '#030406'; ctx.fillRect(0, 0, W, H);
@@ -286,6 +293,12 @@ function drawTelescopeView() {
   sg.addColorStop(0, '#101a33'); sg.addColorStop(1, '#060912');
   ctx.fillStyle = sg; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
 
+  // in bad weather the clouds take over completely: no stars, no constellations, no lines
+  const hid = skyHidden();
+  const starA = Math.max(0, Math.min(1, 1 - hid * 2));
+  const cloudA = Math.max(0, Math.min(1, hid * 2));
+  if (starA > 0) {
+  ctx.save(); ctx.globalAlpha = starA;
   // milky band
   const mg = ctx.createLinearGradient(ox + 0, oy + 1400, ox + 2400, oy + 0);
   mg.addColorStop(0.35, 'rgba(160,170,220,0)'); mg.addColorStop(0.5, 'rgba(160,170,220,0.08)'); mg.addColorStop(0.65, 'rgba(160,170,220,0)');
@@ -337,33 +350,18 @@ function drawTelescopeView() {
   ctx.strokeStyle = 'rgba(80,70,60,0.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(mx + 5, my - 68); ctx.lineTo(mx + 5, my - 84); ctx.stroke();
   ctx.fillStyle = '#c85050'; ctx.fillRect(mx + 5, my - 84, 9, 6);
 
-  // bad weather: a solid deck of cloud between you and every star
-  const hid = skyHidden();
-  if (hid > 0.02) {
-    ctx.fillStyle = `rgba(26,30,40,${0.97 * hid})`; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
-    for (let i = 0; i < 9; i++) {
-      const bx = cx + ((i * 210 + tick * (0.3 + Math.abs(weather.wind) * 0.4)) % (R * 3)) - R * 1.5, by = cy - R + (i % 5) * R * 0.5;
-      ctx.fillStyle = `rgba(52,58,72,${0.6 * hid})`;
-      ctx.beginPath(); ctx.ellipse(bx, by, R * 0.55, R * 0.2, 0, 0, 7); ctx.fill();
-    }
+  ctx.restore();
   }
-  // weather on the lens
-  if (c > 0.02) {
-    for (let i = 0; i < 7; i++) {
-      const bx = cx + ((i * 260 + tick * (0.4 + weather.wind * 0.5)) % (R * 3)) - R * 1.5;
-      const by = cy - R * 0.6 + (i % 4) * R * 0.4;
-      ctx.fillStyle = `rgba(40,44,58,${c * 0.85})`;
-      ctx.beginPath(); ctx.ellipse(bx, by, R * 0.6, R * 0.25, 0, 0, 7); ctx.fill();
-    }
-  }
-  if (a.fog > 0.02) { ctx.fillStyle = `rgba(130,140,155,${a.fog * 0.6})`; ctx.fillRect(cx - R, cy - R, R * 2, R * 2); }
+
+  // bad weather: layers of night cloud, faintly lit by the moon behind them
+  if (cloudA > 0) drawScopeClouds(cx, cy, R, ox, oy, cloudA);
   if (a.rain + a.storm > 0.05) {
     ctx.fillStyle = `rgba(190,210,235,${0.35 * Math.min(1, a.rain + a.storm)})`;
     for (let i = 0; i < 14; i++) { const dx = Math.sin(i * 12.9) * R * 0.8, dy = Math.cos(i * 7.3) * R * 0.8; ctx.beginPath(); ctx.ellipse(cx + dx, cy + dy, 4, 5, 0, 0, 7); ctx.fill(); }
   }
   if (a.snow > 0.05) {
-    ctx.fillStyle = `rgba(240,244,250,${0.8 * a.snow})`;
-    for (let i = 0; i < 30; i++) { const fx = cx + Math.sin(i * 3.1 + tick * 0.01) * R, fy = cy - R + ((i * 47 + tick * 1.5) % (R * 2)); ctx.beginPath(); ctx.arc(fx, fy, 2.5, 0, 7); ctx.fill(); }
+    ctx.fillStyle = `rgba(232,238,248,${0.6 * a.snow})`;
+    for (let i = 0; i < 30; i++) { const fx = cx + Math.sin(i * 3.1 + tick * 0.01) * R, fy = cy - R + ((i * 47 + tick * 1.5) % (R * 2)); ctx.beginPath(); ctx.ellipse(fx, fy, 3.4, 3, 0, 0, 7); ctx.fill(); }
   }
   if (weather.flash > 0.02) { ctx.fillStyle = `rgba(220,228,255,${weather.flash * 0.6})`; ctx.fillRect(cx - R, cy - R, R * 2, R * 2); }
 
@@ -382,8 +380,98 @@ function drawTelescopeView() {
   ctx.strokeStyle = '#d8b068'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, R + 10, 0, 7); ctx.stroke();
   ctx.fillStyle = 'rgba(220,210,190,0.7)'; ctx.font = '12px Space Mono, monospace'; ctx.textAlign = 'center';
   ctx.fillText(touchMode ? `drag to look around · charted ${foundCount()}/4` : `arrow keys to look around · E to step back · charted ${foundCount()}/4`, cx, Math.min(H - 16, cy + R + 34));
-  if (hid > 0.5) ctx.fillText(HIDDEN_LINE[weather.type] || 'too cloudy to see anything tonight…', cx, Math.max(20, cy - R - 22));
-  else if (c > 0.6) ctx.fillText('too cloudy to see much tonight…', cx, Math.max(20, cy - R - 22));
+  if (hid > 0.5 && HIDDEN_LINE[weather.type]) ctx.fillText(HIDDEN_LINE[weather.type], cx, Math.max(20, cy - R - 22));
+  ctx.restore();
+  if (cloudA > 0.5) drawCloudyMessage(cx, cy, R, (cloudA - 0.5) * 2);
+}
+
+function obsHash(n) { const s = Math.sin(n * 127.1 + 311.7) * 43758.5453; return s - Math.floor(s); }
+
+// one cloud: a row of round puffs on a flat base
+function scopePuff(x, y, w, h, seed) {
+  ctx.beginPath();
+  ctx.ellipse(x, y + h * 0.16, w * 0.92, h * 0.34, 0, 0, 7);
+  const m = 6;
+  for (let j = 0; j < m; j++) {
+    const f = j / (m - 1), arch = Math.sin(Math.PI * f);
+    const r = h * (0.38 + 0.42 * arch) * (0.8 + obsHash(seed + j * 3.7) * 0.4);
+    const px = x + (f * 2 - 1) * w * 0.78, py = y - arch * h * 0.32;
+    ctx.moveTo(px + r, py); ctx.arc(px, py, r, 0, 7);
+  }
+  ctx.fill();
+}
+
+// the telescope view in bad weather: a slow, layered night cloud deck (drawn inside the lens clip)
+function drawScopeClouds(cx, cy, R, ox, oy, k) {
+  const a = weather.amt;
+  const tone = 1 + (a.snow || 0) * 0.22 + (a.fog || 0) * 0.15 - (a.storm || 0) * 0.3;
+  const col = (r, g, b, al) => `rgba(${Math.round(r * tone)},${Math.round(g * tone)},${Math.round(b * tone)},${al})`;
+  const mx = ox + 2150, my = oy + 230;   // the moon, somewhere up behind all this
+  const wind = weather.wind || 0;
+  const drift = (0.15 + Math.min(2, Math.abs(wind)) * 0.35) * (wind < 0 ? -1 : 1);
+
+  ctx.save();
+  ctx.globalAlpha = k;
+  const bg = ctx.createLinearGradient(cx, cy - R, cx, cy + R);
+  bg.addColorStop(0, col(30, 35, 48, 1)); bg.addColorStop(1, col(14, 17, 25, 1));
+  ctx.fillStyle = bg; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+  // the moon's glow, smeared through the deck
+  const glow = ctx.createRadialGradient(mx, my, 0, mx, my, R * 2.4);
+  glow.addColorStop(0, 'rgba(200,208,220,0.30)'); glow.addColorStop(0.35, 'rgba(130,142,165,0.12)'); glow.addColorStop(1, 'rgba(130,142,165,0)');
+  ctx.fillStyle = glow; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+
+  const spanX = R * 4.6, spanY = R * 3.4;
+  for (let L = 0; L < 4; L++) {               // far → near: nearer layers are bigger, quicker, darker
+    const depth = 0.25 + L * 0.25, speed = drift * (0.4 + L * 0.45);
+    for (let i = 0; i < 7; i++) {
+      const seed = L * 53 + i * 11;
+      let x = obsHash(seed) * spanX + tick * speed - obs.vx * depth * 0.5;
+      let y = obsHash(seed + 1) * spanY - obs.vy * depth * 0.35 + Math.sin(tick * 0.004 + seed) * 6;
+      x = ((x % spanX) + spanX) % spanX + cx - spanX / 2;
+      y = ((y % spanY) + spanY) % spanY + cy - spanY / 2;
+      const w = R * (0.3 + obsHash(seed + 2) * 0.3) * (0.8 + L * 0.22), h = w * (0.38 + obsHash(seed + 3) * 0.14);
+      if (x + w * 1.1 < cx - R || x - w * 1.1 > cx + R || y + h * 1.1 < cy - R || y - h * 1.3 > cy + R) continue;
+      // moonlight: always a faint wash from up and to the right, stronger close to where the moon hides
+      const dx = mx - x, dy = my - y, dl = Math.hypot(dx, dy) || 1;
+      const near = Math.max(0, 1 - dl / (R * 3.4));
+      const lit = 0.3 + 0.7 * near;
+      let lx = 0.45 * (1 - near) + (dx / dl) * near, ly = -0.9 * (1 - near) + (dy / dl) * near;
+      const ll = Math.hypot(lx, ly) || 1; lx /= ll; ly /= ll;
+      // a soft shadow underneath, a moonlit rim on the side facing the moon, then the body over both
+      ctx.fillStyle = col(8, 10, 16, 0.35);
+      scopePuff(x - lx * h * 0.22, y - ly * h * 0.22 + h * 0.08, w * 1.02, h, seed);
+      ctx.fillStyle = col(140 + 60 * lit, 150 + 60 * lit, 175 + 50 * lit, 0.06 + 0.22 * lit);
+      scopePuff(x + lx * h * 0.14, y + ly * h * 0.14, w, h, seed);
+      const shade = 44 - L * 6 + lit * 18;
+      ctx.fillStyle = col(shade, shade + 5, shade + 18, 0.94);
+      scopePuff(x - lx * h * 0.04, y - ly * h * 0.04, w * 0.99, h * 0.97, seed);
+    }
+  }
+  if (a.fog > 0.02) {                          // fog: everything goes soft and milky
+    const fg = ctx.createLinearGradient(cx, cy - R, cx, cy + R);
+    fg.addColorStop(0, `rgba(120,128,142,${0.35 * a.fog})`); fg.addColorStop(1, `rgba(150,158,170,${0.55 * a.fog})`);
+    ctx.fillStyle = fg; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+  }
+  ctx.restore();
+}
+
+// a clear "come back later" card in the middle of the lens
+function drawCloudyMessage(cx, cy, R, k) {
+  ctx.save();
+  ctx.globalAlpha = k;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  const big = Math.max(15, Math.min(22, R * 0.07)), small = Math.max(11, Math.min(14, R * 0.045));
+  const bw = Math.min(R * 1.7, 380), bh = big + small * 2 + 30;
+  // a soft oval of shadow behind the words (squashed circle, so it has no hard edges)
+  ctx.save(); ctx.translate(cx, cy); ctx.scale(1, bh / bw * 1.3);
+  const g = ctx.createRadialGradient(0, 0, 0, 0, 0, bw * 0.62);
+  g.addColorStop(0, 'rgba(6,8,14,0.62)'); g.addColorStop(0.6, 'rgba(6,8,14,0.35)'); g.addColorStop(1, 'rgba(6,8,14,0)');
+  ctx.fillStyle = g; ctx.fillRect(-bw, -bw, bw * 2, bw * 2);
+  ctx.restore();
+  ctx.fillStyle = 'rgba(236,232,220,0.95)'; ctx.font = `${big}px Space Mono, monospace`;
+  ctx.fillText('too cloudy tonight', cx, cy - small * 0.9);
+  ctx.fillStyle = 'rgba(205,212,228,0.85)'; ctx.font = `${small}px Space Mono, monospace`;
+  ctx.fillText('no stars to see. come back when the sky clears.', cx, cy + big * 0.75);
   ctx.restore();
 }
 
