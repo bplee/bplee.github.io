@@ -368,3 +368,46 @@ kbd {
 #chapter.show { opacity:1; }
 #chapter .ch-n { font-size:11px; letter-spacing:0.3em; text-transform:uppercase; color:rgba(230,205,160,0.75); }
 #chapter .ch-name { font-size:clamp(24px, 5vw, 38px); letter-spacing:0.08em; margin-top:6px; }
+
+/* the chapter menu, top left (chapters.js); the weather sits under it */
+#chapters {
+  position:fixed; top:20px; left:20px; z-index:55;
+  font-family:'Space Mono',monospace; font-size:12px; letter-spacing:0.08em; line-height:1.7; color:rgba(255,255,255,0.6);
+}
+#chapters[hidden] { display:none; }
+#chapters button { font:inherit; letter-spacing:inherit; color:inherit; background:none; border:none; cursor:pointer; text-align:left; line-height:1.4; }
+/* plain yellow text, like the weather under it; the triangle says it opens */
+#chapters .ch-pill { display:inline-block; color:rgba(255,216,144,0.85); cursor:pointer; -webkit-tap-highlight-color:transparent; }
+#chapters .ch-pill:hover, #chapters.open .ch-pill { color:rgba(255,216,144,1); }
+#chapters .ch-caret { font-size:10px; margin-left:2px; }
+#chapters .ch-list {
+  margin-top:6px; width:min(360px, calc(100vw - 32px)); padding:6px;
+  background:rgba(16,18,24,0.92); border:0.5px solid rgba(255,255,255,0.1); border-radius:12px;
+  backdrop-filter:blur(6px); box-shadow:0 6px 20px rgba(0,0,0,0.35);
+  display:flex; flex-direction:column; gap:2px; animation: chdrop 0.18s ease both;
+}
+@keyframes chdrop { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+#chapters .ch-row { display:flex; align-items:baseline; gap:8px; width:100%; padding:7px 8px; border-radius:8px; color:rgba(235,228,214,0.85); }
+#chapters button.ch-row:hover { background:rgba(255,255,255,0.06); }
+#chapters .ch-row .ch-num { width:46px; flex:none; color:rgba(230,205,160,0.7); }
+#chapters .ch-row .ch-name { flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+#chapters .ch-row .ch-tag { font-size:9px; color:rgba(235,228,214,0.4); white-space:nowrap; }
+#chapters .ch-here { background:rgba(230,205,160,0.07); }
+#chapters .ch-here .ch-tag { color:rgba(230,205,160,0.75); }
+#chapters .ch-off { opacity:0.4; cursor:default; }
+#chapters .ch-best .ch-tag { color:rgba(168,216,176,0.8); }
+#chapters .ch-note { opacity:0.5; }
+#chapters .ch-ask { justify-content:space-between; align-items:center; background:rgba(255,216,144,0.08); color:#ffd890; }
+#chapters .ch-btns { display:flex; gap:4px; }
+#chapters .ch-btns button { padding:3px 10px; border-radius:10px; border:0.5px solid rgba(255,216,144,0.4); color:#ffd890; }
+#chapters .ch-btns button:first-child { background:rgba(255,216,144,0.9); color:#1a1c22; }
+@media (max-width: 560px) { #chapters .ch-pill .ch-pname { display:none; } }
+#chapters .ch-sep { height:0.5px; margin:4px 6px; background:rgba(255,255,255,0.1); }
+body:has(#chapters:not([hidden])) #weather-box { top:40px; }
+body:has(#chapters.open) #weather-box { opacity:0; }
+@media (pointer: coarse) {
+  #chapters { top:calc(14px + env(safe-area-inset-top, 0px)); left:calc(16px + env(safe-area-inset-left, 0px)); }
+  #chapters .ch-pill { padding:6px 12px 6px 0; margin:-6px 0; }   /* a bigger tap area, same spot */
+  #chapters .ch-row { padding:10px 8px; }
+  body:has(#chapters:not([hidden])) #weather-box { top:calc(34px + env(safe-area-inset-top, 0px)); }
+}
