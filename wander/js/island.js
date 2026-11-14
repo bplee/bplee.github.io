@@ -140,7 +140,7 @@ function updateIsland() {
   const wantSea = !boat.crossed || (rae.stage >= RAE_INTRO.length && (player.inWater || player.surfing) && player.wx < SURF_X1 + 20 && !surf.toast);
   if (rae.mode === 'ride') {
     if (!rae.wave || rae.wave.x >= SURF_X1 - 30) { rae.mode = wantSea ? 'paddle' : 'walk'; rae.wave = null; }
-    else rae.x = rae.wave.x + 14;
+    else rae.x = rae.wave.x - 4;   // up on the crest, like you (not out ahead of the face)
   } else if (rae.mode === 'paddle') {
     rae.x -= 1.3; if (rae.x < SURF_TAKEOFF) rae.mode = 'wait';
     if (!wantSea) rae.mode = 'walk';
@@ -314,9 +314,13 @@ function drawIslandBack() {
   if (rae.x - camX > -60 && rae.x - camX < W + 60) {
     const inSurf = rae.mode !== 'ashore' && rae.mode !== 'walk' && rae.x < SURF_X1;
     if (inSurf) drawSurfboardAt(ox + rae.x, ry + 1, 0.9);
-    if (rae.mode === 'paddle' || rae.mode === 'wait') {       // lying on her board, bobbing
-      ctx.save(); ctx.translate(ox + rae.x, ry - 2 + Math.sin(tick * 0.05) * 1.5); ctx.rotate(Math.PI / 2 * (rae.mode === 'paddle' ? -0.9 : -0.75));
-      drawCritter(0, 0, rae.kind, { color: rae.color, dir: 1, scale: 0.8 }); ctx.restore();
+    if (rae.mode === 'paddle' || rae.mode === 'wait') {       // lying on her front on the board, bobbing
+      // paddling out: head toward the sea (left). waiting: head toward the beach, ready to go.
+      // dir flips her so her front (belly) ends up facing down once she's tipped over; the pivot
+      // is her feet, so shift her back along the board to keep her centered on it, and up onto it.
+      const out = rae.mode === 'paddle', d = out ? -1 : 1;
+      ctx.save(); ctx.translate(ox + rae.x + 15 * -d, ry - 7 + Math.sin(tick * 0.05) * 1.5); ctx.rotate(d * Math.PI / 2 * (out ? 0.92 : 0.86));
+      drawCritter(0, 0, rae.kind, { color: rae.color, dir: d, scale: 0.8 }); ctx.restore();
     } else drawCritter(ox + rae.x, ry, rae.kind, { color: rae.color, dir: rae.mode === 'ride' ? 1 : faceToward(rae.x, -1), scale: 1.05 });
     // toasting: a stick held out over the fire with a marshmallow going golden
     if (surf.toast) {
