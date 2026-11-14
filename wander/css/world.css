@@ -197,27 +197,15 @@ kbd {
 #worn img.off { opacity:0.32; }
 #worn img.carried { cursor:default; border-style:dashed; border-color:rgba(255,255,255,0.18); }
 #worn img:hover { background:rgba(255,255,255,0.1); }
-/* the bag's body: six slots, one thing each (inventory.js BODY SLOTS) */
-.m-doll {
-  position:relative; display:grid; gap:6px; padding:2px 4px;
-  grid-template-columns:repeat(3, minmax(0, 1fr));
-  grid-template-areas:". head ." "lhand neck rhand" "lhand chest rhand" ". feet .";
-}
-/* a soft figure behind the middle column, so it reads as a body */
-.m-doll::before {
-  content:''; position:absolute; left:50%; top:26px; bottom:26px; width:30%; transform:translateX(-50%);
-  border-radius:40px; background:linear-gradient(rgba(255,255,255,0.035), rgba(255,255,255,0.015));
-  border:0.5px solid rgba(255,255,255,0.05); pointer-events:none;
-}
+/* the bag's body: six fixed boxes, one thing each (inventory.js BODY SLOTS) */
+.m-doll { display:grid; gap:6px; grid-template-columns:repeat(3, minmax(0, 1fr)); }
 .m-slot {
   position:relative; font:inherit; color:inherit; cursor:pointer;
   display:flex; flex-direction:column; align-items:center; justify-content:center; gap:1px;
-  min-height:64px; padding:5px 3px 5px; border-radius:12px;
+  aspect-ratio:1; min-height:0; padding:5px 3px 5px; border-radius:12px;
   background:rgba(22,25,32,0.9); border:0.5px solid rgba(255,255,255,0.1);
   transition:border-color 0.15s ease, background 0.15s ease;
 }
-.s-head { grid-area:head; } .s-neck { grid-area:neck; } .s-chest { grid-area:chest; } .s-feet { grid-area:feet; }
-.s-lhand { grid-area:lhand; } .s-rhand { grid-area:rhand; }
 .m-slot img { width:42px; height:42px; }
 .m-slot.filled { border-color:rgba(160,210,170,0.3); }
 .m-slot.empty { border-style:dashed; border-color:rgba(255,255,255,0.16); background:rgba(18,21,27,0.9); }
@@ -309,7 +297,6 @@ kbd {
   #worn img { width:36px; height:36px; }
   #hint-box { bottom:calc(64px + env(safe-area-inset-bottom, 0px)); font-size:12px; max-width:70vw; text-align:center; }
   .m-foot { display:none; }
-  .m-slot { min-height:70px; }
   .m-slot img, .m-slot-plus { width:44px; height:44px; }
   .m-pick-x { font-size:20px; padding:4px 8px; }
   .m-slot, .m-tile { -webkit-tap-highlight-color:transparent; }
@@ -339,6 +326,6 @@ kbd {
   .t-sub { display:none; }
   /* a shorter body so the picker + card fit without much scrolling */
   .m-doll { gap:5px; }
-  .m-slot { min-height:58px; padding:3px 3px 4px; }
+  .m-slot { aspect-ratio:auto; min-height:58px; padding:3px 3px 4px; }
   .m-slot img, .m-slot-plus { width:38px; height:38px; }
 }

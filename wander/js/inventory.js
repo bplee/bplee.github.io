@@ -72,7 +72,7 @@ const FRIENDS = {
   'marigold':     { kind: 'goose',    color: '#d8d4c8', species: 'goose',    where: 'runs the general store by the tavern' },
   'juniper':      { kind: 'bird',     color: '#8aa8d8', species: 'bluebird', where: 'the thick woods. keeps an eye on everyone.' },
   'birch':        { kind: 'beaver',   color: '#a8805a', species: 'beaver',   where: 'building a sailboat on the beach' },
-  'ollie':        { kind: 'octopus',  color: '#d890a8', species: 'octopus',  where: 'tends the coral under the bay' },
+  'ollie':        { kind: 'octopus',  color: '#d890a8', species: 'octopus',  where: 'keeps a garden under the bay' },
   'bea':          { kind: 'puffer',   color: '#9ad0c0', species: 'pufferfish', where: "guards the net under the island's reef city. bart's sister." },
   'bart':         { kind: 'puffer',   color: '#d8c070', species: 'pufferfish', where: 'guards the gap in the net. takes it seriously.' },
   'rae':          { kind: RAE_KIND,   color: '#e09a5c', species: RAE_SPECIES, where: 'surfs off the island across the sea' },
@@ -118,10 +118,10 @@ let drag = null;   // a slot / spare tile being dragged (see BAG PANEL)
      (and write) it. slotSync() squares slots{} up with it (e.g. after inv.on.x = true).
 ══════════════════════════════════════════ */
 const SLOT_KEYS = ['head', 'neck', 'lhand', 'rhand', 'chest', 'feet'];
-const DOLL_ORDER = ['head', 'lhand', 'neck', 'rhand', 'chest', 'feet'];   // the order the panel walks them in
-const SLOT_NAME = { head: 'head', neck: 'neck', lhand: 'left hand', rhand: 'right hand', chest: 'chest', feet: 'feet' };
+const DOLL_ORDER = ['head', 'neck', 'chest', 'lhand', 'rhand', 'feet'];   // the panel's 3×2 grid, row by row
+const SLOT_NAME = { head: 'head', neck: 'neck', lhand: 'left arm', rhand: 'right arm', chest: 'chest', feet: 'feet' };
 const SLOT_GROUP = { head: ['head'], neck: ['neck'], chest: ['chest'], hand: ['rhand', 'lhand'], feet: ['feet'] };
-const KIND_FULL = { head: 'your head is', neck: 'your neck is', chest: 'your back is', hand: 'both hands are', feet: 'your feet are' };
+const KIND_FULL = { head: 'your head is', neck: 'your neck is', chest: 'your back is', hand: 'both arms are', feet: 'your feet are' };
 const ITEM_KIND = {
   helmet: 'head', feather: 'head', snorkel: 'head',
   scarf: 'neck', shells: 'neck',
@@ -812,7 +812,7 @@ function bagCard(cell) {
       state = wearing(id) ? `<div class="m-state on">on · ${kb('E', 'tap')} to put it away</div>` : `<div class="m-state">put away · ${kb('E', 'tap')} to use it</div>`;
       note = '<div class="m-fits">a pocket thing: needs no hand or slot</div>';
     } else if (it.wearable) {
-      const where = slotsFor(id), groups = itemGroups(id).map(g => g === 'hand' ? 'either hand' : g === 'chest' ? 'your back' : g).join(' or ');
+      const where = slotsFor(id), groups = itemGroups(id).map(g => g === 'hand' ? 'either arm' : g === 'chest' ? 'your back' : g).join(' or ');
       const out = where.every(k => slots[k]) && slots[slotBump(id, false)];
       state = `<div class="m-state">in your bag · ${kb('E', 'tap')} to put on</div>`;
       note = `<div class="m-fits">goes on: ${esc(groups)}${out ? ` · swaps out ${esc(ITEMS[out].name)}` : ''}</div>`;
@@ -848,13 +848,13 @@ function setFoot() {
 }
 
 // arrows in the bag: around the body, then down into the grids (4 across), and back up
-const DOLL_NAV = {   // [left, right, up, down]
-  head:  ['lhand', 'rhand', null,    'neck'],
-  lhand: [null,    'neck',  'head',  'feet'],
-  neck:  ['lhand', 'rhand', 'head',  'chest'],
-  rhand: ['neck',  null,    'head',  'feet'],
-  chest: ['lhand', 'rhand', 'neck',  'feet'],
-  feet:  ['lhand', 'rhand', 'chest', '+grid'],
+const DOLL_NAV = {   // [left, right, up, down] around the 3×2 grid
+  head:  [null,    'neck',  null,    'lhand'],
+  neck:  ['head',  'chest', null,    'rhand'],
+  chest: ['neck',  null,    null,    'feet'],
+  lhand: [null,    'rhand', 'head',  '+grid'],
+  rhand: ['lhand', 'feet',  'neck',  '+grid'],
+  feet:  ['rhand', null,    'chest', '+grid'],
 };
 function bagMove(dir) {
   const { pockets, spare, carried } = bagLists(), D = DOLL_ORDER.length;
