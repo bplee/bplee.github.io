@@ -28,6 +28,39 @@ canvas { display:block; }
   transition:opacity 0.6s ease;
 }
 #hint-box.visible { opacity:1; }
+/* toasts: items, friends, quests, constellations, achievements (inventory.js notify) */
+#toasts {
+  position:fixed; top:62px; left:50%; transform:translateX(-50%);
+  display:flex; flex-direction:column; align-items:center; gap:6px;
+  z-index:60; pointer-events:none;
+}
+.toast {
+  display:flex; align-items:center; gap:10px; max-width:min(440px, 90vw);
+  font-family:'Space Mono',monospace; color:rgba(240,234,222,0.92);
+  background:rgba(18,22,30,0.86); border:1px solid rgba(255,255,255,0.12); border-left:3px solid var(--accent, #e6cfa0);
+  border-radius:12px; padding:6px 14px 6px 6px; backdrop-filter:blur(6px);
+  box-shadow:0 6px 20px rgba(0,0,0,0.35);
+  opacity:0; transform:translateY(-10px); transition:opacity 0.35s ease, transform 0.35s ease;
+}
+.toast.in { opacity:1; transform:none; }
+.toast img { width:36px; height:36px; flex:none; border-radius:8px; background:rgba(255,255,255,0.05); object-fit:contain; }
+.toast .t-dot { width:10px; height:10px; margin:0 6px 0 8px; flex:none; border-radius:50%; background:var(--accent); box-shadow:0 0 10px var(--accent); }
+.t-kind  { font-size:9px; letter-spacing:0.16em; text-transform:uppercase; color:var(--accent, #e6cfa0); }
+.t-title { font-size:13px; line-height:1.3; }
+.t-sub   { font-size:10px; color:rgba(240,234,222,0.5); line-height:1.3; }
+.toast.item        { --accent:#f0d48a; }
+.toast.friend      { --accent:#e8b0c0; }
+.toast.quest       { --accent:#9ccbe8; }
+.toast.done        { --accent:#a8d8b0; }
+.toast.found       { --accent:#c8d4ff; }
+.toast.achievement { --accent:#f0c060; border-color:rgba(240,192,96,0.45); }
+/* achievements list in the bag */
+.m-ach { display:flex; flex-direction:column; gap:4px; }
+.m-ach-row { display:flex; align-items:center; gap:8px; padding:3px 4px; border-radius:6px; opacity:0.4; }
+.m-ach-row.on { opacity:1; background:rgba(240,192,96,0.07); }
+.m-ach-row img { width:26px; height:26px; flex:none; }
+.m-ach-row .m-desc { font-size:10px; margin-top:0; }
+.m-ach-lock { width:26px; height:26px; flex:none; border-radius:50%; border:1px dashed rgba(255,255,255,0.3); }
 #score-box {
   position:fixed;
   top:18px; left:50%;
@@ -198,6 +231,9 @@ kbd {
   #worn img { width:36px; height:36px; }
   #hint-box { bottom:calc(64px + env(safe-area-inset-bottom, 0px)); font-size:12px; max-width:70vw; text-align:center; }
   .m-foot { display:none; }
+  #toasts { top:calc(52px + env(safe-area-inset-top, 0px)); }
+  .toast img { width:30px; height:30px; }
+  .t-title { font-size:12px; }
 }
 
 /* phone held sideways: not enough height for a bottom strip — tuck it under bag · friends */
@@ -215,4 +251,8 @@ kbd {
     max-width:88vw; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
   }
   #act { bottom:calc(36px + env(safe-area-inset-bottom, 0px)); padding:9px 16px; font-size:12px; }
+  #toasts { top:calc(10px + env(safe-area-inset-top, 0px)); }
+  .toast { max-width:44vw; padding:4px 10px 4px 4px; }
+  .toast img { width:26px; height:26px; }
+  .t-sub { display:none; }
 }

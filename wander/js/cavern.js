@@ -10,30 +10,41 @@
    below the entrance floor (caveRef), so + is deeper.
 ══════════════════════════════════════════ */
 const CAVE_X = 7105;   // world x of the cave mouth (outside)
-const CAVE_W = 2700;
+const CAVE_W = 4700;
 
 const CAVE_FLOOR = [
   [0, 0], [240, 0], [380, 30], [520, 70], [640, 95], [720, 110],      // the tunnel
   [780, 170], [860, 250], [960, 290], [1060, 360], [1160, 450],        // it opens up…
-  [1260, 500], [1360, 600], [1440, 700], [1500, 770],                  // …and drops toward the pool
-  [1580, 880], [2120, 880], [2200, 770],                               // pool basin
-  [2280, 700], [2600, 690], [2700, 690],
+  [1260, 500], [1360, 600], [1440, 700], [1500, 770],                  // …and drops toward the lake
+  [1560, 860], [1700, 930], [1880, 960], [1960, 1040],                 // the shallow shelf
+  [2020, 1250], [2080, 1480], [2160, 1620], [2300, 1660], [2440, 1650], [2520, 1560],   // the deep trench
+  [2580, 1300], [2640, 1080], [2760, 980], [2900, 930], [3000, 850], [3060, 770], [3120, 700],  // up the far side
+  [3400, 706], [3700, 700], [4700, 700],                               // the old mine, then umber's burrow
 ];
 const CAVE_CEIL = [
   [0, -150], [240, -140], [380, -110], [520, -60], [640, -30], [720, -20],
   [780, -120], [860, -300], [1000, -470], [1300, -560], [1800, -600],
-  [2200, -540], [2450, -380], [2600, -220], [2700, -200],
+  [2400, -600], [2800, -480], [3000, -200], [3100, 300], [3160, 480],  // the roof comes down into the mine
+  [3500, 470], [3800, 490], [3880, 470],
+  [3940, 330], [4100, 300], [4400, 310], [4500, 360],                  // umber's burrow (a little taller)
+  [4530, 420], [4540, -480], [4600, -480], [4610, 420], [4700, 420],   // the ladder shaft up to the surface
 ];
 // one-way rock ledges (land on them from above, ↓ to drop through)
 const CAVE_LEDGES = [
   { x1: 880,  x2: 1000, y: 180 },
   { x1: 1150, x2: 1270, y: 345 },
-  { x1: 1690, x2: 1810, y: 690 },
-  { x1: 1930, x2: 2060, y: 635 },
-  { x1: 2380, x2: 2510, y: 600 },
+  { x1: 1310, x2: 1420, y: 265 },          // a climb up the chamber wall…
+  { x1: 1460, x2: 1570, y: 185 },
+  { x1: 1610, x2: 1730, y: 110, perch: true },   // …to the glowstone's perch, high over the lake
+  { x1: 1720, x2: 1830, y: 690 },          // stepping stones across the water
+  { x1: 1960, x2: 2080, y: 640 },
+  { x1: 2250, x2: 2360, y: 690 },
+  { x1: 2600, x2: 2720, y: 660 },
+  { x1: 2860, x2: 2970, y: 640 },
+  { x1: 3290, x2: 3400, y: 580, scaffold: true },   // the miners' old scaffold
 ];
-const WATER_REL = 760, POOL_X0 = 1492, POOL_X1 = 2208;
-const GLOWSTONE_X = 2450;
+const WATER_REL = 760, POOL_X0 = 1492, POOL_X1 = 3068;
+const GLOWSTONE_X = 1670, GLOWSTONE_Y = 110;
 
 const caveState = { dug: false, digging: 0, seenPool: false, entered: false };
 const cave = { drips: [], ripples: [], spores: [], dirt: [], splashes: [] };
@@ -55,32 +66,13 @@ function cavePlatformY(x) {
 }
 const waterY = () => caveRef() + WATER_REL;
 
-/* ── physics hooks (called from updatePlayer) ── */
+/* ── physics hook (called from updatePlayer) ── */
 function caveCeiling() {
+  if (player.climbing) return;
   const s = playerScale(), head = player._py - 72 * s, c = caveCeilY(player.wx) + 2;
   if (head < c) { player._py = c + 72 * s; if (player.vy < 0) player.vy = 0; }
 }
-function caveWater() {
-  const inPool = player.wx > POOL_X0 && player.wx < POOL_X1;
-  const d = player._py - waterY();
-  const was = player.inWater;
-  player.inWater = inPool && d > 0;
-  if (player.inWater) {
-    player.vy -= Math.min(1.2, d * 0.013);           // floats about half-submerged
-    player.vy *= player.vy > 0 ? 0.85 : 0.97;
-    _vx *= 0.9;
-    player.jumpCount = 1; player.flipActive = false;
-    if (!was) splashAt(player.wx, 10);
-  }
-}
-function swimStroke() {
-  player.vy = -10;
-  splashAt(player.wx, 5);
-}
-function splashAt(x, n) {
-  for (let i = 0; i < n; i++) cave.splashes.push({ x: x + rand(-8, 8), y: waterY(), vx: rand(-1.5, 1.5), vy: rand(-3, -1), life: 1 });
-  cave.ripples.push({ x, r: 2, life: 1 });
-}
+// (the lake — swimming, diving, breath — lives in cavern_lake.js)
 
 /* ══════════════════════════════════════════
    ENTER / EXIT / DIG
@@ -95,8 +87,8 @@ function caveMouthPopup() {
 }
 function cavernPopup() {
   if (player.wx < 110) return 'press E to climb back out';
-  if (!hasItem('glowstone') && Math.abs(player.wx - GLOWSTONE_X) < 60 && player._py < caveRef() + 640) return 'something is glowing here…';
-  return null;
+  if (!hasItem('glowstone') && Math.abs(player.wx - GLOWSTONE_X) < 200 && player._py > caveRef() + GLOWSTONE_Y + 40 && player._py < caveRef() + 560) return 'something is glowing, way up there…';
+  return lakePopup() || deepPopup();
 }
 
 function enterCavern() {
@@ -113,7 +105,8 @@ function exitCavern() {
   fadeTransition(() => {
     scene = 'outside';
     player.wx = CAVE_X + 40; player._py = groundY(player.wx); player.vy = 0; _vx = 0;
-    player.onPlatform = false; player.inWater = false; player.facingRight = true;
+    player.onPlatform = false; player.inWater = false; player.facingRight = true; player.climbing = 0;
+    lake.under = false; lake.surfacing = false; lake.breath = 1;
     camX = Math.max(0, Math.min(WORLD_W - W, player.wx - W * 0.3)); camY = 0;
     weather.lastCamX = camX;
   });
@@ -121,7 +114,7 @@ function exitCavern() {
 
 window.addEventListener('keydown', e => {
   if (e.code !== 'KeyE' || e.repeat || transitioning || !started) return;
-  if (scene === 'cavern') { if (player.wx < 110) exitCavern(); return; }
+  if (scene === 'cavern') { if (player.wx < 110) exitCavern(); else lakeAction() || deepAction(); return; }
   if (scene !== 'outside' || !nearCaveMouth() || caveState.digging > 0) return;
   if (caveState.dug) enterCavern();
   else if (hasItem('shovel')) { caveState.digging = 90; showHint('dig, dig, dig…', 1500); }
@@ -151,11 +144,12 @@ function updateCaveMouth() {
 
 function updateCavern() {
   const R = caveRef();
+  updateLake(); updateDeep();
   if (!caveState.seenPool && player.wx > 1440) {
     caveState.seenPool = true;
     showHint(questState.report === 'open' ? "a lake. under the hill. nova will want to hear about this." : 'a hidden lake under the hill…', 3500);
   }
-  if (!hasItem('glowstone') && Math.abs(player.wx - GLOWSTONE_X) < 14 && player.onGround && player._py < R + 640) {
+  if (!hasItem('glowstone') && Math.abs(player.wx - GLOWSTONE_X) < 20 && player.onGround && player._py < R + GLOWSTONE_Y + 4) {
     give('glowstone');
   }
   // drips from the ceiling (mostly over the pool)
@@ -227,11 +221,11 @@ function drawCaveMouth() {
 /* ══════════════════════════════════════════
    DRAW — inside the cavern (call inside the camera translate)
 ══════════════════════════════════════════ */
-const CAVE_SPECKS = Array.from({ length: 500 }, () => ({ x: Math.random() * CAVE_W, y: -700 + Math.random() * 1700, r: 0.6 + Math.random() * 2, a: 0.05 + Math.random() * 0.12 }));
-const CAVE_PILLARS = [[1080, 46, 0.5], [1620, 60, 0.45], [2330, 40, 0.5]];       // x, width, darkness (background)
-const CAVE_MUSHROOMS = [300, 560, 820, 1180, 1520, 1880, 2260];                    // upside-down, on the ceiling
-const GLOWWORMS = Array.from({ length: 140 }, () => ({ x: 760 + Math.random() * 1900, d: 4 + Math.random() * 40, ph: Math.random() * 6 }));
-const CRYSTALS = [[1460, 1], [2235, 1.2], [2470, 0.9], [960, 0.7]];
+const CAVE_SPECKS = Array.from({ length: 800 }, () => ({ x: Math.random() * CAVE_W, y: -700 + Math.random() * 2500, r: 0.6 + Math.random() * 2, a: 0.05 + Math.random() * 0.12 }));
+const CAVE_PILLARS = [[1080, 46, 0.5], [2780, 60, 0.45]];       // x, width, darkness (background)
+const CAVE_MUSHROOMS = [300, 560, 820, 1180, 1520, 1880, 2260, 2620];                    // upside-down, on the ceiling
+const GLOWWORMS = Array.from({ length: 200 }, () => ({ x: 760 + Math.random() * 2300, d: 4 + Math.random() * 40, ph: Math.random() * 6 }));
+const CRYSTALS = [[1460, 1], [3085, 1.2], [3150, 0.8], [960, 0.7]];
 
 function cavePath(P, step) {
   const x0 = Math.max(0, camX - 30), x1 = Math.min(CAVE_W, camX + W + 30), R = caveRef(), pts = [];
@@ -274,8 +268,8 @@ function drawCavern() {
   // distant rock layers + stone pillars in the background
   ctx.fillStyle = 'rgba(30,36,38,0.6)';
   ctx.beginPath(); ctx.moveTo(ox + 760, R + 900);
-  for (let x = 760; x <= CAVE_W; x += 40) ctx.lineTo(ox + x, R + 420 + Math.sin(x * 0.01) * 60 + Math.sin(x * 0.033) * 25);
-  ctx.lineTo(ox + CAVE_W, R + 900); ctx.closePath(); ctx.fill();
+  for (let x = 760; x <= 3100; x += 40) ctx.lineTo(ox + x, R + 420 + Math.sin(x * 0.01) * 60 + Math.sin(x * 0.033) * 25);
+  ctx.lineTo(ox + 3100, R + 900); ctx.closePath(); ctx.fill();
   CAVE_PILLARS.forEach(([px, w, dk]) => {
     const t = caveCeilY(px), b = caveFloorY(px);
     const pg = ctx.createLinearGradient(ox + px - w / 2, 0, ox + px + w / 2, 0);
@@ -304,7 +298,7 @@ function drawCavern() {
   ctx.beginPath(); floor.forEach(([x, y], i) => i ? ctx.lineTo(ox + x, y) : ctx.moveTo(ox + x, y)); ctx.stroke();
   // stalactites
   ctx.fillStyle = '#1d1915';
-  for (let x = 800; x < CAVE_W - 60; x += 70 + (x % 50)) {
+  for (let x = 800; x < 3060; x += 70 + (x % 50)) {
     const c = caveCeilY(x), l = 14 + (x * 7 % 30);
     ctx.beginPath(); ctx.moveTo(ox + x - 6, c - 2); ctx.lineTo(ox + x + 1, c + l); ctx.lineTo(ox + x + 7, c - 2); ctx.fill();
   }
@@ -347,13 +341,23 @@ function drawCavern() {
   // ledges
   CAVE_LEDGES.forEach(l => {
     const y = R + l.y;
+    if (l.scaffold) {   // the miners' old plank scaffold
+      ctx.fillStyle = '#3a2a1c';
+      [l.x1 + 8, l.x2 - 12].forEach(px => ctx.fillRect(ox + px, y, 5, caveFloorY(px) - y));
+      ctx.strokeStyle = 'rgba(90,65,40,0.8)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(ox + l.x1 + 10, y + 8); ctx.lineTo(ox + l.x2 - 10, caveFloorY(l.x2) - 10); ctx.stroke();
+      ctx.fillStyle = '#5a4026'; ctx.fillRect(ox + l.x1, y - 2, l.x2 - l.x1, 6);
+      ctx.strokeStyle = 'rgba(30,20,12,0.7)'; ctx.lineWidth = 1;
+      for (let px = l.x1 + 18; px < l.x2; px += 18) { ctx.beginPath(); ctx.moveTo(ox + px, y - 2); ctx.lineTo(ox + px, y + 4); ctx.stroke(); }
+      return;
+    }
     ctx.fillStyle = '#231e19';
     ctx.beginPath(); ctx.moveTo(ox + l.x1 - 6, y); ctx.lineTo(ox + l.x2 + 6, y); ctx.lineTo(ox + l.x2 - 10, y + 18); ctx.quadraticCurveTo(ox + (l.x1 + l.x2) / 2, y + 30, ox + l.x1 + 8, y + 16); ctx.closePath(); ctx.fill();
     ctx.strokeStyle = 'rgba(90,140,90,0.6)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(ox + l.x1 - 4, y); ctx.lineTo(ox + l.x2 + 4, y); ctx.stroke();
   });
   // the glowstone, waiting on the far ledge
   if (!hasItem('glowstone')) {
-    const y = R + 600 - 6 + Math.sin(tick * 0.05) * 1.5, p = 0.7 + 0.3 * Math.sin(tick * 0.06);
+    const y = R + GLOWSTONE_Y - 8 + Math.sin(tick * 0.05) * 1.5, p = 0.7 + 0.3 * Math.sin(tick * 0.06);
     drawGlow(ox + GLOWSTONE_X, y, 40, 0.35 * p, [120, 230, 220]);
     ctx.fillStyle = `rgba(160,245,235,${0.9 * p})`;
     ctx.beginPath(); ctx.moveTo(ox + GLOWSTONE_X, y - 7); ctx.lineTo(ox + GLOWSTONE_X + 5, y); ctx.lineTo(ox + GLOWSTONE_X, y + 5); ctx.lineTo(ox + GLOWSTONE_X - 5, y); ctx.closePath(); ctx.fill();
@@ -371,42 +375,4 @@ function drawCavern() {
     const a = Math.min(1, p.life, 2 - p.life) * 0.6;
     ctx.fillStyle = `rgba(150,240,220,${a})`; ctx.fillRect(ox + p.x, p.y, 1.5, 1.5);
   });
-}
-
-// the pool — drawn after the player so you look submerged when swimming
-function drawCaveWater() {
-  const R = caveRef(), ox = -camX, wy = waterY();
-  const pts = [];
-  for (let x = POOL_X0; x <= POOL_X1; x += 8) pts.push([x, Math.max(wy, caveFloorY(x))]);
-  ctx.save();
-  ctx.beginPath(); ctx.moveTo(ox + POOL_X0, wy);
-  pts.forEach(([x, y]) => ctx.lineTo(ox + x, y));
-  ctx.lineTo(ox + POOL_X1, wy); ctx.closePath();
-  const g = ctx.createLinearGradient(0, wy, 0, R + 880);
-  g.addColorStop(0, 'rgba(40,120,130,0.55)'); g.addColorStop(1, 'rgba(10,40,50,0.85)');
-  ctx.fillStyle = g; ctx.fill();
-  ctx.clip();
-  // reflected glow-worms + light ripples
-  GLOWWORMS.forEach(gw => {
-    if (gw.x < POOL_X0 || gw.x > POOL_X1) return;
-    const a = (0.2 + 0.2 * Math.sin(tick * 0.03 + gw.ph));
-    ctx.fillStyle = `rgba(140,230,255,${a})`;
-    ctx.fillRect(ox + gw.x + Math.sin(tick * 0.05 + gw.x) * 1.5, wy + 6 + (gw.d % 30), 1.6, 1.2);
-  });
-  for (let i = 0; i < 9; i++) {
-    const x = POOL_X0 + 40 + ((i * 97 + tick * 0.3) % (POOL_X1 - POOL_X0 - 80));
-    ctx.strokeStyle = `rgba(160,240,235,${0.12 + 0.08 * Math.sin(tick * 0.04 + i)})`; ctx.lineWidth = 1;
-    ctx.beginPath(); ctx.moveTo(ox + x, wy + 14 + (i % 4) * 9); ctx.quadraticCurveTo(ox + x + 10, wy + 11 + (i % 4) * 9, ox + x + 22, wy + 14 + (i % 4) * 9); ctx.stroke();
-  }
-  ctx.restore();
-  // surface line + ripples + splashes
-  ctx.strokeStyle = 'rgba(170,240,235,0.55)'; ctx.lineWidth = 1.2;
-  ctx.beginPath();
-  for (let x = POOL_X0; x <= POOL_X1; x += 6) { const y = wy + Math.sin(tick * 0.05 + x * 0.05) * 0.8; x === POOL_X0 ? ctx.moveTo(ox + x, y) : ctx.lineTo(ox + x, y); }
-  ctx.stroke();
-  cave.ripples.forEach(r => {
-    ctx.strokeStyle = `rgba(180,240,240,${r.life * 0.6})`; ctx.lineWidth = 0.8;
-    ctx.beginPath(); ctx.ellipse(ox + r.x, wy, r.r * 2.2, r.r * 0.45, 0, 0, 7); ctx.stroke();
-  });
-  cave.splashes.forEach(s => { ctx.fillStyle = `rgba(180,240,240,${s.life})`; ctx.fillRect(ox + s.x, s.y, 2, 2); });
 }

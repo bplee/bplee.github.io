@@ -164,6 +164,10 @@ function updatePlayer() {
   const outside = scene === 'outside';
   const wasOnGround = player.onGround;
   player.prevPy = player._py;
+  if (player.climbing) { updateClimb(); return; }   // on umber's ladder (cavern_deep.js)
+  if (player.roping)   { updateRope();  return; }   // on the rope down the cliff (eastwoods.js)
+  if (player.riding)   { updateRide();  return; }   // sailing in birch's boat (beach.js)
+  if (player.surfing)  { updateSurf();  return; }   // riding a wave (island.js)
   let goRight = keys['ArrowRight'] || keys['KeyD'];
   let goLeft  = keys['ArrowLeft']  || keys['KeyA'];
   // after changing scenes, ignore a held direction until it's released
@@ -218,7 +222,10 @@ function updatePlayer() {
     }
   });
 
+  const prevX = player.wx;
   player.wx = Math.max(minX, Math.min(maxX, player.wx+_vx));
+  // the cliff face: walk into it from below and you just bump against the rock
+  if (outside && prevX <= CLIFF_X - 8 && player.wx > CLIFF_X - 8 && player._py > groundY(CLIFF_X + 14) + 2) { player.wx = CLIFF_X - 8; _vx = 0; }
   if (player.wx === minX || player.wx === maxX) _vx = 0;
   player._py += player.vy;
   player.vy  += GRAVITY * player.mods.grav;
@@ -228,7 +235,8 @@ function updatePlayer() {
     if (tick % 8 === 0) drinkFx.push({ k: 'fluff', x: player.wx + rand(-10, 10), y: player._py - 10, vy: 0.3, life: 0.7 });
   }
   if (player.bumpT > 0) player.bumpT--;
-  if (scene === 'cavern') caveWater();   // swimming in the underground pool
+  if (scene === 'cavern' || scene === 'outside') caveWater();   // swimming: the underground lake, or the sea
+  seaClamp();                      // the net + the reef keep you out of the open sea
 
   const gY = floorAt(player.wx);
   // stick to the floor when walking down slopes/stairs instead of launching off them
@@ -329,6 +337,15 @@ function drawWornItems(s, bhx, bhy, fhx, fhy) {
     ctx.beginPath(); ctx.moveTo(-4 * s, -16 * s); ctx.lineTo(4 * s, -16 * s); ctx.lineTo(3 * s, -25 * s); ctx.quadraticCurveTo(0, -29 * s, -3 * s, -25 * s); ctx.closePath(); ctx.fill();
     ctx.restore();
   }
+  // pickaxe over the shoulder
+  if (wearing('pickaxe')) {
+    ctx.save(); ctx.translate(-6 * s, -24 * s); ctx.rotate(0.35);
+    ctx.strokeStyle = 'rgba(150,115,75,0.95)'; ctx.lineWidth = 1.8 * s;
+    ctx.beginPath(); ctx.moveTo(0, 14 * s); ctx.lineTo(0, -14 * s); ctx.stroke();
+    ctx.strokeStyle = 'rgba(185,190,200,0.95)'; ctx.lineWidth = 2 * s;
+    ctx.beginPath(); ctx.moveTo(-9 * s, -10 * s); ctx.quadraticCurveTo(0, -18 * s, 9 * s, -10 * s); ctx.stroke();
+    ctx.restore();
+  }
   // glowstone pendant
   if (wearing('glowstone')) {
     const p = 0.75 + 0.25 * Math.sin(tick * 0.05);
@@ -352,5 +369,30 @@ function drawWornItems(s, bhx, bhy, fhx, fhy) {
     ctx.fillStyle = `rgba(255,205,130,${0.95 * flick})`; ctx.fillRect(-2.8 * s, 7 * s, 5.6 * s, 7 * s);
     ctx.restore();
   }
+  // birch's axe, slung across the back
+  if (wearing('axe')) {
+    ctx.save(); ctx.translate(-9 * s, -20 * s); ctx.rotate(-0.9);
+    ctx.strokeStyle = 'rgba(150,115,75,0.95)'; ctx.lineWidth = 1.8 * s;
+    ctx.beginPath(); ctx.moveTo(0, 13 * s); ctx.lineTo(0, -13 * s); ctx.stroke();
+    ctx.fillStyle = 'rgba(185,190,200,0.95)';
+    ctx.beginPath(); ctx.moveTo(0, -13 * s); ctx.lineTo(-7 * s, -16 * s); ctx.quadraticCurveTo(-9 * s, -10 * s, -7 * s, -5 * s); ctx.lineTo(0, -8 * s); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  }
+  // rae's spare surfboard on the back (under your feet when you're riding a wave — see island.js)
+  if (wearing('surfboard') && !player.surfing && !player.inWater) {
+    ctx.save(); ctx.translate(-14 * s, -26 * s); ctx.rotate(0.25);
+    ctx.fillStyle = 'rgba(240,220,170,0.9)'; ctx.strokeStyle = 'rgba(170,140,100,0.9)'; ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.ellipse(0, 0, 4 * s, 24 * s, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(80,150,180,0.9)'; ctx.lineWidth = 1.2 * s; ctx.beginPath(); ctx.moveTo(0, -21 * s); ctx.lineTo(0, 21 * s); ctx.stroke();
+    ctx.restore();
+  }
+  // rae's shell necklace
+  if (wearing('shells')) {
+    ['#f0c8b8', '#f0e0c0', '#e8b0b8', '#f0d8a8'].forEach((c, i) => {
+      ctx.fillStyle = c; ctx.beginPath(); ctx.arc((-3 + i * 3) * s, (-29 + Math.abs(i - 1.5) * -0.8) * s, 1.3 * s, 0, Math.PI * 2); ctx.fill();
+    });
+  }
+  // umber's fishbowl helmet, over everything
+  if (wearing('helmet')) drawHelmetOn(2 * s, -44 * s, s);
   ctx.restore();
 }

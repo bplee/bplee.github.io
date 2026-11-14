@@ -2,10 +2,13 @@
    CRITTERS — line-art animals, drawn in the same thin-stroke style as the mouse.
    drawCritter(x, y, kind, opts)
      x, y   : screen position of their feet
-     kind   : bunny fox hedgehog gecko raccoon badger squirrel otter owl toad
-              snail tortoise moth bat ghost
-     opts   : { color:'#rrggbb', dir:±1 (facing), label, scale, sleep, flap }
+     kind   : bunny fox ferret hedgehog gecko raccoon badger squirrel otter owl toad
+              snail tortoise moth bat ghost mole crab beaver bird goose puffer octopus
+     opts   : { color:'#rrggbb', dir:±1 (facing), label, scale, sleep, flap, talking, working, fly, cross, puffed }
 ══════════════════════════════════════════ */
+// rae's species in one place: change these two and she (and her portrait) follow
+const RAE_KIND = 'fox', RAE_SPECIES = 'fox';
+
 function drawCritter(x, y, kind, o) {
   o = o || {};
   const k = o.scale || 1, d = o.dir || 1;
@@ -45,6 +48,16 @@ function drawCritter(x, y, kind, o) {
       ctx.beginPath(); ctx.moveTo(-5, -32); ctx.quadraticCurveTo(0, -42, 10, -38); ctx.lineTo(20, -31); ctx.quadraticCurveTo(10, -24, -2, -26); ctx.closePath(); ctx.fill(); ctx.stroke();
       ctx.fillStyle = 'rgba(15,12,12,0.9)'; ctx.beginPath(); ctx.arc(20, -31, 1.5, 0, 7); ctx.fill(); ctx.fillStyle = line(0.13);
       eye(9, -34); feet(); break;
+
+    case 'ferret': {   // long and bendy, a bandit mask, a bottlebrush tail
+      ctx.beginPath(); ctx.moveTo(-12, -6); ctx.quadraticCurveTo(-24, -6, -28, -14 + Math.sin(t) * 2); ctx.lineWidth = 4 / k; ctx.strokeStyle = line(0.4); ctx.stroke();
+      ctx.lineWidth = 1.2 / k; ctx.strokeStyle = line(0.8);
+      E(-2, -11, 14, 8, -0.15); E(10, -24, 6, 9, 0.35); E(12, -33, 7.5, 6.5);
+      E(7, -38, 2.4, 2.4); E(15, -39, 2.4, 2.4);
+      ctx.fillStyle = 'rgba(60,45,35,0.55)'; ctx.beginPath(); ctx.ellipse(14, -34, 6.5, 2.4, 0, 0, 7); ctx.fill(); ctx.fillStyle = line(0.13);
+      eye(15, -34, 1.5); ctx.fillStyle = 'rgba(15,12,12,0.9)'; ctx.beginPath(); ctx.arc(20, -31.5, 1.3, 0, 7); ctx.fill(); ctx.fillStyle = line(0.13);
+      blush(16, -30); L([[-10, -4], [-11, 0]]); L([[-4, -4], [-4, 0]]); L([[6, -4], [6, 0]]); L([[10, -4], [11, 0]]); break;
+    }
 
     case 'hedgehog':
       for (let i = 0; i < 11; i++) {
@@ -153,6 +166,107 @@ function drawCritter(x, y, kind, o) {
       ctx.closePath(); ctx.fill(); ctx.stroke();
       eye(-4, -22, 1.8); eye(4, -22, 1.8);
       ctx.beginPath(); ctx.ellipse(0, -15, 2, 2.5, 0, 0, 7); ctx.stroke(); break;
+
+    case 'mole': {   // round, velvety, big pink digging paws, tiny spectacles
+      E(-1, -15, 13, 14);
+      ctx.beginPath(); ctx.moveTo(6, -30); ctx.quadraticCurveTo(18, -30, 22, -24); ctx.quadraticCurveTo(14, -18, 4, -20); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(230,150,160,0.9)'; ctx.beginPath(); ctx.arc(22, -24, 2.4, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(15,12,12,0.9)'; ctx.beginPath(); ctx.arc(10, -26, 1, 0, 7); ctx.fill();
+      ctx.strokeStyle = 'rgba(210,190,120,0.85)'; ctx.lineWidth = 0.8 / k;
+      ctx.beginPath(); ctx.arc(10, -26, 3.2, 0, 7); ctx.stroke(); ctx.beginPath(); ctx.moveTo(7, -27); ctx.lineTo(1, -29); ctx.stroke();
+      ctx.strokeStyle = line(0.8); ctx.lineWidth = 1.2 / k;
+      ctx.fillStyle = 'rgba(225,160,165,0.55)';
+      const dig = Math.sin(t * 1.4) * 1.5;
+      ctx.beginPath(); ctx.ellipse(10, -10 + dig, 5, 3.5, -0.4, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.ellipse(-6, -2, 4, 2.5, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = line(0.13);
+      L([[6, -2], [7, 0]]); break;
+    }
+
+    case 'crab': {   // wide shell, eyes on stalks, claws (waving while she talks)
+      const wave = o.talking ? Math.sin(t * 3) * 0.35 : Math.sin(t * 0.6) * 0.08;
+      for (let i = 0; i < 3; i++) {
+        L([[-8 - i * 3, -7], [-15 - i * 3, -4], [-17 - i * 3, 0]]);
+        L([[8 + i * 3, -7], [15 + i * 3, -4], [17 + i * 3, 0]]);
+      }
+      E(0, -10, 15, 8.5);
+      L([[-4, -17], [-5, -24]]); L([[4, -17], [5, -24]]);
+      eye(-5, -25, 1.8); eye(5, -25, 1.8);
+      ctx.beginPath(); ctx.arc(0, -10, 4, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke();
+      [-1, 1].forEach(sd => {
+        ctx.save(); ctx.translate(sd * 14, -12); ctx.rotate(sd * (-0.5 - wave));
+        L([[0, 0], [sd * 6, -6]]);
+        ctx.beginPath(); ctx.ellipse(sd * 9, -10, 5, 4, 0, 0, 7); ctx.fill(); ctx.stroke();
+        ctx.beginPath(); ctx.moveTo(sd * 11, -13); ctx.lineTo(sd * 15, -16); ctx.stroke();
+        ctx.restore();
+      });
+      blush(-9, -8); blush(9, -8); break;
+    }
+
+    case 'beaver': {   // stout, buck teeth, a flat paddle tail, a pencil behind the ear
+      ctx.save(); ctx.translate(-10, -5); ctx.rotate(-0.25 + Math.sin(t * 0.8) * 0.06);
+      ctx.fillStyle = line(0.3); ctx.beginPath(); ctx.ellipse(-10, 0, 12, 5, 0, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.strokeStyle = line(0.35); for (let i = -18; i < -2; i += 4) L([[i, -4], [i + 2, 4]]);
+      ctx.restore(); ctx.strokeStyle = line(0.8); ctx.fillStyle = line(0.13);
+      E(0, -15, 12, 14); E(5, -33, 10, 8.5);
+      E(-2, -40, 2.4, 2.4); E(10, -40, 2.4, 2.4);
+      eye(9, -35, 1.6); ctx.fillStyle = 'rgba(15,12,12,0.9)'; ctx.beginPath(); ctx.arc(15, -31, 1.5, 0, 7); ctx.fill();
+      ctx.fillStyle = 'rgba(245,235,200,0.9)'; ctx.fillRect(12, -28, 2.2, 3.6); ctx.fillRect(14.4, -28, 2.2, 3.6);
+      ctx.strokeStyle = 'rgba(230,190,90,0.9)'; ctx.lineWidth = 1.4 / k; L([[0, -44], [6, -39]]);  // pencil
+      ctx.strokeStyle = line(0.8); ctx.lineWidth = 1.2 / k; ctx.fillStyle = line(0.13);
+      if (o.working) { const h = Math.sin(t * 5) * 0.5; ctx.save(); ctx.translate(12, -16); ctx.rotate(-0.6 + h); L([[0, 0], [10, -2]]); ctx.fillStyle = 'rgba(170,175,185,0.9)'; ctx.fillRect(9, -5, 4, 6); ctx.restore(); ctx.fillStyle = line(0.13); }
+      feet(); break;
+    }
+
+    case 'bird': {   // a round little songbird. opts.fly flaps; opts.cross puffs her up
+      const fl = o.fly ? Math.sin(tick * 0.6) : 0, puff = o.cross ? 1.15 : 1;
+      ctx.save(); ctx.scale(puff, puff);
+      L([[-8, -10], [-15, -14 - (o.cross ? 4 : 0)], [-14, -8]]);                  // tail
+      E(0, -10, 8.5, 7.5);
+      ctx.fillStyle = 'rgba(235,150,120,0.55)'; ctx.beginPath(); ctx.ellipse(3, -7, 5, 4, 0, 0, 7); ctx.fill(); ctx.fillStyle = line(0.13);   // rusty breast
+      E(5, -17, 5.5, 5);
+      ctx.fillStyle = 'rgba(230,180,90,0.95)'; ctx.beginPath(); ctx.moveTo(10, -18); ctx.lineTo(14.5, -16.5); ctx.lineTo(10, -15); ctx.fill(); ctx.fillStyle = line(0.13);
+      eye(7, -18, 1.3);
+      if (o.cross) { ctx.strokeStyle = 'rgba(30,25,25,0.8)'; L([[4.5, -21.5], [8.5, -20]]); ctx.strokeStyle = line(0.8); }
+      ctx.save(); ctx.translate(-1, -11); ctx.rotate(o.fly ? -0.9 + fl * 0.9 : 0.15);
+      ctx.fillStyle = line(0.3); ctx.beginPath(); ctx.ellipse(-2, 0, 6.5, 3.5, 0.2, 0, 7); ctx.fill(); ctx.stroke(); ctx.restore();
+      if (!o.fly) { ctx.strokeStyle = 'rgba(200,160,100,0.8)'; L([[-1, -3], [-1, 0]]); L([[2, -3], [2, 0]]); }
+      ctx.restore(); break;
+    }
+
+    case 'goose': {   // a tall shopkeeping goose with an apron
+      L([[-12, -16], [-20, -20], [-17, -12]]);
+      E(-2, -16, 13, 11);
+      ctx.fillStyle = 'rgba(235,225,200,0.25)'; ctx.beginPath(); ctx.moveTo(-6, -22); ctx.lineTo(8, -22); ctx.lineTo(6, -6); ctx.lineTo(-4, -6); ctx.closePath(); ctx.fill(); ctx.stroke(); ctx.fillStyle = line(0.13);  // apron
+      ctx.beginPath(); ctx.moveTo(6, -22); ctx.quadraticCurveTo(10, -36, 6, -46); ctx.lineTo(12, -48); ctx.quadraticCurveTo(16, -34, 12, -20); ctx.stroke();
+      E(9, -49, 6, 5);
+      ctx.fillStyle = 'rgba(235,160,80,0.95)'; ctx.beginPath(); ctx.moveTo(14, -51); ctx.lineTo(22, -48.5); ctx.lineTo(14, -46); ctx.closePath(); ctx.fill(); ctx.fillStyle = line(0.13);
+      eye(11, -50, 1.4);
+      ctx.strokeStyle = 'rgba(235,160,80,0.9)'; L([[-4, -5], [-5, 0], [-2, 0]]); L([[2, -5], [2, 0], [5, 0]]); break;
+    }
+
+    case 'puffer': {   // a pufferfish. opts.puffed = blown up like a spiky balloon
+      const p = o.puffed || 0, r = 9 + p * 9, wob = Math.sin(t * 2) * 0.6;
+      ctx.translate(0, -r - 4);
+      ctx.strokeStyle = line(0.8);
+      for (let i = 0; i < 18; i++) { const a = i / 18 * Math.PI * 2; const r2 = r + 2 + p * 4; L([[Math.cos(a) * r, Math.sin(a) * r], [Math.cos(a) * r2, Math.sin(a) * r2]]); }
+      E(0, 0, r, r * (0.8 + p * 0.2));
+      ctx.beginPath(); ctx.moveTo(-r + 1, 0); ctx.lineTo(-r - 7, -5 + wob); ctx.lineTo(-r - 7, 5 + wob); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = 'rgba(245,230,170,0.25)'; ctx.beginPath(); ctx.ellipse(1, r * 0.35, r * 0.7, r * 0.35, 0, 0, 7); ctx.fill(); ctx.fillStyle = line(0.13);
+      eye(r * 0.45, -r * 0.25, 2 + p * 0.6);
+      ctx.beginPath(); ctx.arc(r * 0.82, r * 0.12, 1.6, 0, 7); ctx.stroke();
+      break;
+    }
+
+    case 'octopus': {   // eight curly arms, one usually busy with something
+      for (let i = 0; i < 8; i++) {
+        const x0 = -9 + i * 2.6, sw = Math.sin(t * 1.4 + i) * 3;
+        ctx.beginPath(); ctx.moveTo(x0, -10); ctx.quadraticCurveTo(x0 + (i - 3.5) * 3 + sw, -2, x0 + (i - 3.5) * 5, 0); ctx.stroke();
+      }
+      ctx.beginPath(); ctx.moveTo(-12, -10); ctx.bezierCurveTo(-14, -38, 14, -38, 12, -10); ctx.closePath(); ctx.fill(); ctx.stroke();
+      eye(-3.5, -18, 1.8); eye(4.5, -18, 1.8); blush(-7, -14); blush(8, -14);
+      ctx.beginPath(); ctx.arc(0.5, -14, 2, 0.2 * Math.PI, 0.8 * Math.PI); ctx.stroke(); break;
+    }
 
     default:
       E(0, -14, 10, 13); E(3, -32, 9, 8); eye(7, -33); feet();

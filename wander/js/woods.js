@@ -21,7 +21,7 @@ const BIG_TREES = [
   { x: 2120, s: 1.05, seed: 4 },
   { x: 2560, s: 1.2,  seed: 5 },
   { x: 4050, s: 1.0,  seed: 6 },
-  { x: 4990, s: 1.2,  seed: 7 },
+  { x: 5250, s: 1.2,  seed: 7 },
   { x: 5470, s: 1.0,  seed: 9 },
   { x: 5790, s: 1.1,  seed: 10 },
   { x: 7330, s: 1.15, seed: 11 },
@@ -39,7 +39,7 @@ const mushCapTop = m => groundY(m.x) - 30 * m.s;
 const hash = n => { const s = Math.sin(n * 127.1) * 43758.5453; return s - Math.floor(s); };
 
 const FIREFLIES = Array.from({ length: 80 }, () => {
-  let hx; do { hx = Math.random() * WORLD_W; } while (hx > 2820 && hx < 3580);
+  let hx; do { hx = Math.random() * WORLD_W; } while ((hx > 2820 && hx < 3580) || (hx > 9950 && hx < 15000));
   return { hx, hy: 15 + Math.random() * 80, ph: Math.random() * 6, sp: 0.4 + Math.random() * 0.6, x: hx, y: 0, pull: 0 };
 });
 
@@ -425,7 +425,7 @@ function drawGrass() {
   ctx.beginPath();
   for (let i = i0; i <= i1; i++) {
     const x = i * GRASS_STEP + hash(i) * 6;
-    if (x < 0 || x > WORLD_W || (x > 2840 && x < 3560) || Math.abs(x - POND_X) < 100) continue;
+    if (x < 0 || x > WORLD_W || (x > 2840 && x < 3560) || Math.abs(x - POND_X) < 100 || (x > CLIFF_X - 3 && x < CLIFF_X + 14) || x > 9990 || Math.abs(x - STORE_X) < 96) continue;
     const gy = groundY(x) + 1, sx = x - camX;
     let bend = Math.sin(tick * 0.03 + x * 0.05) * 0.12 + weather.wind * 0.18;
     const d = x - player.wx;

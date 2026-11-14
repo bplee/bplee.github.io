@@ -150,8 +150,8 @@ function cheer() { spectators.forEach((sp, i) => setTimeout(() => { if (sp.hop =
    'player_receive' — ball coming to player side, player gets under it (auto-pass)
    'player_pass'    — bunny partner runs under the pass and sets
    'player_spike'   — ball set for the player; double-jump near it to spike
-   'enemy_receive'  — hedgehog digs the ball to the fox
-   'enemy_pass'     — fox sets the hedgehog
+   'enemy_receive'  — hedgehog digs the ball to the ferret
+   'enemy_pass'     — ferret sets the hedgehog
    'enemy_spike'    — hedgehog attacks over the net
    'dead'           — ball hit the net, nobody plays it
    'point_scored'   — short pause, then next serve
@@ -181,7 +181,7 @@ function makeNPC(home, kind, color, name, side) {
   return { x: home, home, kind, color, name, side, hopY: 0, hopV: 0, walk: 0, react: 0, seed: Math.random() * 10 };
 }
 const partner = makeNPC(3110, 'bunny',    '#e8d5c0', 'clover', 1);
-const foxSet  = makeNPC(3290, 'fox',      '#d4905a', 'ember',  -1);
+const foxSet  = makeNPC(3290, 'ferret',   '#d8c4a4', 'ember',  -1);   // (still called foxSet: ember used to be a fox)
 const hogHit  = makeNPC(3460, 'hedgehog', '#c8b89a', 'burr',   -1);
 const NPCS = [partner, foxSet, hogHit];
 
@@ -304,7 +304,7 @@ function scorePoint(winner, msg) {
     updateScoreDisplay(winner);
     showHint(won ? `you win ${vball.playerScore}–${vball.enemyScore}!`
                  : `they win ${vball.enemyScore}–${vball.playerScore}. good game`, 4000);
-    if (won) setTimeout(() => give('bracelet', 'clover'), 1500);
+    if (won) { setTimeout(() => give('bracelet', 'clover'), 1500); achieve('champ'); }
     return;
   }
   vball.phase = 'point_scored';
@@ -518,7 +518,7 @@ function updatePartner() {
   }
 }
 
-/* ── ENEMIES (fox setter + hedgehog hitter) ── */
+/* ── ENEMIES (ferret setter + hedgehog hitter) ── */
 function updateEnemies() {
   const gY   = COURT_GND();
   const minX = NET_X + 22, maxX = COURT_R + 30;

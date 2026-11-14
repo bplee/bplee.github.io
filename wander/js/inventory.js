@@ -20,13 +20,24 @@ const ITEMS = {
   chart:     { name: 'star chart',            desc: 'hold it to see your charted constellations in the sky.',     wearable: true },
   shovel:    { name: 'shovel',                desc: 'for digging. there is a cave mouth somewhere that needs it.', wearable: true },
   glowstone: { name: 'glowstone',             desc: 'found deep in the cavern. it hums, faintly, and glows teal.', wearable: true },
+  helmet:    { name: 'fishbowl helmet',       desc: "umber's. a glass bowl with a bellows. wear it to breathe underwater (and sink a little).", wearable: true },
+  pickaxe:   { name: 'pickaxe',               desc: 'peri kept it shiny. swing it at the gold in the old mine.',  wearable: true },
   button:    { name: "rosco's lucky button",  desc: 'shiny. not yours. rosco is at the bar.',                      wearable: false },
+  gold:      { name: 'a gold nugget',         desc: "from the old mine under the hill. marigold's store takes it.", wearable: false },
+  axe:       { name: 'axe',                   desc: "birch's spare. for wood — though the birds will have opinions.", wearable: true },
+  surfboard: { name: "rae's spare surfboard", desc: 'wear it in the surf. when a wave reaches you, jump to catch it.', wearable: true },
+  shells:    { name: 'shell necklace',        desc: 'from rae. it clicks softly when you walk, like the tide.',    wearable: true },
+  birdhouse: { name: 'a fallen birdhouse',    desc: 'knocked out of a tree by the storm. hang it back on an empty nail.', wearable: false },
+  wood:      { name: 'a log',                 desc: 'from a tree the storm took. birch needs three for the hull.', wearable: false },
+  canvas:    { name: 'a bolt of sailcloth',   desc: "from marigold's store. enough for one very brave sail.",       wearable: false },
+  mallows:   { name: 'a bag of marshmallows', desc: 'for rae. she has never had a toasted one.',                   wearable: false },
 };
-const ITEM_ORDER = ['blades', 'lantern', 'feather', 'scarf', 'peanut', 'bracelet', 'chart', 'shovel', 'glowstone', 'button'];
+const ITEM_ORDER = ['blades', 'lantern', 'feather', 'scarf', 'peanut', 'bracelet', 'chart', 'shovel', 'glowstone', 'helmet', 'pickaxe', 'axe', 'surfboard', 'shells',
+                    'button', 'gold', 'birdhouse', 'wood', 'canvas', 'mallows'];
 
 const FRIENDS = {
   'clover':       { kind: 'bunny',    color: '#e8d5c0', species: 'bunny',    where: 'your volleyball partner' },
-  'ember':        { kind: 'fox',      color: '#d4905a', species: 'fox',      where: 'setter on the other team' },
+  'ember':        { kind: 'ferret',   color: '#d8c4a4', species: 'ferret',      where: 'setter on the other team' },
   'burr':         { kind: 'hedgehog', color: '#c8b89a', species: 'hedgehog', where: 'hitter on the other team. allegedly cheats.' },
   'pip':          { kind: 'gecko',    color: '#9cc77a', species: 'gecko',    where: 'bartender at the dozy gecko' },
   'rosco':        { kind: 'raccoon',  color: '#9a9aa6', species: 'raccoon',  where: 'on a stool at the bar' },
@@ -42,6 +53,15 @@ const FRIENDS = {
   'the ghost':    { kind: 'ghost',    color: '#c8d0e0', species: 'ghost',    where: 'room 2. very apologetic.' },
   'room 3':       { kind: 'door',     color: '#8a7a6a', species: '???',      where: 'hibernating till spring' },
   'nova':         { kind: 'raccoon',  color: '#a0a0b0', species: 'raccoon',  where: 'astronomer at the observatory' },
+  'umber':        { kind: 'mole',     color: '#a596a8', species: 'mole',     where: 'a burrow past the old mine' },
+  'peri':         { kind: 'crab',     color: '#d8876a', species: 'crab',     where: 'in a teapot at the bottom of the lake' },
+  'marigold':     { kind: 'goose',    color: '#d8d4c8', species: 'goose',    where: 'runs the general store by the tavern' },
+  'juniper':      { kind: 'bird',     color: '#8aa8d8', species: 'bluebird', where: 'the thick woods. keeps an eye on everyone.' },
+  'birch':        { kind: 'beaver',   color: '#a8805a', species: 'beaver',   where: 'building a sailboat on the beach' },
+  'ollie':        { kind: 'octopus',  color: '#d890a8', species: 'octopus',  where: 'tends the coral under the bay' },
+  'bea':          { kind: 'puffer',   color: '#9ad0c0', species: 'pufferfish', where: "guards the net under the island's reef city. bart's sister." },
+  'bart':         { kind: 'puffer',   color: '#d8c070', species: 'pufferfish', where: 'guards the gap in the net. takes it seriously.' },
+  'rae':          { kind: RAE_KIND,   color: '#e09a5c', species: RAE_SPECIES, where: 'surfs off the island across the sea' },
 };
 
 const QUESTS = {
@@ -50,12 +70,60 @@ const QUESTS = {
   shovel: { giver: 'nova',  title: 'the borrowed shovel',  desc: "nova's cousin rosco borrowed her shovel. get it back from him." },
   dig:    { giver: 'nova',  title: 'the glowing cave',     desc: 'dig open the cave mouth at the bottom of the far side of the hill.' },
   report: { giver: 'nova',  title: "what's down there?",   desc: 'explore the cavern, then tell nova what you found.' },
+  umber:  { giver: 'umber', title: 'a hello for peri',     desc: "wear umber's helmet, dive to the bottom of the lake, and find peri." },
+  peri:   { giver: 'peri',  title: 'a message back',       desc: 'peri kept his chair. go tell umber.' },
+  boat:   { giver: 'birch', title: 'a boat for the sea',   desc: "birch needs three logs for the hull and sailcloth for the sail. cloth from marigold's store, by the tavern; logs from the woods." },
+  birds:  { giver: 'juniper', title: 'houses for the neighbors', desc: 'the storm knocked three birdhouses out of the trees. hang each one back on an empty nail.' },
+  surf:   { giver: 'rae',   title: 'catch a wave',         desc: "paddle out on rae's spare board. jump as a wave reaches you, and ride three to shore." },
+  bonfire:{ giver: 'rae',   title: 'something to toast',   desc: "rae has never had a toasted marshmallow. marigold's store sells them." },
 };
 const questState = {}; // id → 'open' | 'done'
 
 const inv = { owned: {}, on: {} };
 const met = {};   // name → { gifts: [itemId], last: '' }
 const menu = { open: false, tab: 'bag', sel: 0, hover: null };
+
+/* ══════════════════════════════════════════
+   NOTIFICATIONS — small toasts at the top of the screen for items, friends,
+   quests, constellations and achievements, so you notice them even if you
+   skip through the dialogue.   notify(kind, title, img, sub)
+══════════════════════════════════════════ */
+const ACHIEVEMENTS = {
+  champ:      { name: 'volleyball champion', desc: 'win a game of volleyball.' },
+  stargazer:  { name: 'stargazer',           desc: 'chart all four constellations.' },
+  social:     { name: 'social butterfly',    desc: 'make ten friends.' },
+  breathless: { name: 'out of breath',       desc: 'run out of air in the lake.' },
+  diver:      { name: 'deep diver',          desc: 'touch the very bottom of the lake.' },
+  prospector: { name: 'prospector',          desc: 'mine every seam in the old mine.' },
+  gonefirst:  { name: 'you go first',        desc: 'bring umber and peri back together.' },
+  longway:    { name: 'the long way up',     desc: "climb umber's ladder to the top of the cliff." },
+  sailor:     { name: 'across the sea',      desc: "sail birch's boat through the storm." },
+  surfer:     { name: 'hang ten',            desc: 'ride three waves to shore.' },
+  puffed:     { name: 'very alarming',       desc: 'startle bart until he puffs up.' },
+  toasty:     { name: 'golden brown',        desc: 'toast a marshmallow with rae.' },
+};
+const achieved = {};
+function achieve(id) {
+  if (achieved[id]) return;
+  achieved[id] = true;
+  ensureArt();
+  notify('achievement', ACHIEVEMENTS[id].name, ART.medal, ACHIEVEMENTS[id].desc);
+  renderMenu();
+}
+const KIND_LABEL = { item: 'got', friend: 'new friend', quest: 'new quest', done: 'quest complete', found: 'found', achievement: 'achievement' };
+function notify(kind, title, img, sub) {
+  const box = document.getElementById('toasts');
+  if (!box || !box.appendChild) return;
+  const el = document.createElement('div');
+  el.className = 'toast ' + kind;
+  el.innerHTML = `${img ? `<img src="${img}" alt="">` : '<span class="t-dot"></span>'}<div>`
+    + `<div class="t-kind">${esc(KIND_LABEL[kind] || kind)}</div><div class="t-title">${esc(title)}</div>`
+    + `${sub ? `<div class="t-sub">${esc(touchify(sub))}</div>` : ''}</div>`;
+  box.appendChild(el);
+  while (box.children.length > 4) box.removeChild(box.firstChild);
+  setTimeout(() => el.classList.add('in'), 30);
+  setTimeout(() => { el.classList.remove('in'); setTimeout(() => el.remove(), 450); }, 4600);
+}
 
 function wearing(id) { return !!(inv.owned[id] && inv.on[id]); }
 function hasItem(id) { return !!inv.owned[id]; }
@@ -65,8 +133,21 @@ function give(id, from) {
   inv.owned[id] = true;
   inv.on[id] = ITEMS[id].wearable;
   if (from) { meet(from); met[from].gifts.push(id); }
-  showHint(`got: ${ITEMS[id].name}  ·  press I to see your bag`, 3200);
+  ensureArt();
+  const firstItem = Object.keys(inv.owned).length === 1;
+  notify('item', ITEMS[id].name, ART.items[id], firstItem ? 'press I to see your bag' : from ? `from ${from}` : '');
   pingPill(); renderMenu(); updateCarryHud();
+}
+// items you can have several of (gold, logs): the name shows the count
+const STACK_NAMES = { gold: ['a gold nugget', n => `gold nuggets ×${n}`], wood: ['a log', n => `logs ×${n}`] };
+function stack(id, d, from) {
+  inv[id] = Math.max(0, (inv[id] || 0) + d);
+  ITEMS[id].name = inv[id] === 1 ? STACK_NAMES[id][0] : STACK_NAMES[id][1](inv[id]);
+  if (!inv[id]) { takeItem(id); return; }
+  if (!hasItem(id)) { give(id, from); return; }
+  ensureArt();
+  if (d > 0) notify('item', ITEMS[id].name, ART.items[id]);
+  renderMenu(); updateCarryHud();
 }
 function takeItem(id) { delete inv.owned[id]; delete inv.on[id]; renderMenu(); updateCarryHud(); }
 
@@ -76,7 +157,10 @@ function meet(name, line) {
   const m = met[name] || (met[name] = { gifts: [], last: '' });
   if (line) m.last = line;
   if (first) {
-    if (Object.keys(met).length === 1) showHint(`new friend: ${name}  ·  press J to see who you've met`, 3200);
+    ensureArt();
+    const n = Object.keys(met).length;
+    notify('friend', name, ART.faces[name], n === 1 ? "press J to see who you've met" : FRIENDS[name].where);
+    if (n >= 10) achieve('social');
     pingPill();
   }
   renderMenu();
@@ -85,13 +169,16 @@ function meet(name, line) {
 function startQuest(id) {
   if (questState[id]) return;
   questState[id] = 'open';
-  setTimeout(() => showHint(`new quest: ${QUESTS[id].title}  ·  press J`, 3200), 1800);
+  ensureArt();
+  setTimeout(() => notify('quest', QUESTS[id].title, ART.faces[QUESTS[id].giver], 'press J to see your quests'), 500);
   pingPill(); renderMenu();
 }
 function completeQuest(id) {
   if (questState[id] === 'done') return;
   questState[id] = 'done';
-  setTimeout(() => showHint(`quest complete: ${QUESTS[id].title}`, 3000), 1200);
+  ensureArt();
+  setTimeout(() => notify('done', QUESTS[id].title, ART.faces[QUESTS[id].giver]), 300);
+  if (id === 'peri') achieve('gonefirst');
   pingPill(); renderMenu();
 }
 const openQuests = () => Object.keys(QUESTS).filter(q => questState[q] === 'open');
@@ -178,6 +265,62 @@ const ITEM_ART = {
     ctx.beginPath(); ctx.moveTo(w / 2, h / 2 - 13); ctx.lineTo(w / 2 + 9, h / 2 - 2); ctx.lineTo(w / 2 + 5, h / 2 + 11); ctx.lineTo(w / 2 - 5, h / 2 + 11); ctx.lineTo(w / 2 - 9, h / 2 - 2); ctx.closePath(); ctx.fill(); ctx.stroke();
     ctx.beginPath(); ctx.moveTo(w / 2, h / 2 - 13); ctx.lineTo(w / 2, h / 2 + 11); ctx.stroke();
   },
+  helmet: (w, h) => { drawHelmetOn(w / 2 + 2, h / 2 - 2, 1.2); },
+  pickaxe: (w, h) => {
+    ctx.save(); ctx.translate(w / 2, h / 2); ctx.rotate(0.6);
+    ctx.strokeStyle = 'rgba(160,120,75,0.95)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 18); ctx.lineTo(0, -14); ctx.stroke();
+    ctx.strokeStyle = 'rgba(190,195,205,0.95)'; ctx.lineWidth = 3.5;
+    ctx.beginPath(); ctx.moveTo(-15, -8); ctx.quadraticCurveTo(0, -20, 15, -8); ctx.stroke();
+    ctx.restore();
+  },
+  gold: (w, h) => {
+    drawGlow(w / 2, h / 2, 20, 0.3, [255, 210, 110]);
+    ctx.fillStyle = 'rgba(235,195,85,0.95)'; ctx.strokeStyle = 'rgba(170,130,50,0.9)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(w / 2 - 11, h / 2 + 4); ctx.lineTo(w / 2 - 6, h / 2 - 8); ctx.lineTo(w / 2 + 5, h / 2 - 10); ctx.lineTo(w / 2 + 12, h / 2 - 1); ctx.lineTo(w / 2 + 7, h / 2 + 9); ctx.lineTo(w / 2 - 5, h / 2 + 10); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,245,200,0.8)'; ctx.beginPath(); ctx.arc(w / 2 - 2, h / 2 - 4, 2, 0, 7); ctx.fill();
+  },
+  axe: (w, h) => {
+    ctx.save(); ctx.translate(w / 2, h / 2); ctx.rotate(0.5);
+    ctx.strokeStyle = 'rgba(160,120,75,0.95)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    ctx.beginPath(); ctx.moveTo(0, 18); ctx.lineTo(0, -16); ctx.stroke();
+    ctx.fillStyle = 'rgba(185,190,200,0.95)';
+    ctx.beginPath(); ctx.moveTo(-1, -16); ctx.lineTo(-12, -20); ctx.quadraticCurveTo(-16, -10, -12, -2); ctx.lineTo(-1, -7); ctx.closePath(); ctx.fill();
+    ctx.restore();
+  },
+  surfboard: (w, h) => {
+    ctx.save(); ctx.translate(w / 2, h / 2); ctx.rotate(0.7);
+    ctx.fillStyle = 'rgba(240,220,170,0.95)'; ctx.strokeStyle = 'rgba(170,140,100,0.9)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.ellipse(0, 0, 6, 20, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(80,150,180,0.9)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(0, -18); ctx.lineTo(0, 18); ctx.stroke();
+    ctx.restore();
+  },
+  shells: (w, h) => {
+    ctx.strokeStyle = 'rgba(200,190,170,0.8)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(w / 2, h / 2 - 8, 14, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke();
+    [['#f0c8b8', -10, 2], ['#f0e0c0', -4, 5], ['#e8b0b8', 3, 6], ['#f0d8a8', 9, 3]].forEach(([c, dx, dy]) => {
+      ctx.fillStyle = c; ctx.beginPath(); ctx.moveTo(w / 2 + dx, h / 2 + dy - 4); ctx.lineTo(w / 2 + dx + 4, h / 2 + dy + 3); ctx.lineTo(w / 2 + dx - 4, h / 2 + dy + 3); ctx.closePath(); ctx.fill();
+    });
+  },
+  birdhouse: (w, h) => { drawBirdhouse(w / 2, h / 2 + 12, 1.3, 0); },
+  wood: (w, h) => {
+    ctx.fillStyle = '#6a4a2c'; ctx.fillRect(w / 2 - 16, h / 2 - 6, 30, 14);
+    ctx.fillStyle = '#c8a070'; ctx.beginPath(); ctx.ellipse(w / 2 + 14, h / 2 + 1, 5, 7, 0, 0, 7); ctx.fill();
+    ctx.strokeStyle = 'rgba(120,85,50,0.9)'; ctx.lineWidth = 0.8; ctx.beginPath(); ctx.ellipse(w / 2 + 14, h / 2 + 1, 2.5, 3.5, 0, 0, 7); ctx.stroke();
+    ctx.strokeStyle = 'rgba(40,28,18,0.6)'; ctx.beginPath(); ctx.moveTo(w / 2 - 12, h / 2 - 1); ctx.lineTo(w / 2 + 6, h / 2 - 1); ctx.moveTo(w / 2 - 8, h / 2 + 4); ctx.lineTo(w / 2 + 8, h / 2 + 4); ctx.stroke();
+  },
+  canvas: (w, h) => {
+    ctx.fillStyle = 'rgba(235,228,205,0.95)'; ctx.strokeStyle = 'rgba(170,160,130,0.9)'; ctx.lineWidth = 1;
+    ctx.fillRect(w / 2 - 14, h / 2 - 9, 28, 18); ctx.strokeRect(w / 2 - 14, h / 2 - 9, 28, 18);
+    ctx.beginPath(); ctx.ellipse(w / 2 + 14, h / 2, 4, 9, 0, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.strokeStyle = 'rgba(180,90,80,0.8)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.moveTo(w / 2 - 4, h / 2 - 9); ctx.lineTo(w / 2 - 4, h / 2 + 9); ctx.stroke();
+  },
+  mallows: (w, h) => {
+    ctx.fillStyle = 'rgba(200,215,235,0.35)'; ctx.strokeStyle = 'rgba(200,215,235,0.8)'; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(w / 2 - 12, h / 2 - 12); ctx.lineTo(w / 2 + 12, h / 2 - 12); ctx.lineTo(w / 2 + 13, h / 2 + 14); ctx.lineTo(w / 2 - 13, h / 2 + 14); ctx.closePath(); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(250,245,240,0.95)';
+    [[-6, 6], [5, 7], [0, -1], [-5, -5], [6, -4]].forEach(([dx, dy]) => { ctx.beginPath(); ctx.ellipse(w / 2 + dx, h / 2 + dy, 4.5, 3.5, 0, 0, 7); ctx.fill(); });
+    ctx.fillStyle = 'rgba(200,110,120,0.9)'; ctx.fillRect(w / 2 - 12, h / 2 - 14, 24, 3);
+  },
   button: (w, h) => {
     ctx.fillStyle = 'rgba(210,175,95,0.95)'; ctx.beginPath(); ctx.arc(w / 2, h / 2, 13, 0, 7); ctx.fill();
     ctx.strokeStyle = 'rgba(150,115,55,0.9)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(w / 2, h / 2, 9.5, 0, 7); ctx.stroke();
@@ -197,7 +340,7 @@ function drawPortrait(name, w, h) {
   }
   if (f.kind === 'bat')  { ctx.save(); ctx.translate(w / 2, 10); ctx.rotate(Math.PI); drawCritter(0, 0, 'bat', { color: f.color, scale: 1.7 }); ctx.restore(); return; }
   if (f.kind === 'moth') { drawCritter(w / 2, h / 2, 'moth', { color: f.color, scale: 2.2, flap: 1 }); return; }
-  const scale = { snail: 1.7, toad: 1.6, hedgehog: 1.4, tortoise: 1.25, owl: 1.45 }[f.kind] || 1.15;
+  const scale = { snail: 1.7, toad: 1.6, hedgehog: 1.4, tortoise: 1.25, owl: 1.45, mole: 1.5, crab: 1.6, bird: 2.4, goose: 1.05, puffer: 2, octopus: 1.6, beaver: 1.1 }[f.kind] || 1.15;
   drawCritter(w / 2, h - 6, f.kind, { color: f.color, scale, dir: 1 });
 }
 
@@ -207,6 +350,16 @@ function ensureArt() {
   ART.ready = true;
   ITEM_ORDER.forEach(id => ART.items[id] = renderToURL(48, 48, ITEM_ART[id]));
   Object.keys(FRIENDS).forEach(n => ART.faces[n] = renderToURL(64, 72, (w, h) => drawPortrait(n, w, h)));
+  ART.medal = renderToURL(48, 48, (w, h) => {
+    ctx.fillStyle = 'rgba(200,110,120,0.9)'; ctx.beginPath(); ctx.moveTo(w / 2 - 9, 6); ctx.lineTo(w / 2 - 2, 24); ctx.lineTo(w / 2 - 12, 22); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = 'rgba(120,160,210,0.9)'; ctx.beginPath(); ctx.moveTo(w / 2 + 9, 6); ctx.lineTo(w / 2 + 2, 24); ctx.lineTo(w / 2 + 12, 22); ctx.closePath(); ctx.fill();
+    drawGlow(w / 2, h / 2 + 6, 22, 0.35, [255, 210, 110]);
+    ctx.fillStyle = 'rgba(235,195,85,0.95)'; ctx.strokeStyle = 'rgba(170,130,50,0.9)'; ctx.lineWidth = 1.2;
+    ctx.beginPath(); ctx.arc(w / 2, h / 2 + 6, 11, 0, 7); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = 'rgba(255,245,210,0.95)'; ctx.beginPath();
+    for (let i = 0; i < 10; i++) { const r = i % 2 ? 2.6 : 6, a = -Math.PI / 2 + i * Math.PI / 5; ctx.lineTo(w / 2 + Math.cos(a) * r, h / 2 + 6 + Math.sin(a) * r); }
+    ctx.fill();
+  });
 }
 
 /* ══════════════════════════════════════════
@@ -273,6 +426,13 @@ function friendCard(n) {
   </div>`;
 }
 
+function achievementList() {
+  const ids = Object.keys(ACHIEVEMENTS), got = ids.filter(a => achieved[a]).length;
+  return `<div class="m-sub">achievements · ${got}/${ids.length}</div><div class="m-ach">${ids.map(a => achieved[a]
+    ? `<div class="m-ach-row on" title="${esc(ACHIEVEMENTS[a].desc)}"><img src="${ART.medal}" alt=""><div><div class="m-name">${esc(ACHIEVEMENTS[a].name)}</div><div class="m-desc">${esc(ACHIEVEMENTS[a].desc)}</div></div></div>`
+    : '<div class="m-ach-row"><span class="m-ach-lock"></span><div class="m-name">???</div></div>').join('')}</div>`;
+}
+
 function renderMenu() {
   const body = document.getElementById('menu-body');
   if (!body) return;
@@ -293,7 +453,7 @@ function renderMenu() {
           ${it.wearable ? `<div class="m-state ${wearing(id) ? 'on' : ''}">${wearing(id) ? 'wearing · E to take off' : 'in your bag · E to put on'}</div>` : '<div class="m-state">carried</div>'}</div></div>
         <div class="m-desc">${esc(it.desc)}</div>
         ${from ? `<div class="m-from"><img src="${ART.faces[from]}" alt="">from ${esc(from)}</div>` : ''}
-      </div>`;
+      </div>${achievementList()}`;
   } else {
     const names = friendList();
     const oq = openQuests(), doneN = Object.keys(questState).filter(q => questState[q] === 'done').length;

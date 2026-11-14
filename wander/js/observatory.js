@@ -73,6 +73,19 @@ const obs = {
   viewing: false, vx: 1200, vy: 700, comet: 0, smoke: [],
 };
 
+// rain, storms, snow, fog (and frogs) hide the sky completely; wind, petals and falling stars don't
+function skyHidden() {
+  const a = weather.amt;
+  return Math.min(1, Math.max(a.rain, a.storm, a.snow, a.fog, a.frogs));
+}
+const HIDDEN_LINE = {
+  rain:  'rain clouds, all the way across. come back when it clears.',
+  storm: 'a thunderstorm. no stars tonight.',
+  snow:  'snow clouds, end to end. come back when it clears.',
+  fog:   "fog on the glass. you can't see a thing.",
+  frogs: '…there is a frog sitting on the lens.',
+};
+
 function foundCount() { return CONSTELLATIONS.filter(c => c.found).length; }
 
 function talkToNova() {
@@ -96,6 +109,7 @@ function talkToNova() {
   }
   else if (questState.dig === 'open') line = 'the cave is at the bottom of the far side, under the little cliff. dig carefully.';
   else if (questState.report === 'open') line = "well? what's down there? go look!";
+  else if (skyHidden() > 0.5 && nova.stage >= 2 && Math.random() < 0.6) line = "no stars tonight, not through all that. the weather always turns, though. come back.";
   else if (cloudiness() > 0.6 && Math.random() < 0.5) line = 'clouds. the natural enemy of astronomy. try a nap at the tavern?';
   else if (nova.stage === 2) line = n ? `${n} of 4 so far. ${n === 3 ? "the last one's shy. look low and to the east." : 'keep looking!'}` : 'the telescope is right there. go on!';
   else line = NOVA_FLAVOR[nova.li++ % NOVA_FLAVOR.length];
@@ -150,14 +164,16 @@ function updateTelescope() {
   obs.vy = Math.max(0, Math.min(SKY_H, obs.vy));
   obs.comet = (obs.comet + 0.6) % (SKY_W + 400);
 
-  const seeing = 1 - cloudiness() * 0.85; // clouds make it slow to make anything out
+  const hidden = skyHidden();
+  const seeing = hidden > 0.5 ? 0 : (1 - cloudiness() * 0.85) * (1 - hidden);   // bad weather: nothing to see
   CONSTELLATIONS.forEach(c => {
     if (c.found) return;
     const d = Math.hypot(c.cx - obs.vx, c.cy - obs.vy);
     if (d < 110) c.progress += seeing / 50; else c.progress = Math.max(0, c.progress - 0.02);
     if (c.progress >= 1) {
       c.found = true;
-      showHint(`✦ found: ${c.name}  (${foundCount()}/4)`, 2600);
+      notify('found', `${c.name}  (${foundCount()}/4)`, null, 'a constellation');
+      if (foundCount() === 4) achieve('stargazer');
     }
   });
 }
@@ -167,7 +183,7 @@ function updateTelescope() {
 ══════════════════════════════════════════ */
 function drawHill() {
   // a little sign at the foot of the hill
-  const sx = 5080 - camX, gy = groundY(5080);
+  const sx = 5165 - camX, gy = groundY(5165);
   if (sx < -60 || sx > W + 60) return;
   ctx.fillStyle = '#3a2a1c'; ctx.fillRect(sx - 1.5, gy - 40, 3, 40); ctx.fillRect(sx - 32, gy - 46, 64, 14);
   ctx.fillStyle = 'rgba(230,205,160,0.85)'; ctx.font = '8px Space Mono, monospace'; ctx.textAlign = 'center';
@@ -321,6 +337,16 @@ function drawTelescopeView() {
   ctx.strokeStyle = 'rgba(80,70,60,0.9)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(mx + 5, my - 68); ctx.lineTo(mx + 5, my - 84); ctx.stroke();
   ctx.fillStyle = '#c85050'; ctx.fillRect(mx + 5, my - 84, 9, 6);
 
+  // bad weather: a solid deck of cloud between you and every star
+  const hid = skyHidden();
+  if (hid > 0.02) {
+    ctx.fillStyle = `rgba(26,30,40,${0.97 * hid})`; ctx.fillRect(cx - R, cy - R, R * 2, R * 2);
+    for (let i = 0; i < 9; i++) {
+      const bx = cx + ((i * 210 + tick * (0.3 + Math.abs(weather.wind) * 0.4)) % (R * 3)) - R * 1.5, by = cy - R + (i % 5) * R * 0.5;
+      ctx.fillStyle = `rgba(52,58,72,${0.6 * hid})`;
+      ctx.beginPath(); ctx.ellipse(bx, by, R * 0.55, R * 0.2, 0, 0, 7); ctx.fill();
+    }
+  }
   // weather on the lens
   if (c > 0.02) {
     for (let i = 0; i < 7; i++) {
@@ -356,7 +382,8 @@ function drawTelescopeView() {
   ctx.strokeStyle = '#d8b068'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(cx, cy, R + 10, 0, 7); ctx.stroke();
   ctx.fillStyle = 'rgba(220,210,190,0.7)'; ctx.font = '12px Space Mono, monospace'; ctx.textAlign = 'center';
   ctx.fillText(touchMode ? `drag to look around · charted ${foundCount()}/4` : `arrow keys to look around · E to step back · charted ${foundCount()}/4`, cx, Math.min(H - 16, cy + R + 34));
-  if (c > 0.6) ctx.fillText('too cloudy to see much tonight…', cx, Math.max(20, cy - R - 22));
+  if (hid > 0.5) ctx.fillText(HIDDEN_LINE[weather.type] || 'too cloudy to see anything tonight…', cx, Math.max(20, cy - R - 22));
+  else if (c > 0.6) ctx.fillText('too cloudy to see much tonight…', cx, Math.max(20, cy - R - 22));
   ctx.restore();
 }
 

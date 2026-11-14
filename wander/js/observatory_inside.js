@@ -39,7 +39,7 @@ function exitObservatory() {
 
 function obsInteriorPopup() {
   if (nearObsExit()) return 'press E to head back out';
-  if (nearScope()) return 'press E to look through the telescope';
+  if (nearScope()) return skyHidden() > 0.5 ? 'press E to look through the telescope (clouded over)' : 'press E to look through the telescope';
   if (nearNova() && nova.bubbleT <= 0) return 'press E to talk to nova';
   return null;
 }

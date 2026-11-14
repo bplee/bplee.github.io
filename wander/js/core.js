@@ -50,7 +50,7 @@ window.addEventListener('resize', resize);
 /* ══════════════════════════════════════════
    WORLD
 ══════════════════════════════════════════ */
-const WORLD_W  = 7700;
+const WORLD_W  = 16300;
 const BASE_GND = 0.78;
 
 const TERRAIN = [
@@ -67,7 +67,45 @@ const TERRAIN = [
   { x1: 3900, y1:   0, x2:WORLD_W,y2:  0 },
 ];
 
-// ground height at a world x (screen-space y, before the vertical camera). Includes the observatory hill.
+// the big cliff just past the cave mouth: too tall to jump (even after a drink).
+// the only way up is umber's ladder, which comes out of a mole hole on top.
+const CLIFF_X = 7330, CLIFF_H = 440;
+// past the cliff: the thick woods on the plateau, a long slope down to the beach, the bay
+// (coral shelf, then a sheer drop into the open sea), and the island on the far side.
+// [x, height above the base ground]; below SEA_H is under water.
+const SEA_H = -24;
+const COAST = [
+  [9300, 440], [9500, 405], [9700, 310], [9900, 160], [10050, 46], [10150, 14], [10300, 0], [10420, -26],   // down to the beach
+  [10560, -90], [10700, -185], [10900, -212], [11100, -236], [11300, -224], [11470, -246], [11530, -262],   // the bay + the coral shelf
+  [11590, -1500], [13600, -1500],                                                                          // the open sea (very deep)
+  [13690, -650], [13900, -632], [13950, -470], [14140, -456], [14190, -320], [14340, -306],                 // the reef city, in tiers…
+  [14390, -165], [14540, -116],                                                                             // …up to the reef crest, which makes the surf
+  [14650, -92], [14850, -44], [14960, -24], [15100, 0], [15300, 18],                                        // the surf, the island beach
+  [15700, 30], [16020, 26], [16120, 64], [16200, 160], [16300, 190],                                        // …and a rocky point at the end
+];
+function coastH(x) {
+  for (let i = 0; i < COAST.length - 1; i++) {
+    const [x1, h1] = COAST[i], [x2, h2] = COAST[i + 1];
+    if (x >= x1 && x <= x2) { const t = (x - x1) / (x2 - x1), e = t * t * (3 - 2 * t); return h1 + (h2 - h1) * (h2 < -1000 || h1 < -1000 ? t : e); }
+  }
+  return COAST[COAST.length - 1][1];
+}
+function cliffH(x) {
+  if (x < CLIFF_X) return 0;
+  if (x < CLIFF_X + 12) return CLIFF_H * (x - CLIFF_X) / 12;
+  const wob = Math.sin(x * 0.03) * 4 + Math.sin(x * 0.011) * 7;
+  if (x < COAST[0][0]) return CLIFF_H + wob;
+  let h = coastH(x);
+  if (x < 9500) h += wob * (9500 - x) / 200;                                   // blend the plateau's bumps away
+  if (x > 10700 && x < 11480) h += Math.sin(x * 0.021) * 10 + Math.sin(x * 0.053) * 5;   // lumpy coral shelf
+  if (x > 15300 && x < 16020) h += Math.sin(x * 0.012) * 8 * Math.min(1, (x - 15300) / 200, (16020 - x) / 100);   // island dunes
+  return h;
+}
+const seaY = () => H * BASE_GND - SEA_H;                      // the sea's surface (screen y, before the camera)
+const SEA_X0 = 10400, SEA_X1 = 14970;
+function inSea(x) { return x > SEA_X0 && x < SEA_X1 && groundY(x) > seaY(); }
+
+// ground height at a world x (screen-space y, before the vertical camera). Includes the observatory hill + the cliff.
 function groundY(worldX) {
   let y = H * BASE_GND;
   for (const seg of TERRAIN) {
@@ -77,7 +115,7 @@ function groundY(worldX) {
       break;
     }
   }
-  return y - hillH(worldX);
+  return y - hillH(worldX) - cliffH(worldX);
 }
 
 /* ══════════════════════════════════════════
@@ -123,6 +161,9 @@ window.addEventListener('keydown', e => {
 });
 
 function tryJump() {
+  if (player.climbing || player.roping || player.riding) return;   // hands full: on a ladder / rope, or in the boat
+  if (player.surfing) return;
+  if (scene === 'outside' && trySurfJump()) return;   // catch a wave (island.js)
   if (player.inWater) { swimStroke(); return; }   // in the cavern pool: kick upward
   if (player.onGround) {
     player.vy = JUMP_FORCE * player.mods.jump;
@@ -172,8 +213,8 @@ function updateCamera() {
     camY += ((player._py - H * 0.58 + viewBias()) - camY) * 0.08;
     return;
   }
-  // only look up once you climb past the middle of the screen
-  const ty = Math.min(0, player._py - H * 0.55) + viewBias();
+  // only look up once you climb past the middle of the screen (or down, when you dive in the sea)
+  const ty = (player.inWater || player._py > seaY() + 40 ? player._py - H * 0.55 : Math.min(0, player._py - H * 0.55)) + viewBias();
   camY += (ty - camY) * 0.08;
   // During volleyball keep the whole court framed, nudged by the player
   const target = vball.active
@@ -193,6 +234,8 @@ function touchify(text) {
   if (!touchMode) return text;
   return String(text)
     .replace('arrow keys or wasd to move · space to jump', 'right thumb to move · tap the left side to jump')
+    .replace('hold ↓ to dive  ·  hold jump to swim up', 'pull down to dive  ·  hold the left side to swim up')
+    .replace('hold ↓ to dive', 'pull down to dive')
     .replace(/press E to /g, 'tap the button to ')
     .replace(/press I to see your bag/g, 'tap bag to see it')
     .replace(/press J to see who you've met/g, 'tap friends to see them')

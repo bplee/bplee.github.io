@@ -107,7 +107,7 @@ function drawBgTreesInner() {
 }
 
 // pebbles + soil specks (fixed in the world)
-const PEBBLES = Array.from({length:340}, () => ({ x: Math.random()*WORLD_W, d: 6 + Math.random()*120, r: 0.8 + Math.random()*1.8, a: 0.1 + Math.random()*0.2 }));
+const PEBBLES = Array.from({length:700}, () => ({ x: Math.random()*WORLD_W, d: 6 + Math.random()*120, r: 0.8 + Math.random()*1.8, a: 0.1 + Math.random()*0.2 }));
 
 // the ground line across the visible part of the world (includes the hill)
 function groundPath(step) {
@@ -121,7 +121,7 @@ function groundPath(step) {
 function drawTerrain() {
   ctx.save();
   const pts = groundPath(6);
-  const bottom = H + Math.abs(camY) + 40;
+  const bottom = Math.max(H + Math.abs(camY), camY + H) + 40;
   ctx.beginPath();
   ctx.moveTo(pts[0][0] - camX, bottom);
   pts.forEach(([x, y]) => ctx.lineTo(x - camX, y));
@@ -360,7 +360,8 @@ function checkProximity() {
   if (scene === 'observatory') { activePopup = obsInteriorPopup(); return; }
   if (vball.active) { activePopup = null; return; }
   if (nearTavernDoor()) { activePopup = 'the dozy gecko · press E to step inside'; return; }
-  const cp = caveMouthPopup(); if (cp) { activePopup = cp; return; }
+  const cp = caveMouthPopup() || moleHolePopup() || ropePopup() || cliffPopup(); if (cp) { activePopup = cp; return; }
+  const os = outSpot(); if (os) { activePopup = os.text; return; }   // the store, the far woods, the beach, the sea, the island
   const op = observatoryPopup(); if (op) { activePopup = op; return; }
   let nearest=null, nearDist=Infinity;
   OBJECTS.forEach(obj => {

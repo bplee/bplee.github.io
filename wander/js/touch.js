@@ -60,7 +60,8 @@ window.addEventListener('touchstart', enableTouch, { capture: true, passive: tru
 
 /* ── the action button: what does E do right here? ── */
 const VERB = { talk: 'talk', order: 'order', look: 'look', dig: 'dig', nap: 'nap', knock: 'knock',
-               head: 'leave', step: 'enter', go: 'enter', climb: 'leave', join: 'join' };
+               head: 'leave', step: 'enter', go: 'enter', climb: 'climb', join: 'join', mine: 'mine',
+               chop: 'chop', pick: 'pick up', hang: 'hang it', drop: 'drop it', set: 'set sail', sail: 'sail home' };
 function actionLabel() {
   if (!started || transitioning || menu.open || obs.viewing) return null;
   if (vball.active) return 'leave game';

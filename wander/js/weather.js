@@ -263,7 +263,8 @@ function drawSnowCover() {
   if (s < 0.02) return;
   ctx.save();
   ctx.beginPath();
-  groundPath(8).forEach(([x, y], i) => i ? ctx.lineTo(x - camX, y) : ctx.moveTo(x - camX, y));
+  let pen = false;   // (no snow on the sea floor)
+  groundPath(8).forEach(([x, y]) => { const wet = inSea(x); if (!wet && pen) ctx.lineTo(x - camX, y); else if (!wet) ctx.moveTo(x - camX, y); pen = !wet; });
   ctx.strokeStyle = `rgba(230,236,245,${0.25 + s * 0.6})`;
   ctx.lineWidth = 1 + s * 6;
   ctx.lineJoin = 'round';

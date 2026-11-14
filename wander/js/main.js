@@ -17,6 +17,10 @@ function update() {
     updateWoods();
     updateObservatory();
     updateCaveMouth();
+    updateEastWoods();
+    updateBeach();
+    updateSea();
+    updateIsland();
   } else if (scene === 'tavern') {
     updateTavernInterior();
   } else if (scene === 'observatory') {
@@ -59,8 +63,11 @@ function draw() {
   if (scene === 'cavern') {
     ctx.save(); ctx.translate(0, -Math.round(camY));
     drawCavern();
+    drawDeep();          // the old mine, umber's burrow, the ladder
+    drawLakeBack();      // the water, kelp, fish, peri
     drawPlayer();
-    drawCaveWater();     // in front of you, so you look submerged
+    drawLakeFront();     // a tint in front of you, the surface, the breath meter
+    drawDeepFront();
     drawDrinkFx();
     drawPopup();
     ctx.restore();
@@ -76,30 +83,46 @@ function draw() {
   drawClouds();
   drawHills();
   drawBgTrees();
+  drawSeaHorizon();    // past the woods, the hills give way to the open sea
   // ── the world (follows the vertical camera) ──
   ctx.save(); ctx.translate(0, -Math.round(camY));
   drawTerrain();
+  drawSand();
   drawSnowCover();
+  drawEastWoodsBack();
   drawWoodsBack();
+  drawEastTrees();
+  drawStore();
   drawNet();
   drawObjects();
   drawTavernExterior();
   drawObservatoryBack();
+  drawCliff();
   drawCaveMouth();
+  drawMoleHole();
+  drawSeaBack();       // the bay: water, coral, ollie, the net, bart
+  drawBeachBack();     // birch, his workshop, the boat
+  drawIslandBack();    // palms, rae's hut, the bonfire, the surf, rae
   drawNPCs();
   drawLandingMarker();
   drawBall();
   drawFrogs();
   drawPlayer();
+  drawBoatFront();
+  drawSeaFront();
   drawGrass();
+  drawEastWoodsFront();
   drawDust();
   drawFireflies();
   drawDrinkFx();
   drawObservatoryFront();
+  drawOutBubbles();
   drawPopup();
   ctx.restore();
   // ── in front of everything (screen space) ──
+  drawEastGloom();
   drawWeatherFront();
+  drawStorm();
   drawTelescopeView();
 }
 
