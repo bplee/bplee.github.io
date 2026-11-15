@@ -1,7 +1,7 @@
 /* ══════════════════════════════════════════
    CHAPTERS — a title card the first time you reach each part of the story:
-   one · the woods (from the start), two · the island (once you're ashore
-   there), three · the reef city (once you swim down into it).
+   one · the woods (from the start), two · the island (the moment you land
+   at rae's island). (three, the big city, comes once it's designed.)
    Saved (saveRegister 'chapters') so each card only ever shows once.
 
    THE CHAPTER MENU (top left) — shows the chapter you're in. click it for
@@ -19,7 +19,6 @@ const CHAPTERS = [
   // the moment you step off the boat at rae's island (or wade ashore there)
   { n: 'two',   name: 'the island',    here: () => boat.crossed || (scene === 'outside' && player.wx > SEA_X1 && !player.inWater),
     startHere: () => scene === 'outside' && player.wx > SEA_X1 },
-  { n: 'three', name: 'the reef city', here: () => underSea() && player.wx > CITY_X0 && player.wx < CITY_X1 && player._py > seaY() + 150 },
 ];
 const chap = { seen: [], el: null, t: 0, pending: null, open: false, arm: null, sig: '', ui: null };
 
@@ -42,7 +41,7 @@ function chScore(d) {
   return (d.chapters | 0) * 1e6 + q.filter(v => v === 'done').length * 1e3 + q.length * 100
        + Object.keys(svObj(d.achieved) ? d.achieved : {}).length * 10 + Object.keys(svObj(d.inv) && svObj(d.inv.owned) ? d.inv.owned : {}).length;
 }
-const chReached = () => Math.max(chap.seen.length, chBook.reached, svObj(chBook.best) ? chBook.best.chapters | 0 : 0);
+const chReached = () => Math.min(CHAPTERS.length, Math.max(chap.seen.length, chBook.reached, svObj(chBook.best) ? chBook.best.chapters | 0 : 0));
 const chCanJump = i => i === 0 || svObj(chBook.starts[i]);
 
 /* ── the title card ── */
